@@ -7,6 +7,7 @@ import 'auth.dart';
 import 'discovery.dart';
 import 'security_checks.dart';
 import 'tls_audit.dart';
+import 'traffic_journal.dart';
 
 class PassiveScanResult {
   final Uri url;
@@ -16,6 +17,7 @@ class PassiveScanResult {
   final List<TechnologyFinding> technologies;
   final bool bodyTruncated;
   final bool redirectNotFollowed;
+  final int bodyBytes;
   const PassiveScanResult({
     required this.url,
     required this.statusCode,
@@ -24,6 +26,7 @@ class PassiveScanResult {
     required this.technologies,
     required this.bodyTruncated,
     required this.redirectNotFollowed,
+    this.bodyBytes = 0,
   });
 }
 
@@ -49,8 +52,15 @@ class PassiveScanner {
       ..connectionTimeout = const Duration(seconds: 10)
       ..userAgent = 'OdinSecurity/0.1 Passive';
 
+    final timer = Stopwatch()..start();
     try {
-      return await _fetch(client, url, session).timeout(const Duration(seconds: 25));
+      final result = await _fetch(client, url, session).timeout(const Duration(seconds: 25));
+      TrafficJournal.shared.record(project, url, source: 'passive', method: 'GET',
+        status: result.statusCode, capturedBytes: result.bodyBytes, elapsedMs: timer.elapsedMilliseconds, truncated: result.bodyTruncated);
+      return result;
+    } catch (_) {
+      TrafficJournal.shared.record(project, url, source: 'passive', method: 'GET', elapsedMs: timer.elapsedMilliseconds);
+      rethrow;
     } finally {
       client.close(force: true);
     }
@@ -91,6 +101,7 @@ class PassiveScanner {
       links: isHtml && response.statusCode >= 200 && response.statusCode < 300 ? LinkDiscovery.extract(url, observation.body) : [],
       technologies: technologies,
       bodyTruncated: truncated,
+      bodyBytes: bytes.length,
       redirectNotFollowed: response.isRedirect,
     );
   }

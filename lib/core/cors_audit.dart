@@ -2,6 +2,7 @@ import 'dart:io';
 import 'discovery.dart';
 import 'project.dart';
 import 'scan_policy.dart';
+import 'traffic_journal.dart';
 
 enum CorsOutcome { notAdvertised, wildcard, testOriginAllowed, testOriginWithCredentials, inconclusive }
 
@@ -75,6 +76,15 @@ class CorsAudit {
         !policy.permits(endpoint) || endpoint.hasFragment || !LinkDiscovery.eligible(endpoint, endpoint)) {
       throw StateError('Select an authorized read-only HTTPS endpoint.');
     }
-    return CorsAuditResult.classify(await probe.inspect(endpoint));
+    final timer = Stopwatch()..start();
+    try {
+      final result = CorsAuditResult.classify(await probe.inspect(endpoint));
+      if (probe is HttpCorsProbe) TrafficJournal.shared.record(project, endpoint, source: 'cors', method: 'OPTIONS',
+        status: result.status, elapsedMs: timer.elapsedMilliseconds);
+      return result;
+    } catch (_) {
+      if (probe is HttpCorsProbe) TrafficJournal.shared.record(project, endpoint, source: 'cors', method: 'OPTIONS', elapsedMs: timer.elapsedMilliseconds);
+      rethrow;
+    }
   }
 }

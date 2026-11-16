@@ -3,6 +3,7 @@ import 'dart:io';
 import 'auth.dart';
 import 'project.dart';
 import 'scan_policy.dart';
+import 'traffic_journal.dart';
 
 enum ManualAccept {
   any('*/*'), json('application/json'), html('text/html'), text('text/plain');
@@ -53,8 +54,15 @@ class ManualRequestClient {
     }
     final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized);
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+    final timer = Stopwatch()..start();
     try {
-      return await _send(client, target, method, session, accept).timeout(const Duration(seconds: 25));
+      final result = await _send(client, target, method, session, accept).timeout(const Duration(seconds: 25));
+      TrafficJournal.shared.record(project, target, source: 'manual', method: method,
+        status: result.status, capturedBytes: result.bodyBytes, elapsedMs: result.elapsedMs, truncated: result.truncated);
+      return result;
+    } catch (_) {
+      TrafficJournal.shared.record(project, target, source: 'manual', method: method, elapsedMs: timer.elapsedMilliseconds);
+      rethrow;
     } finally {
       client.close(force: true);
     }

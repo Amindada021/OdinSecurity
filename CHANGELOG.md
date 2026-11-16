@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.23.0+23
+- Central scope-filtered session metadata logger for passive scans, manual requests and CORS preflights.
+- Project-scoped filtering, response status, timing, size, and explicit clear; no body, headers, credentials or query values logged.
+- Bounded logger and scope fixtures; not a browser/system interception proxy.
+
 ## 0.22.0+22
 - Offline HAR traffic summary: scoped request counts, 4xx/5xx, slow requests, recorded duration and response bytes.
 - Filter captured traffic by error or latency; preserve a bounded route inventory and omit request/response payloads, headers and query values.

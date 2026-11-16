@@ -18,7 +18,7 @@ The technology detector reports multiple independent layers with evidence and co
 | 04 | Same-scope discovery, HTML/SPA exploration, OpenAPI import and authenticated endpoint inventory | Partial: bounded static HTML, offline OpenAPI/HAR file inventory, user-led rendered SPA route capture and explicit saved project inventory; Android validation and automated SPA crawl pending |
 | 05 | Passive evidence-based security checks, technology-specific adapters and confidence | Partial: expanded framework-specific passive diagnostics, fingerprints and TLS certificate expiry; active adapters pending |
 | 06 | Explicitly authorized bounded active checks with non-destructive defaults, request caps, exclusions, cancellation and test fixtures | Partial: configurable read-only scan policy and explicit trusted TLS handshake and single-endpoint CORS preflight review; broader active checks pending |
-| 07 | Proxy/history, request editor and repeater, controlled differential testing with test accounts | Partial: GET/HEAD inspector with explicit repeat, bounded session-local request metadata and comparison; local utilities and two-account status comparison; offline HAR traffic status/size/timing analysis; live interception pending |
+| 07 | Proxy/history, request editor and repeater, controlled differential testing with test accounts | Partial: GET/HEAD inspector with explicit repeat, bounded session-local request metadata and comparison; local utilities and two-account status comparison; offline HAR traffic status/size/timing analysis and bounded session metadata logger for Odin requests; live interception pending |
 | 08 | Reports, severity/evidence/remediation, trends, export, Farsi/English, and Android APK validation | Partial: report viewer, severity filters, cautious historical comparison, JSON/HTML/PDF export source, vector branding, build preparation; Persian/English navigation and static labels with persistent language/theme; technical details remain English; Android validation pending |
 
 ## Technology coverage goals
@@ -36,4 +36,4 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.22.0+22**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.23.0+23**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
