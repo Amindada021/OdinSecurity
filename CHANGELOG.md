@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.31.0+31
+- Scope-filtered offline WebSocket handshake inventory and optional frame direction counts from HAR; no payload retention or live connection.
+- Added isolated parser fixtures.
+
 ## 0.30.0+30
 - Explicit scoped HEAD security regression checks against expected statuses, with review, cancellation, request cap and safe-stop conditions.
 - Added offline tests for scope, approval, timing and stopping behavior.
