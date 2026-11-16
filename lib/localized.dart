@@ -19,6 +19,13 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Compose a single authorized HTTP request. Write methods require HTTPS staging confirmation. Only the latest response content is displayed.': 'درخواست HTTP مجاز را دستی بسازید. متدهای تغییردهنده نیازمند تأیید محیط آزمایشی HTTPS هستند. فقط محتوای آخرین پاسخ نمایش داده می‌شود.',
+  'Warning: this request may change or delete test data.': 'هشدار: این درخواست ممکن است داده آزمایشی را تغییر دهد یا حذف کند.',
+  'Custom headers (one Name: value per line)': 'هدرهای سفارشی (هر خط نام: مقدار)',
+  'Allowed: Cache-Control, If-None-Match, If-Modified-Since, Accept-Language, X-Requested-With': 'هدرهای مجاز: Cache-Control، If-None-Match، If-Modified-Since، Accept-Language، X-Requested-With',
+  'Request content': 'نوع محتوای درخواست',
+  'Request body (max 32 KiB)': 'بدنه درخواست (حداکثر ۳۲ کیبی‌بایت)',
+  'This is an authorized HTTPS staging endpoint; I accept possible test data changes.': 'این نشانی HTTPS مربوط به محیط آزمایشی مجاز است و تغییر احتمالی داده تست را می‌پذیرم.',
   'New project': 'پروژه جدید',
   'Create a project to assess an authorized website.': 'برای ارزیابی امنیت وب‌سایت مجاز، پروژه جدید بسازید.',
   'Search projects or origins': 'جست‌وجوی پروژه یا دامنه',

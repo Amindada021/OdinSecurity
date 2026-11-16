@@ -30,7 +30,7 @@ class TrafficJournal {
   void record(SecurityProject project, Uri url, {required String source, required String method,
       int? status, int? capturedBytes, required int elapsedMs, bool truncated = false}) {
     if (!project.contains(url) || url.userInfo.isNotEmpty || url.toString().length > 2048 ||
-        !['manual', 'passive', 'cors'].contains(source) || !['GET', 'HEAD', 'OPTIONS'].contains(method)) return;
+        !['manual', 'passive', 'cors'].contains(source) || !(source == 'manual' ? ['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE'] : ['GET', 'HEAD', 'OPTIONS']).contains(method)) return;
     final route = Uri.tryParse(url.toString().split(RegExp(r'[?#]')).first);
     if (route == null || !project.contains(route)) return;
     _items.insert(0, TrafficEntry(projectId: project.id, source: source, method: method,

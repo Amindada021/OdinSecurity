@@ -19,6 +19,11 @@ class ManualRequestScreen extends StatefulWidget {
 }
 class _ManualRequestScreenState extends State<ManualRequestScreen> {
   late final TextEditingController url;
+  final headers = TextEditingController(), body = TextEditingController();
+  ManualContent content = ManualContent.none;
+  bool stagingConfirmed = false;
+  bool get writes => ManualRequestClient.writeMethods.contains(method);
+  void invalidate() { authorized = false; stagingConfirmed = false; }
   bool authorized = false, busy = false, useAuth = false;
   String method = 'GET';
   ManualAccept accept = ManualAccept.any;
@@ -34,17 +39,20 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
   }
 
   @override
-  void dispose() { url.dispose(); super.dispose(); }
+  void dispose() { url.dispose(); headers.dispose(); body.dispose(); super.dispose(); }
 
   Future<void> send() async {
-    if (!authorized || busy) return;
+    if (!authorized || busy || (writes && !stagingConfirmed)) return;
     final raw = url.text.trim();
     final chosenMethod = method;
     final chosenAccept = accept;
     final chosenAuth = useAuth ? widget.auth : null;
-    setState(() { busy = true; authorized = false; error = null; response = null; });
+    final chosenStaging = stagingConfirmed;
+    setState(() { busy = true; invalidate(); error = null; response = null; });
     try {
-      final review = RequestReview.prepare(widget.project, raw, chosenMethod, chosenAccept, widget.policy, auth: chosenAuth);
+      final options = ManualRequestOptions.parse(headers.text, content, body.text);
+      final review = RequestReview.prepare(widget.project, raw, chosenMethod, chosenAccept, widget.policy,
+        auth: chosenAuth, options: options, stagingConfirmed: chosenStaging);
       final approved = await showDialog<bool>(context: context, barrierDismissible: false, builder: (context) => AlertDialog(
         title: const LText('Review pending request'),
         content: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
@@ -54,6 +62,13 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
           const SizedBox(height: 8),
           Text('Accept: ${review.accept.value}', textDirection: TextDirection.ltr),
           LText(review.authenticated ? 'Saved identity will be applied to its exact origin.' : 'No saved identity will be applied.'),
+          if (review.stagingConfirmed) const LText('Warning: this request may change or delete test data.'),
+          for (final header in review.options.headers.entries)
+            SelectableText('${header.key}: ${header.value}', textDirection: TextDirection.ltr),
+          if (review.options.content != ManualContent.none) ...[
+            Text('${review.options.content.name} | ${review.options.bodyBytes} bytes'),
+            SelectableText(review.options.body, textDirection: TextDirection.ltr),
+          ],
           const LText('Redirects will not be followed.'),
         ])),
         actions: [
@@ -70,10 +85,11 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
       }
       if (!mounted) return;
       final result = await ManualRequestClient().send(widget.project, endpoint, review.method,
-        authorized: true, auth: chosenAuth, policy: widget.policy, accept: review.accept);
+        authorized: true, auth: chosenAuth, policy: widget.policy, accept: review.accept,
+        options: review.options, stagingConfirmed: review.stagingConfirmed);
       if (mounted) setState(() {
         response = result;
-        history.add(RequestRecord.fromResponse(endpoint, chosenMethod, chosenAccept, chosenAuth != null, result));
+        history.add(RequestRecord.fromResponse(endpoint, chosenMethod, chosenAccept, chosenAuth != null, result, customized: review.options.hasCustomInput));
       });
     } catch (_) {
       if (mounted) setState(() => error = 'Request failed. Check scope, exclusions, credential origin and connectivity.');
@@ -91,14 +107,28 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
     return Scaffold(
       appBar: AppBar(title: const LText('Request inspector')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        const LText('Manually send authorized GET or HEAD requests. Each send requires consent. Response content is visible only for the latest request and is not stored.'),
-        DropdownButtonFormField<String>(initialValue: method, items: ['GET', 'HEAD'].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(), onChanged: busy ? null : (v) => setState(() { method = v!; authorized = false; })),
-        TextField(controller: url, enabled: !busy, keyboardType: TextInputType.url, decoration: const InputDecoration(label: LText('Request URL')), onChanged: (_) => setState(() => authorized = false)),
+        const LText('Compose a single authorized HTTP request. Write methods require HTTPS staging confirmation. Only the latest response content is displayed.'),
+        DropdownButtonFormField<String>(initialValue: method, items: ManualRequestClient.methods.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(), onChanged: busy ? null : (v) => setState(() { method = v!; invalidate(); if (!ManualRequestClient.bodyMethods.contains(method)) { content = ManualContent.none; body.clear(); } })),
+        TextField(controller: url, enabled: !busy, keyboardType: TextInputType.url, decoration: const InputDecoration(label: LText('Request URL')), onChanged: (_) => setState(invalidate)),
         DropdownButtonFormField<ManualAccept>(initialValue: accept, decoration: const InputDecoration(label: LText('Accept')), items: ManualAccept.values.map((value) => DropdownMenuItem(value: value, child: Text(value.value))).toList(),
-          onChanged: busy ? null : (value) => setState(() { accept = value!; authorized = false; })),
-        if (widget.auth != null) CheckboxListTile(value: useAuth, title: const LText('Use saved credentials for their exact origin'), onChanged: busy ? null : (v) => setState(() { useAuth = v ?? false; authorized = false; })),
+          onChanged: busy ? null : (value) => setState(() { accept = value!; invalidate(); })),
+        TextField(controller: headers, enabled: !busy, minLines: 2, maxLines: 5,
+          decoration: const InputDecoration(label: LText('Custom headers (one Name: value per line)'),
+            helper: LText('Allowed: Cache-Control, If-None-Match, If-Modified-Since, Accept-Language, X-Requested-With')),
+          onChanged: (_) => setState(invalidate)),
+        if (ManualRequestClient.bodyMethods.contains(method)) ...[
+          DropdownButtonFormField<ManualContent>(initialValue: content, decoration: const InputDecoration(label: LText('Request content')),
+            items: ManualContent.values.map((v) => DropdownMenuItem(value: v, child: Text(v.name))).toList(),
+            onChanged: busy ? null : (v) => setState(() { content = v!; if (content == ManualContent.none) body.clear(); invalidate(); })),
+          if (content != ManualContent.none) TextField(controller: body, enabled: !busy, minLines: 4, maxLines: 12,
+            textDirection: TextDirection.ltr, decoration: const InputDecoration(label: LText('Request body (max 32 KiB)')),
+            onChanged: (_) => setState(invalidate)),
+        ],
+        if (writes) CheckboxListTile(value: stagingConfirmed, title: const LText('This is an authorized HTTPS staging endpoint; I accept possible test data changes.'),
+          onChanged: busy ? null : (v) => setState(() { stagingConfirmed = v ?? false; authorized = false; })),
+        if (widget.auth != null) CheckboxListTile(value: useAuth, title: const LText('Use saved credentials for their exact origin'), onChanged: busy ? null : (v) => setState(() { useAuth = v ?? false; invalidate(); })),
         CheckboxListTile(value: authorized, title: const LText('I authorize this exact request.'), onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
-        FilledButton(onPressed: busy || !authorized ? null : send, child: const LText('Review request')),
+        FilledButton(onPressed: busy || !authorized || (writes && !stagingConfirmed) ? null : send, child: const LText('Review request')),
         if (busy) const LinearProgressIndicator(),
         if (error != null) LText(error!),
         if (data != null) ...[

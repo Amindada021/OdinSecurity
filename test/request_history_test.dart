@@ -22,6 +22,13 @@ void main() {
     expect(first.comparableTo(record('https://example.test/path', method: 'HEAD')), isFalse);
     expect(first.comparableTo(record('https://example.test/path', accept: ManualAccept.json)), isFalse);
   });
+  test('manual writes and custom input are not comparable automatically', () {
+    final ordinary = record('https://example.test/path');
+    final custom = RequestRecord.fromResponse(Uri.parse('https://example.test/path'), 'GET', ManualAccept.any, false, response, customized: true);
+    final write = record('https://example.test/path', method: 'POST');
+    expect(ordinary.comparableTo(custom), isFalse);
+    expect(write.comparableTo(write), isFalse);
+  });
   test('bounded newest-first session history', () {
     final history = RequestHistory();
     for (var i = 0; i < 30; i++) {

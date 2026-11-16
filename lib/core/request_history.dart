@@ -4,7 +4,7 @@ import 'manual_request.dart';
 /// credentials, response headers or response content.
 class RequestRecord {
   final String method, route;
-  final bool hadQuery, authenticated;
+  final bool hadQuery, authenticated, customized;
   final ManualAccept accept;
   final int status, elapsedMs, bodyBytes;
   final bool truncated;
@@ -14,19 +14,20 @@ class RequestRecord {
     required this.method, required this.route, required this.hadQuery,
     required this.authenticated, required this.accept, required this.status,
     required this.elapsedMs, required this.bodyBytes, required this.truncated,
-    required this.at,
+    required this.at, this.customized = false,
   });
 
-  factory RequestRecord.fromResponse(Uri url, String method, ManualAccept accept, bool authenticated, ManualResponse result, {DateTime? at}) {
+  factory RequestRecord.fromResponse(Uri url, String method, ManualAccept accept, bool authenticated, ManualResponse result, {DateTime? at, bool customized = false}) {
     if (url.userInfo.isNotEmpty) throw const FormatException('Credential-bearing URLs cannot be recorded.');
     final route = url.toString().split(RegExp(r'[?#]')).first;
     return RequestRecord(method: method, route: route, hadQuery: url.hasQuery,
       authenticated: authenticated, accept: accept, status: result.status,
       elapsedMs: result.elapsedMs, bodyBytes: result.bodyBytes, truncated: result.truncated,
-      at: at ?? DateTime.now());
+      at: at ?? DateTime.now(), customized: customized);
   }
 
-  bool comparableTo(RequestRecord other) => !hadQuery && !other.hadQuery &&
+  bool comparableTo(RequestRecord other) => !hadQuery && !other.hadQuery && !customized && !other.customized &&
+    ManualRequestClient.readMethods.contains(method) &&
     route == other.route && method == other.method && accept == other.accept &&
     authenticated == other.authenticated;
 }

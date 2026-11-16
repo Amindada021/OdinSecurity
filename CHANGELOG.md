@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.41.0+41
+- Repeater-style manual HTTP editor with explicit HTTPS staging confirmation for write methods, bounded JSON/text body, allowlisted custom headers and immutable forward/drop review.
+- Session history stores no body or custom header values; customized and write requests are excluded from automatic response comparisons. Added offline validation fixtures.
+
 ## 0.40.0+40
 - Android validation and APK build are manual-only during development; pushes no longer start CI.
 

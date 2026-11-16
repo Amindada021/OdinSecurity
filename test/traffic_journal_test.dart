@@ -28,6 +28,15 @@ void main() {
     expect(journal.forProject(other, ScanPolicy()), isEmpty);
     expect(journal.forProject(project, ScanPolicy(excludedPaths: ['/report'])), isEmpty);
   });
+  test('manual writes are logged as metadata but never handed off for replay', () {
+    final journal = TrafficJournal();
+    final project = SecurityProject(name: 'Fixture', url: 'https://example.test');
+    journal.record(project, project.startUrl, source: 'manual', method: 'POST', elapsedMs: 2);
+    journal.record(project, project.startUrl, source: 'passive', method: 'POST', elapsedMs: 2);
+    final entry = journal.forProject(project, ScanPolicy()).single;
+    expect(entry.method, 'POST');
+    expect(TrafficJournal.canInspect(entry, project, ScanPolicy()), isFalse);
+  });
   test('session journal is bounded and clears project only', () {
     final journal = TrafficJournal();
     final project = SecurityProject(name: 'Fixture', url: 'https://example.test');

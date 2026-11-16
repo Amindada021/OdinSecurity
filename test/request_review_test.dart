@@ -21,6 +21,15 @@ void main() {
     expect(() => RequestReview.prepare(project, 'https://example.test/private/items', 'GET', ManualAccept.any, policy), throwsStateError);
     expect(() => RequestReview.prepare(project, 'https://example.test/', 'POST', ManualAccept.any, policy), throwsFormatException);
   });
+  test('write review retains the exact body and still requires approval', () {
+    final options = ManualRequestOptions(content: ManualContent.text, body: 'fixture');
+    final review = RequestReview.prepare(project, 'https://example.test/items', 'PATCH', ManualAccept.json, policy,
+      options: options, stagingConfirmed: true);
+    expect(review.options.body, 'fixture');
+    expect(review.stagingConfirmed, true);
+    expect(() => review.validate(project, policy, approved: false), throwsStateError);
+    expect(() => review.validate(project, policy, approved: true), returnsNormally);
+  });
   test('a new scope policy invalidates an already reviewed request', () {
     final review = RequestReview.prepare(project, 'https://example.test/items', 'HEAD', ManualAccept.any, policy);
     expect(() => review.validate(project, ScanPolicy(excludedPaths: ['/items']), approved: true), throwsStateError);
