@@ -2,6 +2,10 @@ name: Android CI
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tool/android-build-request.txt'
 
 permissions:
   contents: read
