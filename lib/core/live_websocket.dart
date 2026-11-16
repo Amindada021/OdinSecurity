@@ -51,6 +51,20 @@ class SocketMessageMetadata {
 
 class LiveWebSocket {
   static const maxMessages = 100;
+  static const maxOutgoingMessages = 10;
+  static const maxOutgoingBytes = 4096;
+
+  /// Only an individually approved text message on a staging connection.
+  static int validateOutgoing(String message, {required bool staging, required bool confirmed, required int sent}) {
+    if (!staging || !confirmed || sent < 0 || sent >= maxOutgoingMessages) {
+      throw StateError('Manual staging message approval or budget required.');
+    }
+    if (message.isEmpty || message.length > maxOutgoingBytes) throw const FormatException('Invalid message size.');
+    final bytes = utf8.encode(message).length;
+    if (bytes > maxOutgoingBytes) throw const FormatException('Invalid message size.');
+    return bytes;
+  }
+
   static const maxObservedBytes = 256 * 1024;
   static const sessionDuration = Duration(seconds: 45);
 

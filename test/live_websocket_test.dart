@@ -25,6 +25,13 @@ class FixtureClient implements HttpClient {
 }
 
 void main() {
+  test('manual staging sends require individual approval and a bounded message budget', () {
+    expect(LiveWebSocket.validateOutgoing('hello', staging: true, confirmed: true, sent: 0), 5);
+    expect(() => LiveWebSocket.validateOutgoing('hello', staging: false, confirmed: true, sent: 0), throwsStateError);
+    expect(() => LiveWebSocket.validateOutgoing('hello', staging: true, confirmed: false, sent: 0), throwsStateError);
+    expect(() => LiveWebSocket.validateOutgoing('hello', staging: true, confirmed: true, sent: 10), throwsStateError);
+    expect(() => LiveWebSocket.validateOutgoing(List.filled(3000, 'é').join(), staging: true, confirmed: true, sent: 0), throwsFormatException);
+  });
   final project = SecurityProject(name: 'Fixture', url: 'https://example.test');
   final policy = ScanPolicy(excludedPaths: ['/private']);
   test('WSS maps to exact HTTPS origin, consent and exclusions', () {

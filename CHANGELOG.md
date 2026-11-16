@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.53.0+53
+- Add individually confirmed manual WebSocket text messages for explicitly opted-in staging connections; enforce session and outgoing byte/count limits. No automatic replay.
+
 ## 0.52.0+52
 - Add offline exact-version advisory catalog validation and matching with conservative evidence labels and offline fixtures.
 

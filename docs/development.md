@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.52.0+52; pubspec.yaml is the version source of truth.
+Current version is 0.53.0+53; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.52.0+52`.
-- Git tag `v0.52.0` when released.
-- `OdinSecurity-v0.52.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.53.0+53`.
+- Git tag `v0.53.0` when released.
+- `OdinSecurity-v0.53.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -91,7 +91,7 @@ Review explicitly provided HTTPS URLs paired with expected status codes. Perform
 
 ## WebSocket inventory
 
-Import sanitized HAR JSON from the project. WebSocket upgrade HTTP 101 and ws/wss request records are mapped to exact HTTP(S) origins for scope checks; query values, headers and payloads are not retained. If an exporter provides the optional _webSocketMessages array, direction counts are displayed; otherwise frame data is unavailable. This is offline inventory, not a live WebSocket proxy. The separate Live WebSocket tool directly connects to a user-approved WSS endpoint with exact HTTPS scope, no redirects, standard certificate validation, optional same-origin static saved identity, and no automatic application messages. Displays up to 100 message metadata records and an optional latest 4 KiB text preview; stops at 45 seconds or 256 KiB observed. The Dart SDK assembles individual messages before counting, so use only controlled staging endpoints. No retained payload, automatic reconnect, system proxy or frame injection.
+Import sanitized HAR JSON from the project. WebSocket upgrade HTTP 101 and ws/wss request records are mapped to exact HTTP(S) origins for scope checks; query values, headers and payloads are not retained. If an exporter provides the optional _webSocketMessages array, direction counts are displayed; otherwise frame data is unavailable. This is offline inventory, not a live WebSocket proxy. The separate Live WebSocket tool directly connects to a user-approved WSS endpoint with exact HTTPS scope, no redirects, standard certificate validation, optional same-origin static saved identity, and no automatic application messages. Displays up to 100 message metadata records and an optional latest 4 KiB text preview; stops at 45 seconds or 256 KiB observed. The Dart SDK assembles individual messages before counting, so use only controlled staging endpoints. Optional manual text message composition for an explicitly opted-in isolated staging connection: each send requires separate confirmation, up to 10 messages and 4 KiB UTF-8 per message. No retained payload, automated sends, automatic reconnect, system proxy or interception of other clients' frames.
 
 ## Review organizer
 

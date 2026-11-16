@@ -19,6 +19,15 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Connect to an authorized WSS test endpoint. Receive-only by default; manual staging sends are optional.': 'به مقصد آزمایشی مجاز WSS وصل شوید. حالت پیش‌فرض فقط دریافت است؛ ارسال دستی اختیاری است.',
+  'Isolated staging endpoint: enable manual text sends': 'محیط آزمایشی ایزوله: فعال‌سازی ارسال دستی متن',
+  'Confirm one staging message': 'تأیید یک پیام آزمایشی',
+  'Sending may change server state. Confirm only on your isolated test endpoint.': 'ارسال ممکن است وضعیت سرور را تغییر دهد؛ فقط در محیط آزمایشی ایزوله تأیید کنید.',
+  'Send one message': 'ارسال یک پیام',
+  'Message submitted': 'پیام به اتصال ارسال شد',
+  'Invalid message or send limit reached': 'پیام نامعتبر یا سقف ارسال تکمیل شده',
+  'Single text message (memory only)': 'یک پیام متنی (فقط در حافظه)',
+  'Review and send': 'بازبینی و ارسال',
   'Offline CVE review': 'بررسی آفلاین CVE',
   'Import your own verified advisory list and enter the known product and exact version. Matches are possible exposure, not confirmed vulnerabilities. No network requests.': 'فهرست تأییدشده خود و نام محصول و نسخه دقیق را وارد کنید. تطبیق به معنی احتمال آسیب‌پذیری است، نه تأیید قطعی. بدون درخواست شبکه.',
   'Exact version': 'نسخه دقیق',
