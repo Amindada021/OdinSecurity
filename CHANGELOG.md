@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.63.0+64
+- Add one-shot native Android background HEAD check with explicit consent, scope/policy cancellation, status and expiry; validation fixtures. Android runtime unverified.
+
 ## 0.62.0+63
 - Connect scan history to editable offline advisory inventory review with independent-verification gate; render declared versions in HTML/PDF and add handoff fixtures.
 

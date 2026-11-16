@@ -19,6 +19,14 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Android scheduled HEAD check': 'بررسی زمان‌بندی‌شده HEAD اندروید',
+  'Schedule one anonymous HTTPS HEAD check of a registered target. Android may delay or interrupt it. No credentials, redirects, retries, or recurring jobs.': 'یک بررسی HEAD بدون حساب برای مقصد HTTPS ثبت‌شده زمان‌بندی کنید؛ اندروید ممکن است آن را به تأخیر بیندازد یا متوقف کند.',
+  'I authorize this exact request even when the app is closed.': 'این درخواست مشخص را حتی هنگام بسته بودن برنامه مجاز می‌دانم.',
+  'Schedule background check': 'زمان‌بندی بررسی پس‌زمینه',
+  'Refresh status': 'به‌روزرسانی وضعیت',
+  'Scheduled check unavailable. Refresh and retry.': 'بررسی زمان‌بندی‌شده در دسترس نیست؛ وضعیت را به‌روزرسانی کنید.',
+  'Scheduled check status': 'وضعیت بررسی زمان‌بندی‌شده',
+  'Another project already has a scheduled check.': 'پروژه دیگری بررسی زمان‌بندی‌شده دارد.',
   'Prefilled values are unverified banner or generator observations. Check actual installed versions and catalog product identifiers first.': 'مقادیر اولیه صرفاً اعلام‌شده و تأییدنشده هستند؛ نسخه واقعی نصب‌شده و شناسه محصولات فهرست را بررسی کنید.',
   'I verified the component identifiers and installed versions.': 'شناسه مؤلفه‌ها و نسخه‌های نصب‌شده را بررسی کرده‌ام.',
   'Review declared versions against catalog': 'تطبیق نسخه‌های اعلام‌شده با فهرست CVE',

@@ -15,6 +15,12 @@ void main() {
   if (!text.contains('android.permission.INTERNET')) {
     text = text.replaceFirst('<application', '<uses-permission android:name="android.permission.INTERNET" />\n    <application');
   }
+  if (!text.contains('android.permission.ACCESS_NETWORK_STATE')) {
+    text = text.replaceFirst('<application', '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n    <application');
+  }
+  if (!text.contains('.ScheduledCheckService')) {
+    text = text.replaceFirst('</application>', '    <service android:name=".ScheduledCheckService" android:exported="true" android:permission="android.permission.BIND_JOB_SERVICE" />\n    </application>');
+  }
   text = text.replaceFirst(RegExp(r'android:label="[^"]*"'), 'android:label="Odin Security"');
   text = text.replaceFirst(RegExp(r'android:icon="[^"]*"'), 'android:icon="@drawable/odin_security_icon"');
   if (text.contains('android:allowBackup=')) {
