@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.45.0+45; pubspec.yaml is the version source of truth.
+Current version is 0.46.0+46; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.45.0+45`.
-- Git tag `v0.45.0` when released.
-- `OdinSecurity-v0.45.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.46.0+46`.
+- Git tag `v0.46.0` when released.
+- `OdinSecurity-v0.46.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -128,3 +128,7 @@ Successful complete HTML responses are parsed locally for insecure form actions,
 ## Rendered crawl waves
 
 Capture rendered anchors, form/script references and Fetch/XHR resource metadata twice per page, separated by 500 ms, with unchanged page validation. The browser includes bounded open shadow roots. Each reviewed wave selects up to five known queryless read-only links; the total attempted page count is limited by project policy and previously attempted paths are excluded. Newly discovered links appear in the next reviewed wave. No automatic clicks, form submission, guessed URLs or unrestricted recursive browsing.
+
+## Local HTTPS tunnel
+
+The explicitly started IPv4 loopback CONNECT listener accepts only the selected HTTPS project's host and port and requires a randomly generated session Basic credential. Configure a compatible test client manually with the displayed port and credentials. Limits: 90 seconds, 12 accepted attempts, three simultaneous peers and 2 MiB relayed per peer. No TLS termination, certificate installation, HTTP forwarding, system proxy changes or request/response logging. Scope is origin-level (the encrypted URL path is not visible); unavailable when path exclusions are configured. Device socket lifecycle and protocol compatibility require validation.

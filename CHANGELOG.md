@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.0+46
+- Explicit authenticated IPv4 loopback CONNECT tunnel restricted to a selected project HTTPS origin. Displays connection and byte totals, with time, connection and relayed-byte caps.
+- TLS remains encrypted end-to-end; no system proxy changes or interception. Added offline CONNECT parser and scope fixtures.
+
 ## 0.45.0+45
 - Rendered SPA crawl waves with cumulative page budget, attempted-route exclusion and fresh review per wave.
 - Two metadata snapshots per page, open shadow root capture, deduplication and next-wave selection; source tests for candidate bounds.

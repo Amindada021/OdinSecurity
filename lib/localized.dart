@@ -19,6 +19,16 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Local HTTPS tunnel': 'تونل محلی HTTPS',
+  'Local CONNECT proxy for the selected HTTPS origin only. Use an explicitly configured test client on this device. TLS remains end-to-end; no request or response content is decrypted or stored.': 'پراکسی CONNECT محلی فقط برای دامنه HTTPS انتخاب‌شده. از کلاینت آزمایشی تنظیم‌شده روی همین دستگاه استفاده کنید. TLS سرتاسری باقی می‌ماند و محتوای درخواست و پاسخ رمزگشایی یا ذخیره نمی‌شود.',
+  'The tunnel listens only on loopback, requires a random session password and stops after 90 seconds. It does not change system proxy settings.': 'تونل صرفاً روی لوپ‌بک فعال است، رمز تصادفی نشست دارد و پس از ۹۰ ثانیه متوقف می‌شود. تنظیمات پراکسی سیستم تغییر نمی‌کند.',
+  'Tunnel requires an HTTPS target and a policy without path exclusions because encrypted paths cannot be inspected.': 'تونل نیاز به هدف HTTPS و بدون استثنای مسیر دارد، چون مسیرهای رمزگذاری‌شده قابل بررسی نیستند.',
+  'I authorize this local tunnel for the selected origin.': 'این تونل محلی برای دامنه انتخاب‌شده مجاز است.',
+  'Start tunnel': 'شروع تونل',
+  'Could not start local tunnel.': 'راه‌اندازی تونل محلی ناموفق بود.',
+  'Proxy username and session password': 'نام کاربری پراکسی و رمز نشست',
+  'Tunnel connection count': 'تعداد اتصال‌های تونل',
+  'Active connections': 'اتصال‌های فعال',
   'No new eligible rendered links in the current inventory.': 'مسیر جدید مجازی در فهرست فعلی یافت نشد.',
   'Select only known read-only staging pages. The browser will visit these exact URLs using the current session. Newly discovered links can be reviewed in the next wave. Site scripts may run; no forms or buttons are automatically submitted.': 'فقط صفحات شناخته‌شده و خواندنی محیط آزمایشی را انتخاب کنید. مسیرهای جدید در دور بعدی قابل بازبینی هستند. اسکریپت‌های سایت ممکن است اجرا شوند؛ فرم یا دکمه‌ای خودکار ارسال نمی‌شود.',
   'Rendered crawl budget': 'سقف پیمایش صفحات رندرشده',
