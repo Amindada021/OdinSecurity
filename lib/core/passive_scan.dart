@@ -7,6 +7,7 @@ import 'auth.dart';
 import 'discovery.dart';
 import 'security_checks.dart';
 import 'custom_rules.dart';
+import 'header_policy_checks.dart';
 import 'tls_audit.dart';
 import 'traffic_journal.dart';
 
@@ -73,7 +74,8 @@ class PassiveScanner {
     final request = await client.getUrl(url);
     request.followRedirects = false;
     request.headers.set(HttpHeaders.acceptHeader, 'text/html, application/json;q=0.9, */*;q=0.1');
-    session?.headersFor(url).forEach((key, value) => request.headers.set(key, value));
+    final identityHeaders = session?.headersFor(url) ?? const <String, String>{};
+    identityHeaders.forEach((key, value) => request.headers.set(key, value));
     final response = await request.close();
     final certificate = response.certificate;
     final headers = <String, List<String>>{};
@@ -99,6 +101,7 @@ class PassiveScanner {
       statusCode: response.statusCode,
       findings: List.unmodifiable([
         ...PassiveSecurityChecks().inspect(url, observation),
+        ...HeaderPolicyChecks.inspect(url, observation, status: response.statusCode, identityHeadersSent: identityHeaders.isNotEmpty),
         if (response.statusCode >= 200 && response.statusCode < 300) ...CustomHeaderRules.inspect(customRules, observation),
         if (certificate != null) ...CertificateChecks.inspect(certificate.startValidity, certificate.endValidity, DateTime.now()),
       ]),

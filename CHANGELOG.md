@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.0+37
+- Expanded passive header-policy checks for malformed/disabled HSTS, credentialed shared-cache directives, HTTPS downgrade redirects, and cookie attribute/prefix compatibility.
+- Added context-aware, redacted evidence and offline parser tests; no extra requests.
+
 ## 0.36.0+36
 - User-selected rendered page exploration in the existing signed-in WebView, bounded exact-origin queryless anchors and stop controls.
 - Added scope, exclusions and candidate-cap tests; no automatic forms or arbitrary navigation.
