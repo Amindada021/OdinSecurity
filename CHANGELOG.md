@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.62.0+63
+- Connect scan history to editable offline advisory inventory review with independent-verification gate; render declared versions in HTML/PDF and add handoff fixtures.
+
 ## 0.61.0+62
 - Add passive structured CSP review and declarative header rule pack v2 (absence/equality checks), with offline regression fixtures.
 

@@ -36,7 +36,7 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.61.0+62**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.62.0+63**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
 
 Offline CVE review accepts a user-supplied, exact-version advisory catalog; it does not retrieve advisories or confirm exploitability.
 
@@ -55,3 +55,5 @@ Queue templates retain only selected routes/delay/parallel mode; users explicitl
 Recognized technology results may include a constrained declared numeric version extracted from existing headers/generator metadata. Versions are unverified observations, not proof of installed patch level.
 
 Passive CSP review distinguishes report-only/complex policies and broad script directives; declarative rules support present, absent, contains and equals for allowlisted public headers.
+
+Scan reports can prefill a deduplicated advisory inventory from observed declared technology versions, requiring independent user verification before matching. Declared versions also appear in HTML/PDF exports.

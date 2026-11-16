@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'passive_scan.dart';
+import 'advisory_review.dart';
 import 'project_storage.dart';
 
 class ScanRecord {
@@ -37,6 +38,26 @@ class ScanRecord {
     cancelled: data['cancelled'] as bool,
     pages: (data['pages'] as List<dynamic>).map((p) => Map<String, dynamic>.from(p as Map)).toList(),
   );
+
+  /// Candidate inventory from sanitized version declarations only. Older
+  /// records without declared versions remain readable.
+  List<Map<String, String>> declaredInventory() {
+    final result = <Map<String, String>>[];
+    final seen = <String>{};
+    for (final page in pages) {
+      final tech = page['technologies'];
+      if (tech is! List) continue;
+      for (final row in tech) {
+        if (row is! Map) continue;
+        final name = row['name'], version = row['observedVersion'];
+        if (name is! String || name.trim().isEmpty || name.length > 120 || version is! String ||
+            !AdvisoryCatalog.supportedVersion(version)) continue;
+        if (!seen.add(name.toLowerCase() + '\u0000' + version)) continue;
+        result.add({'product': name, 'version': version});
+      }
+    }
+    return List.unmodifiable(result);
+  }
 
   int get observationCount => pages.fold(0, (sum, page) => sum + (page['observations'] as List).length);
   String exportJson() => const JsonEncoder.withIndent('  ').convert({'schemaVersion': 1, ...toJson()});

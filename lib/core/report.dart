@@ -92,6 +92,7 @@ class ReportSummary {
       out.write('<article><h3>${esc(page['url'])}</h3><p>HTTP ${esc(page['statusCode'])}; truncated: ${esc(page['bodyTruncated'])}; redirect not followed: ${esc(page['redirectNotFollowed'])}</p>');
       for (final tech in (page['technologies'] as List? ?? [])) {
         out.write('<p>${esc(tech['name'])} (${esc(tech['layer'])}, ${esc(tech['confidence'])}): ${esc(tech['evidence'])}</p>');
+        if (tech['observedVersion'] is String) out.write('<p>Declared version (unverified): ${esc(tech['observedVersion'])}</p>');
       }
       out.write('</article>');
     }
@@ -130,6 +131,7 @@ class ReportSummary {
       line("HTTP ${page['statusCode']}; truncated: ${page['bodyTruncated']}; redirect not followed: ${page['redirectNotFollowed']}");
       for (final tech in (page['technologies'] as List? ?? [])) {
         line("${tech['name']} (${tech['layer']}, ${tech['confidence']}): ${tech['evidence']}");
+        if (tech['observedVersion'] is String) line("Declared version (unverified): ${tech['observedVersion']}");
       }
     }
     line('Security observations', heading: true);

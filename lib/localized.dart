@@ -19,6 +19,10 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Prefilled values are unverified banner or generator observations. Check actual installed versions and catalog product identifiers first.': 'مقادیر اولیه صرفاً اعلام‌شده و تأییدنشده هستند؛ نسخه واقعی نصب‌شده و شناسه محصولات فهرست را بررسی کنید.',
+  'I verified the component identifiers and installed versions.': 'شناسه مؤلفه‌ها و نسخه‌های نصب‌شده را بررسی کرده‌ام.',
+  'Review declared versions against catalog': 'تطبیق نسخه‌های اعلام‌شده با فهرست CVE',
+  'Too many declared components for one advisory review. Use a smaller inventory.': 'تعداد مؤلفه‌ها بیش از ظرفیت یک بررسی است؛ فهرست کوچک‌تری وارد کنید.',
   'Rule modes: present, absent, contains, equals. Equals compares the complete trimmed header value, case-insensitively.': 'حالت قوانین: وجود، عدم وجود، شامل و مساوی. مساوی، متن کامل هدر را بدون حساسیت به بزرگی حروف مقایسه می‌کند.',
   'Declared version': 'نسخه اعلام‌شده',
   'Choose up to three registered HTTPS targets and optionally a matching saved static identity per target. No automatic login. Leaving the screen or backgrounding cancels pending work.': 'تا سه مقصد HTTPS ثبت‌شده و حساب ثابت سازگار هر مقصد را انتخاب کنید. ورود خودکار انجام نمی‌شود؛ خروج از صفحه یا پس‌زمینه کارهای در انتظار را لغو می‌کند.',

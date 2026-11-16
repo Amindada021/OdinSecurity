@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'localized.dart';
 import 'core/history.dart';
 import 'core/report.dart';
+import 'advisory_review_screen.dart';
 
 class ReportScreen extends StatefulWidget {
   final ScanRecord record;
@@ -44,6 +45,7 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   Widget build(BuildContext context) {
     final report = ReportSummary(widget.record);
+    final candidates = widget.record.declaredInventory();
     final baselines = widget.baselines.isNotEmpty ? widget.baselines : [if (widget.previous != null) widget.previous!];
     final previous = baselineIndex >= 0 && baselineIndex < baselines.length ? baselines[baselineIndex] : null;
     final comparison = previous == null ? null : report.compare(ReportSummary(previous));
@@ -60,6 +62,9 @@ class _ReportScreenState extends State<ReportScreen> {
             OutlinedButton.icon(onPressed: saving ? null : () => export(ext, report),
               icon: const Icon(Icons.download), label: Text(ext.toUpperCase())),
         ]),
+        if (candidates.isNotEmpty && candidates.length <= 100)
+          OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdvisoryReviewScreen(initialInventory: const JsonEncoder.withIndent('  ').convert(candidates)))), icon: const Icon(Icons.security), label: const LText('Review declared versions against catalog')),
+        if (candidates.length > 100) const LText('Too many declared components for one advisory review. Use a smaller inventory.'),
         if (saving) const LinearProgressIndicator(),
         const Divider(),
         Wrap(spacing: 8, children: [
