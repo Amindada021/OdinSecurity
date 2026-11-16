@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'brand.dart';
+import 'tools_screen.dart';
 import 'core/history.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/project_storage.dart';
@@ -80,7 +81,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Row(children: [OdinLogo(size: 34), SizedBox(width: 10), Text('Odin Security')])),
+        appBar: AppBar(title: const Row(children: [OdinLogo(size: 34), SizedBox(width: 10), Text('Odin Security')]), actions: [IconButton(tooltip: 'Offline utilities', icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const Text('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: Text(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('Create a project to assess an authorized website.')))
@@ -270,7 +271,8 @@ class _ScanScreenState extends State<ScanScreen> {
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text(widget.project.startUrl.toString(), style: Theme.of(context).textTheme.titleMedium),
         const Text('Technology fingerprint · Scoped request · No redirects'),
-        DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(labelText: 'Target'), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; authorized = false; result = null; })),
+        OutlinedButton.icon(onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InventoryScreen())), icon: const Icon(Icons.description_outlined), label: const Text('Import Swagger / OpenAPI')),
+        DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(labelText: 'Target'), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; authorized = false; result = null; crawlResult = null; })),
         OutlinedButton.icon(onPressed: busy || loadingAuth ? null : editAuth, icon: const Icon(Icons.lock_outline), label: Text(auth == null ? 'Configure authentication' : 'Authentication: ${auth!.mode.name}')),
         if (auth != null && !SecurityProject.sameOrigin(auth!.target, target)) const Text('This target is a different origin. The saved credentials will not be sent.'),
         CheckboxListTile(
@@ -278,7 +280,7 @@ class _ScanScreenState extends State<ScanScreen> {
           value: authorized,
           onChanged: busy ? null : (value) => setState(() => authorized = value ?? false),
         ),
-        FilledButton.icon(onPressed: authorized && !busy && !loadingAuth ? scan : null, icon: const Icon(Icons.search), label: const Text('Identify technologies')),
+        FilledButton.icon(onPressed: authorized && !busy && !loadingAuth && !loadingHistory ? scan : null, icon: const Icon(Icons.search), label: const Text('Identify technologies')),
         FilledButton.tonalIcon(onPressed: authorized && !busy && !loadingAuth ? crawl : null, icon: const Icon(Icons.account_tree_outlined), label: const Text('Assess linked pages (up to 12)')),
         if (busy) const LinearProgressIndicator(),
         if (busy && cancellation != null) OutlinedButton(onPressed: cancellation!.cancel, child: Text('Stop ($visited visited)')),

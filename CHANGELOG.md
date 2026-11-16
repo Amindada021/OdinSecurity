@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0+6
+- Offline Swagger/OpenAPI JSON operation inventory.
+- Local Base64, URL, JSON and unverified JWT inspection.
+- Import and utility screens and parser unit fixtures.
+
 ## 0.5.0+5
 - Persistent per-project scan history, capped at 20 records, and copyable sanitized JSON report.
 - Original Odin Security shield/monogram vector branding and matching Flutter painter.
