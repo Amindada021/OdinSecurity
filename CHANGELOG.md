@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.40.0+40
+- Android validation and APK build are manual-only during development; pushes no longer start CI.
+
 ## 0.39.0+39
 - Native Android embedded browser metadata observer for actual WebView requests, with exact-origin filtering, bounded memory, pause/clear and local scope validation.
 - No certificate changes, TLS interception, full request content or other-app capture. Android device verification pending.
