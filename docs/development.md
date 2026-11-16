@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.58.0+59; pubspec.yaml is the version source of truth.
+Current version is 0.59.0+60; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.58.0+59`.
-- Git tag `v0.58.0` when released.
-- `OdinSecurity-v0.58.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.59.0+60`.
+- Git tag `v0.59.0` when released.
+- `OdinSecurity-v0.59.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -174,3 +174,5 @@ Render up to 20 non-secret synthetic values at a single literal `[VALUE]` marker
 For equally sized, even-length hexadecimal synthetic tokens only: display one-bit frequency, descriptive two-bin Pearson chi-square, per-position bias and adjacent-sample Hamming-change ratio. Within-token transitions exclude sample boundaries. No statistical certification or live token harvesting.
 
 Advisory rows may additionally specify `ranges: [{"introduced":"1.2.0","fixed":"1.3.0"}]`: canonical numeric major.minor.patch, inclusive introduction/exclusive fixed. At least one exact version or interval is required. Use fully qualified product identifiers from the same vendor catalog. Bulk mode consumes up to 100 unique `{product,version}` records; preserves zero-match components. Ranges are user-supplied, not inferred from CVE IDs, banners or package backports.
+
+Queue templates save only registered targets, delay and parallel setting; loading revalidates policy and requires fresh consent. An optional per-target static identity is selected for each run, loaded again from secure storage at start and required to match origin and name; no identity/approval persisted in templates. Existing configured validation may make a separate approved same-origin verification request. No automatic login, recurring or background execution. Authentication rejection stops subsequent batches.

@@ -36,7 +36,7 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.58.0+59**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.59.0+60**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
 
 Offline CVE review accepts a user-supplied, exact-version advisory catalog; it does not retrieve advisories or confirm exploitability.
 
@@ -49,3 +49,5 @@ Offline test fixtures: bounded literal text variants and exact correlation of sa
 Fixed-width hexadecimal test samples additionally support bit-position bias, frequency chi-square and within/adjacent-sample bit changes; offline descriptive analysis only.
 
 CVE review now also accepts explicit vendor-confirmed numeric version intervals and JSON component inventories (up to 100 components). No network feed or exploitability determination.
+
+Queue templates retain only selected routes/delay/parallel mode; users explicitly reauthorize each run and optionally select a saved static identity per exact origin.

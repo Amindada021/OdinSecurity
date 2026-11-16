@@ -19,6 +19,13 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Choose up to three registered HTTPS targets and optionally a matching saved static identity per target. No automatic login. Leaving the screen or backgrounding cancels pending work.': 'تا سه مقصد HTTPS ثبت‌شده و حساب ثابت سازگار هر مقصد را انتخاب کنید. ورود خودکار انجام نمی‌شود؛ خروج از صفحه یا پس‌زمینه کارهای در انتظار را لغو می‌کند.',
+  'Template or identity loading failed. Review settings before use.': 'بارگذاری قالب یا حساب ناموفق بود؛ تنظیمات را بررسی کنید.',
+  'Identity for this target': 'حساب این مقصد',
+  'Anonymous': 'ناشناس',
+  'Save queue template': 'ذخیره قالب صف',
+  'Template saved without identities or authorization.': 'قالب بدون حساب یا مجوز اجرا ذخیره شد.',
+  'Saved static profiles may perform their configured session verification. An expired or unavailable profile stops the assessment.': 'حساب ثابت ممکن است بررسی نشست تنظیم‌شده را انجام دهد؛ حساب منقضی یا ناموجود باعث توقف بررسی می‌شود.',
   'Review multiple components': 'بررسی چند مؤلفه',
   'Component inventory JSON': 'فهرست مؤلفه‌ها (JSON)',
   'Optional version ranges: introduced is inclusive and fixed is exclusive. Three numeric components only. Use vendor-confirmed intervals.': 'بازه نسخه اختیاری: از نسخه شروع (شامل) تا نسخه اصلاح‌شده (غیرشامل). فقط سه بخش عددی و بازه تأییدشده سازنده.',

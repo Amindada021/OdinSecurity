@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.59.0+60
+- Persist validated queue templates without credentials or authorization. Add explicit per-target static identities, fail-closed origin validation and stop on credential rejection; unit fixtures.
+
 ## 0.58.0+59
 - Add validated vendor-provided numeric advisory intervals and bulk component inventory review; boundary and input fixtures.
 
