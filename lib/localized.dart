@@ -19,6 +19,11 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Representation test matrix': 'ماتریس بررسی نوع پاسخ',
+  'On an isolated authorized test route, compare ordinary fixed Accept headers. Up to four anonymous GET requests; no custom payload or response content retained.': 'در مسیر آزمایشی مجاز، هدرهای ثابت Accept را مقایسه کنید؛ حداکثر چهار GET بدون حساب، بدون داده سفارشی یا ذخیره محتوا.',
+  'Run representation matrix': 'اجرای ماتریس بررسی',
+  'Matrix stopped after a transport error.': 'ماتریس پس از خطای ارتباطی متوقف شد.',
+  'Status, captured size and timing are diagnostic, not vulnerability proof.': 'وضعیت، اندازه و زمان صرفاً برای بررسی هستند و آسیب‌پذیری را اثبات نمی‌کنند.',
   'Local laboratory receiver': 'گیرنده آزمایشگاهی محلی',
   'Starts an HTTP listener bound only to this device’s loopback address. Use local test clients only. It closes after two minutes or ten accepted events. No request content is retained.': 'گیرنده HTTP فقط روی نشانی داخلی همین دستگاه فعال می‌شود. پس از دو دقیقه یا ده رویداد بسته می‌شود و محتوای درخواست ذخیره نمی‌شود.',
   'I approve starting the local test listener.': 'فعال‌سازی گیرنده آزمایشی محلی را تأیید می‌کنم.',

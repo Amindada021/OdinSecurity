@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.66.0+68
+- Add bounded live representation test matrix with fixed ordinary Accept values, explicit scope/consent, metadata-only comparison and stop controls; unit fixtures.
+
 ## 0.65.1+67
 - Guard receiver startup against backgrounding, validate generated job service manifest, and preserve accurate native job state across refresh/process loss.
 
