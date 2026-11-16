@@ -5,6 +5,9 @@ import 'core/project_storage.dart';
 import 'core/project.dart';
 import 'core/passive_scan.dart';
 import 'core/fingerprint.dart';
+import 'core/auth.dart';
+import 'core/auth_vault.dart';
+import 'auth_dialog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -145,6 +148,43 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> {
   bool authorized = false;
+  final vault = AuthVault();
+  AuthProfile? auth;
+  late Uri target;
+  bool loadingAuth = true;
+
+  @override
+  void initState() {
+    super.initState();
+    target = widget.project.startUrl;
+    loadAuth();
+  }
+
+  Future<void> loadAuth() async {
+    try {
+      final value = await vault.load(widget.project.id);
+      if (mounted) setState(() => auth = value);
+    } catch (_) {
+      if (mounted) setState(() => error = 'Could not load authentication profile.');
+    } finally {
+      if (mounted) setState(() => loadingAuth = false);
+    }
+  }
+
+  Future<void> editAuth() async {
+    final value = await showDialog<AuthProfile>(context: context, builder: (_) => AuthDialog(project: widget.project, existing: auth));
+    if (value == null || !mounted) return;
+    setState(() => loadingAuth = true);
+    try {
+      if (value.mode == AuthMode.none) { await vault.clear(widget.project.id); }
+      else { await vault.save(widget.project.id, value); }
+      if (mounted) setState(() => auth = value.mode == AuthMode.none ? null : value);
+    } catch (_) {
+      if (mounted) setState(() => error = 'Could not update the secure vault.');
+    } finally {
+      if (mounted) setState(() => loadingAuth = false);
+    }
+  }
   bool busy = false;
   PassiveScanResult? result;
   String? error;
@@ -153,7 +193,7 @@ class _ScanScreenState extends State<ScanScreen> {
     if (!authorized || busy) return;
     setState(() { busy = true; result = null; error = null; });
     try {
-      final data = await PassiveScanner().scan(widget.project, authorized: authorized);
+      final data = await PassiveScanner().scan(widget.project, authorized: authorized, target: target, auth: auth != null && SecurityProject.sameOrigin(auth!.target, target) ? auth : null);
       if (mounted) setState(() => result = data);
     } catch (_) {
       if (mounted) setState(() => error = 'Could not complete the request. Check the URL, connection and TLS.');
@@ -169,18 +209,22 @@ class _ScanScreenState extends State<ScanScreen> {
       appBar: AppBar(title: Text(widget.project.name)),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text(widget.project.startUrl.toString(), style: Theme.of(context).textTheme.titleMedium),
-        const Text('Technology fingerprint · Single HTTP GET · No redirects'),
+        const Text('Technology fingerprint · Scoped request · No redirects'),
+        DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(labelText: 'Target'), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; authorized = false; result = null; })),
+        OutlinedButton.icon(onPressed: busy || loadingAuth ? null : editAuth, icon: const Icon(Icons.lock_outline), label: Text(auth == null ? 'Configure authentication' : 'Authentication: ${auth!.mode.name}')),
+        if (auth != null && !SecurityProject.sameOrigin(auth!.target, target)) const Text('This target is a different origin. The saved credentials will not be sent.'),
         CheckboxListTile(
           title: const Text('I own this target or have permission to assess it.'),
           value: authorized,
           onChanged: busy ? null : (value) => setState(() => authorized = value ?? false),
         ),
-        FilledButton.icon(onPressed: authorized && !busy ? scan : null, icon: const Icon(Icons.search), label: const Text('Identify technologies')),
+        FilledButton.icon(onPressed: authorized && !busy && !loadingAuth ? scan : null, icon: const Icon(Icons.search), label: const Text('Identify technologies')),
         if (busy) const LinearProgressIndicator(),
         if (error != null) Text(error!),
         if (data != null) ...[
           const SizedBox(height: 16),
           Text('HTTP ${data.statusCode}'),
+          if (data.statusCode == 401 || data.statusCode == 403) const Text('Access was not validated. Check authentication and permissions.'),
           if (data.redirectNotFollowed) const Text('Redirect not followed. Review the destination before adding it to scope.'),
           if (data.bodyTruncated) const Text('Response body was truncated; coverage is limited.'),
           for (final layer in TechnologyLayer.values) ...[
