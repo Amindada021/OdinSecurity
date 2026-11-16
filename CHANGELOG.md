@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0+4
+- Bounded same-origin anchor discovery and cancellable read-only page assessment.
+- Passive HTTP/TLS scheme, HSTS, CSP, framing, disclosure and cookie attribute observations.
+- Findings and per-page status, evidence/remediation; no vulnerability-exploitation claims.
+- Offline discovery and security-check fixtures.
+
 ## 0.3.0+3
 - Secure per-project authentication profile for a selected HTTPS origin.
 - Basic, bearer/JWT, explicit cookies, API keys, configurable JSON/form login.

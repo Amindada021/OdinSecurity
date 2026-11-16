@@ -8,6 +8,7 @@ import 'core/fingerprint.dart';
 import 'core/auth.dart';
 import 'core/auth_vault.dart';
 import 'auth_dialog.dart';
+import 'core/crawler.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -187,11 +188,34 @@ class _ScanScreenState extends State<ScanScreen> {
   }
   bool busy = false;
   PassiveScanResult? result;
+  CrawlResult? crawlResult;
+  CancellationFlag? cancellation;
+  int visited = 0;
+
+  @override
+  void dispose() {
+    cancellation?.cancel();
+    super.dispose();
+  }
+
+  Future<void> crawl() async {
+    if (!authorized || busy) return;
+    final flag = CancellationFlag();
+    setState(() { busy = true; result = null; crawlResult = null; error = null; visited = 0; cancellation = flag; });
+    try {
+      final data = await SiteCrawler().run(widget.project, target, authorized: authorized, cancellation: flag, auth: auth != null && SecurityProject.sameOrigin(auth!.target, target) ? auth : null, onProgress: (n) { if (mounted) setState(() => visited = n); });
+      if (mounted) setState(() => crawlResult = data);
+    } catch (_) {
+      if (mounted) setState(() => error = 'Could not finish the assessment. Check authentication and scope.');
+    } finally {
+      if (mounted) setState(() { busy = false; cancellation = null; });
+    }
+  }
   String? error;
 
   Future<void> scan() async {
     if (!authorized || busy) return;
-    setState(() { busy = true; result = null; error = null; });
+    setState(() { busy = true; result = null; crawlResult = null; error = null; });
     try {
       final data = await PassiveScanner().scan(widget.project, authorized: authorized, target: target, auth: auth != null && SecurityProject.sameOrigin(auth!.target, target) ? auth : null);
       if (mounted) setState(() => result = data);
@@ -219,7 +243,15 @@ class _ScanScreenState extends State<ScanScreen> {
           onChanged: busy ? null : (value) => setState(() => authorized = value ?? false),
         ),
         FilledButton.icon(onPressed: authorized && !busy && !loadingAuth ? scan : null, icon: const Icon(Icons.search), label: const Text('Identify technologies')),
+        FilledButton.tonalIcon(onPressed: authorized && !busy && !loadingAuth ? crawl : null, icon: const Icon(Icons.account_tree_outlined), label: const Text('Assess linked pages (up to 12)')),
         if (busy) const LinearProgressIndicator(),
+        if (busy && cancellation != null) OutlinedButton(onPressed: cancellation!.cancel, child: Text('Stop ($visited visited)')),
+        if (crawlResult != null) ...[
+          Text('Pages: ${crawlResult!.pages.length} · Failed: ${crawlResult!.failedCount}'),
+          for (final page in crawlResult!.pages) ExpansionTile(title: Text(page.url.toString()), subtitle: Text('HTTP ${page.statusCode} · ${page.findings.length} observations'), children: [
+            for (final finding in page.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: Text(finding.severity.name)),
+          ]),
+        ],
         if (error != null) Text(error!),
         if (data != null) ...[
           const SizedBox(height: 16),
@@ -227,6 +259,9 @@ class _ScanScreenState extends State<ScanScreen> {
           if (data.statusCode == 401 || data.statusCode == 403) const Text('Access was not validated. Check authentication and permissions.'),
           if (data.redirectNotFollowed) const Text('Redirect not followed. Review the destination before adding it to scope.'),
           if (data.bodyTruncated) const Text('Response body was truncated; coverage is limited.'),
+          const Divider(),
+          Text('Security observations (${data.findings.length})'),
+          for (final finding in data.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: Text(finding.severity.name)),
           for (final layer in TechnologyLayer.values) ...[
             const Divider(),
             Text(layer.name.toUpperCase(), style: Theme.of(context).textTheme.titleSmall),

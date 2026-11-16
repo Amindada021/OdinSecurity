@@ -4,14 +4,22 @@ import 'dart:io';
 import 'fingerprint.dart';
 import 'project.dart';
 import 'auth.dart';
+import 'discovery.dart';
+import 'security_checks.dart';
 
 class PassiveScanResult {
+  final Uri url;
   final int statusCode;
+  final List<Uri> links;
+  final List<SecurityFinding> findings;
   final List<TechnologyFinding> technologies;
   final bool bodyTruncated;
   final bool redirectNotFollowed;
   const PassiveScanResult({
+    required this.url,
     required this.statusCode,
+    required this.links,
+    required this.findings,
     required this.technologies,
     required this.bodyTruncated,
     required this.redirectNotFollowed,
@@ -31,6 +39,11 @@ class PassiveScanner {
     if (!project.contains(url)) throw StateError('Target is outside scope.');
     if (auth != null && !SecurityProject.sameOrigin(auth.target, url)) throw StateError('Select the matching credential origin.');
     final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized);
+    return scanWithSession(project, url, authorized: authorized, session: session);
+  }
+
+  Future<PassiveScanResult> scanWithSession(SecurityProject project, Uri url, {required bool authorized, AuthSession? session}) async {
+    if (!authorized || !project.contains(url)) throw StateError('Target outside authorized scope.');
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10)
       ..userAgent = 'OdinSecurity/0.1 Passive';
@@ -62,13 +75,15 @@ class PassiveScanner {
       bytes.addAll(chunk);
     }
 
-    final technologies = detector.detect(HttpObservation(
-      headers: headers,
-      body: utf8.decode(bytes, allowMalformed: true),
-    ));
+    final observation = HttpObservation(headers: headers, body: utf8.decode(bytes, allowMalformed: true));
+    final technologies = detector.detect(observation);
+    final isHtml = observation.header('content-type').toLowerCase().contains('text/html');
 
     return PassiveScanResult(
+      url: url,
       statusCode: response.statusCode,
+      findings: PassiveSecurityChecks().inspect(url, observation),
+      links: isHtml && response.statusCode >= 200 && response.statusCode < 300 ? LinkDiscovery.extract(url, observation.body) : [],
       technologies: technologies,
       bodyTruncated: truncated,
       redirectNotFollowed: response.isRedirect,
