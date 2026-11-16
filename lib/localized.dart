@@ -19,6 +19,8 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Compare request history': 'مقایسه تاریخچه درخواست‌ها',
+  'Equivalent read-only requests in this tab. No requests are replayed.': 'درخواست‌های فقط‌خواندنی هم‌نوع در همین تب. هیچ درخواستی دوباره ارسال نمی‌شود.',
   'Case': 'مورد',
   'Response comparison': 'مقایسه پاسخ‌ها',
   'Compare captured response metadata with a reference case. Timing differences are diagnostic and can vary naturally; no vulnerability is inferred.': 'متادیتای پاسخ‌ها را با مورد مرجع مقایسه کنید. تفاوت زمان تشخیصی است و می‌تواند طبیعی باشد؛ اثبات آسیب‌پذیری نیست.',

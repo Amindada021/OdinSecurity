@@ -33,6 +33,34 @@ class HtmlSecurityChecks {
       if (target != null && page.scheme == 'https' && target.scheme == 'http') insecureForm = true;
       if (password && target != null && !SecurityProject.sameOrigin(page, target)) externalPasswordForm = true;
     }
+    // Observe only markup, not JavaScript execution or actual framing behavior.
+    if (document.querySelectorAll('iframe[srcdoc]').any((node) => !node.attributes.containsKey('sandbox'))) {
+      findings.add(const SecurityFinding('html.dom.srcdoc.sandbox','Inline frame without sandbox',Severity.info,
+        'An iframe uses srcdoc without a sandbox attribute; HTML omitted',
+        'Review trust of inline frame content and apply suitable sandbox restrictions.'));
+    }
+    if (document.querySelectorAll('iframe[sandbox]').any((node) {
+      final flags=(node.attributes['sandbox']??'').toLowerCase().split(RegExp(r'\s+'));
+      return flags.contains('allow-scripts') && flags.contains('allow-same-origin') &&
+        (node.attributes.containsKey('srcdoc') || (() {
+          final target=_resolve(base,node.attributes['src']);
+          return target!=null && SecurityProject.sameOrigin(page,target);
+        })());
+    })) {
+      findings.add(const SecurityFinding('html.dom.sandbox.combination','Same-origin script-capable sandbox requires review',Severity.info,
+        'Inline or same-origin frame permits scripts and same-origin access; values omitted',
+        'Review whether both sandbox flags are required for same-origin content.'));
+    }
+    if (document.querySelectorAll('meta[http-equiv]').any((node) {
+      final name=(node.attributes['http-equiv']??'').trim().toLowerCase();
+      final content=(node.attributes['content']??'').toLowerCase();
+      return name=='x-frame-options' || (name=='content-security-policy' &&
+        content.split(';').any((p)=>p.trim().split(RegExp(r'\s+')).first=='frame-ancestors'));
+    })) {
+      findings.add(const SecurityFinding('html.frame.meta','Framing policy declared in HTML meta element',Severity.info,
+        'Frame protection expressed through a meta element; markup omitted',
+        'Send frame-ancestors or X-Frame-Options as appropriate HTTP response headers.'));
+    }
     if (mixed) findings.add(const SecurityFinding('html.mixed.active', 'HTTP subresource reference on HTTPS page', Severity.low,
       'Parsed HTML references an HTTP script, stylesheet, frame or embedded resource; URL omitted',
       'Use HTTPS resource URLs; browsers may block mixed active content.'));

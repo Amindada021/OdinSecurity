@@ -10,6 +10,7 @@ import http.server
 import json
 import os
 import re
+import ssl
 import time
 
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_-]{32,128}")
@@ -18,13 +19,42 @@ MAX_EVENTS = 200
 TTL_SECONDS = 3600
 
 
+def create_tls_context(environ):
+    """Optional direct TLS on the private fixture endpoint, never a proxy."""
+    cert = environ.get("ODIN_LAB_TLS_CERT", "")
+    key = environ.get("ODIN_LAB_TLS_KEY", "")
+    if not cert and not key:
+        return None
+    if not cert or not key:
+        raise ValueError("Both ODIN_LAB_TLS_CERT and ODIN_LAB_TLS_KEY are required.")
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_cert_chain(certfile=cert, keyfile=key)
+    return context
+
+
 class Collector(http.server.HTTPServer):
-    def __init__(self, token, port=8765):
+    def __init__(self, token, port=8765, tls_context=None):
         if not TOKEN_PATTERN.fullmatch(token):
             raise ValueError("Set ODIN_LAB_TOKEN to a 32–128 character URL-safe secret.")
         self.token = "Bearer " + token
+        self.tls_context = tls_context
         self.events = collections.deque(maxlen=MAX_EVENTS)
         super().__init__(("127.0.0.1", port), Handler)
+
+    def get_request(self):
+        sock, address = super().get_request()
+        if self.tls_context is None:
+            return sock, address
+        try:
+            sock.settimeout(5)
+            return self.tls_context.wrap_socket(sock, server_side=True), address
+        except OSError:
+            sock.close()
+            raise
+        except ValueError as error:
+            sock.close()
+            raise OSError('TLS connection rejected.') from error
 
     def prune(self):
         cutoff = time.monotonic() - TTL_SECONDS
@@ -97,7 +127,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if (not isinstance(event, dict) or set(event) != {"label", "protocol"}
                     or not isinstance(event["label"], str)
                     or not LABEL_PATTERN.fullmatch(event["label"])
-                    or event["protocol"] not in ("http", "https")):
+                    or event["protocol"] not in ("http", "https")
+                    or (self.server.tls_context is not None and event["protocol"] != "https")):
                 raise ValueError()
         except (ValueError, UnicodeError, TimeoutError, RecursionError):
             self.reply(400)
@@ -110,8 +141,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 def main():
     token = os.environ.get("ODIN_LAB_TOKEN", "")
-    with Collector(token) as server:
-        print("Private fixture receiver: 127.0.0.1:8765/events")
+    context = create_tls_context(os.environ)
+    with Collector(token, tls_context=context) as server:
+        scheme = "https" if context is not None else "http"
+        print("Private fixture receiver: " + scheme + "://127.0.0.1:8765/events")
         server.serve_forever()
 
 

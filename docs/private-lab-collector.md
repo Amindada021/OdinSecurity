@@ -23,3 +23,24 @@ injection or automated remote probes are supported.
    are not saved by this screen. Correlation is not proof of a vulnerability.
 
 Local companion tests: python -m unittest discover -s tool -p test_lab_collector.py
+
+## Optional direct TLS for local development
+
+The receiver can terminate TLS on its own loopback endpoint using an existing
+lab server certificate and matching key issued for the lab hostname. Set both
+ODIN_LAB_TLS_CERT and ODIN_LAB_TLS_KEY to protected local file paths before
+running the same command. Supplying only one fails closed. TLS 1.2 or later
+is required. The operator must configure trusted hostname validation on the
+test client; do not disable certificate validation. Never commit certificate
+private keys or reuse production keys. Direct TLS mode accepts only HTTPS
+fixture event declarations. The receiver is not a forwarding proxy and
+cannot decrypt any other application's traffic. It still binds to loopback;
+for device-to-device labs use a private, access-controlled proxy as above.
+
+No raw request headers, body, cookie or TLS secret are exported. The normal
+collector authentication and event limits also apply in direct TLS mode.
+
+The optional TLS round-trip unit fixture runs only when ODIN_LAB_TEST_CERT,
+ODIN_LAB_TEST_KEY and ODIN_LAB_TEST_CA are set to operator-owned local test
+files (certificate must be valid for localhost). It retains normal certificate
+and hostname verification; no private keys are included in the repository.

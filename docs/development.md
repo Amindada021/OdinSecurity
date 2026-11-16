@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.74.0+76; pubspec.yaml is the version source of truth.
+Current version is 0.75.0+77; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.74.0+76`.
-- Git tag `v0.74.0` when released.
-- `OdinSecurity-v0.74.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.75.0+77`.
+- Git tag `v0.75.0` when released.
+- `OdinSecurity-v0.75.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -236,3 +236,9 @@ Open Custom scan rules → Project metadata rules. Programs start disabled, even
 ## Response metrics comparison
 
 The fixed Accept matrix publishes completed observations immediately and preserves them if a later transport operation fails, the user stops, or Android backgrounds the screen. Once completed, select any received case as reference, change diagnostic tolerances and filter by deviations or unmet expected statuses. No extra network operations are triggered by the comparison view. In Offline utilities → Offline response metrics, paste a versioned JSON document with up to 100 numeric cases using status, bodyBytes, elapsedMs, truncated and optional expectedStatus. Any raw content, URL, unknown field or invalid value causes rejection. Truncated samples have no comparable size delta; timings are descriptive and do not establish vulnerabilities. No arbitrary payload automation is supported.
+
+## Frame protection and request history comparison
+
+The passive scanner, sanitized HAR review and request inspector evaluate framing policies already present on successful HTML responses. HTML review additionally flags inline iframe sandbox and meta framing policy configuration. Observations do not establish DOM exploitability or actual browser framing behavior. Repeater history entries with equivalent read-only settings can open the shared baseline comparison view; query, customized and write requests are not grouped. No additional requests are generated.
+
+The private collector accepts an optional explicit server TLS certificate/key pair on its loopback fixture endpoint. TLS configuration tests and optional trusted localhost round-trip fixture are documented in [private lab collector](private-lab-collector.md). This does not implement HTTPS interception.

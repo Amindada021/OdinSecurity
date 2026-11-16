@@ -5,6 +5,7 @@ import 'fingerprint.dart';
 import 'security_checks.dart';
 import 'header_policy_checks.dart';
 import 'csp_review.dart';
+import 'frame_protection_review.dart';
 import 'html_security_checks.dart';
 import 'api_response_checks.dart';
 import 'custom_rules.dart';
@@ -76,6 +77,7 @@ class HarResponseReview {
         ...HeaderPolicyChecks.inspect(route, obs, status: status),
         if (program != null) ...program.inspect(obs, status),
         if (html && status >= 200 && status < 300) ...CspReview.inspect(obs),
+        if (status >= 200 && status < 300) ...FrameProtectionReview.inspect(obs),
         if (reviewed && html && status >= 200 && status < 300) ...HtmlSecurityChecks.inspect(route, body),
         if (reviewed) ...ApiResponseChecks.inspect(obs, status: status, truncated: false),
         if (status >= 200 && status < 300) ...CustomHeaderRules.inspect(rules.where((r) => allowedHeaders.contains(r.header)).toList(), obs),

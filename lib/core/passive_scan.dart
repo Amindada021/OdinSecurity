@@ -10,6 +10,7 @@ import 'custom_rules.dart';
 import 'metadata_rule_program.dart';
 import 'header_policy_checks.dart';
 import 'csp_review.dart';
+import 'frame_protection_review.dart';
 import 'html_security_checks.dart';
 import 'api_response_checks.dart';
 import 'tls_audit.dart';
@@ -120,6 +121,7 @@ class PassiveScanner {
         ...ApiResponseChecks.inspect(observation, status: response.statusCode, truncated: truncated),
         ...HeaderPolicyChecks.inspect(url, observation, status: response.statusCode, identityHeadersSent: identityHeaders.isNotEmpty),
         if (isHtml && response.statusCode >= 200 && response.statusCode < 300) ...CspReview.inspect(observation),
+        if (response.statusCode >= 200 && response.statusCode < 300) ...FrameProtectionReview.inspect(observation),
         if (isHtml && !truncated && response.statusCode >= 200 && response.statusCode < 300) ...HtmlSecurityChecks.inspect(url, observation.body),
         ...inspectConfiguredRules(observation, response.statusCode),
         if (certificate != null) ...CertificateChecks.inspect(certificate.startValidity, certificate.endValidity, DateTime.now()),

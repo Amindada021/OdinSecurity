@@ -29,6 +29,19 @@ void main() {
     expect(ordinary.comparableTo(custom), isFalse);
     expect(write.comparableTo(write), isFalse);
   });
+  test('comparison groups include only equivalent retained entries', () {
+    final history=RequestHistory();
+    final anchor=record('https://example.test/path');
+    final same=record('https://example.test/path');
+    history.add(anchor);
+    history.add(record('https://example.test/path?key=fixture'));
+    history.add(record('https://example.test/path',auth:true));
+    history.add(same);
+    expect(history.comparableGroup(anchor),[same,anchor]);
+    expect(history.comparableGroup(record('https://example.test/path')),isEmpty);
+    history.clear();
+    expect(history.comparableGroup(anchor),isEmpty);
+  });
   test('bounded newest-first session history', () {
     final history = RequestHistory();
     for (var i = 0; i < 30; i++) {

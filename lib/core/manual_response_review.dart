@@ -2,6 +2,7 @@ import 'fingerprint.dart';
 import 'security_checks.dart';
 import 'header_policy_checks.dart';
 import 'csp_review.dart';
+import 'frame_protection_review.dart';
 
 /// Observes the already-received response before user-facing redaction.
 /// Findings are fixed configuration messages; raw cookies, URLs, header values
@@ -40,6 +41,7 @@ class ManualResponseReview {
       ...PassiveSecurityChecks().inspect(route, observation),
       ...HeaderPolicyChecks.inspect(route, observation, status:status, identityHeadersSent:identityHeadersSent),
       if (html && status >= 200 && status < 300) ...CspReview.inspect(observation),
+      if (status >= 200 && status < 300) ...FrameProtectionReview.inspect(observation),
     ]);
   }
 }

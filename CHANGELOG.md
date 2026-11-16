@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.75.0+77
+- Add passive frame protection and DOM markup observations, equivalent Repeater history group comparison, and direct loopback TLS for the private laboratory collector using operator-provided certificates. Add validation fixtures and Persian labels.
+
 ## 0.74.0+76
 - Add shared response metrics comparison with reference selection, size/timing tolerance, expectation filtering, truncated-size handling, offline sanitized metric import, and partial fixed Accept matrix results with background stop behavior. Add fixtures and Persian labels.
 

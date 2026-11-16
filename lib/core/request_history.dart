@@ -40,5 +40,13 @@ class RequestHistory {
     _records.insert(0, record);
     if (_records.length > limit) _records.removeLast();
   }
+  /// Find earlier or later equivalent read-only entries in this tab.
+  /// The selected record must belong to this history; never infer equivalence
+  /// for custom inputs, queries or writes.
+  List<RequestRecord> comparableGroup(RequestRecord anchor) {
+    if (!_records.contains(anchor) || !anchor.comparableTo(anchor)) return const [];
+    return List.unmodifiable(_records.where(anchor.comparableTo));
+  }
+
   void clear() => _records.clear();
 }

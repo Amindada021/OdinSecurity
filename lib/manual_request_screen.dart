@@ -8,6 +8,8 @@ import 'core/request_workspace.dart';
 import 'core/request_review.dart';
 import 'core/scan_policy.dart';
 import 'request_transport_trace_view.dart';
+import 'response_matrix_analysis_view.dart';
+import 'core/response_matrix_analysis.dart';
 
 class ManualRequestScreen extends StatefulWidget {
   final SecurityProject project;
@@ -145,6 +147,22 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
     }
   }
 
+  void compareHistory(RequestRecord anchor) {
+    final group = history.comparableGroup(anchor);
+    if (group.length < 2) return;
+    // Put the chosen record first so it becomes the initial reference.
+    final ordered = [anchor, ...group.where((r)=>!identical(r,anchor))];
+    final metrics = ordered.map((r)=>ResponseMetrics(status:r.status,bodyBytes:r.bodyBytes,
+      elapsedMs:r.elapsedMs,truncated:r.truncated)).toList();
+    Navigator.of(context).push(MaterialPageRoute(builder:(_)=>Scaffold(
+      appBar:AppBar(title:const LText('Compare request history')),
+      body:ListView(padding:const EdgeInsets.all(16),children:[
+        const LText('Equivalent read-only requests in this tab. No requests are replayed.'),
+        ResponseMatrixAnalysisView(samples:metrics,labels:ordered.map((r)=>r.at.toLocal().toIso8601String()).toList()),
+      ]),
+    )));
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = response;
@@ -219,6 +237,9 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
         const LText('Only route, method, status, timing and captured size are retained in memory. Query values are omitted; paths can still be sensitive.'),
         for (final record in records) ListTile(
           title: Text('${record.method} ${record.route}'),
+          trailing: !busy && history.comparableGroup(record).length>1 ? IconButton(
+            icon:const Icon(Icons.compare_arrows),tooltip:tr(context,'Compare request history'),
+            onPressed:()=>compareHistory(record)) : null,
           subtitle: Text('${record.status} | ${record.elapsedMs} ms | ${record.bodyBytes} bytes${record.truncated ? "+" : ""}${record.hadQuery ? " | query omitted" : ""}'),
         ),
       ]),

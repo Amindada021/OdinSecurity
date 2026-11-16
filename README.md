@@ -36,7 +36,7 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.74.0+76**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.75.0+77**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
 
 Offline CVE review accepts a user-supplied, exact-version advisory catalog; it does not retrieve advisories or confirm exploitability.
 
@@ -83,3 +83,5 @@ Request inspector now shows measured connection/open, response-header and body-r
 Project metadata programs: save a validated JSON rule set locally per project, enable/disable it explicitly, and preview it with synthetic metadata. Enabled rules execute against existing acquired responses during single scans, crawling, foreground assessment queues and configuration reviews. Their fixed observations use the existing scan history/report pipeline. No executable code, additional probes or body/credential access.
 
 Response comparison supports choosing a reference case, signed status/timing/size differences, configurable diagnostic tolerances, unexpected-status filtering, and unavailable size comparison for truncated bodies. A separate offline utility imports up to 100 sanitized numeric response metric rows. The existing fixed Accept matrix uses the same analysis with partial-result preservation on stop/error; no arbitrary request generation or additional sends.
+
+Passive frame protection review now distinguishes invalid/duplicate X-Frame-Options, broad or ambiguous frame-ancestors policies, report-only directives and ineffective meta placement, plus review signals for srcdoc and same-origin iframe sandbox combinations. Repeater compares equivalent read-only session history groups without replay. The private lab collector additionally supports direct loopback TLS with an operator-provided server certificate and key; no interception or forwarding.
