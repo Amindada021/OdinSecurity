@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.0+25
+- Offline GraphQL introspection inventory of root queries, mutations, subscriptions and argument counts, with bounded parsing and fixtures.
+- No network requests or operation execution.
+
 ## 0.24.0+24
 - Local bounded line-based message comparer with additions/removals and changes-only filter.
 - Descriptive offline token sample analysis: counts, duplicates, lengths, character frequencies and varying positions; not a cryptographic randomness verdict.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'localized.dart';
 import 'data_analysis_screen.dart';
+import 'graphql_inventory_screen.dart';
 import 'core/openapi_inventory.dart';
 import 'core/offline_tools.dart';
 
@@ -63,6 +64,7 @@ class _OfflineToolsScreenState extends State<OfflineToolsScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const LText('Offline utilities')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
+      OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const GraphQlInventoryScreen())), icon: const Icon(Icons.account_tree_outlined), label: const LText('GraphQL inventory')),
       OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComparerScreen())), icon: const Icon(Icons.compare_arrows), label: const LText('Message comparer')),
       OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TokenSamplesScreen())), icon: const Icon(Icons.analytics_outlined), label: const LText('Token sample analysis')),
       DropdownButtonFormField<String>(initialValue: mode, items: operations.keys.map((op) => DropdownMenuItem(value: op, child: LText(op))).toList(),

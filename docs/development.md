@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.24.0+24; pubspec.yaml is the version source of truth.
+Current version is 0.25.0+25; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.24.0+24`.
-- Git tag `v0.24.0` when released.
-- `OdinSecurity-v0.24.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.25.0+25`.
+- Git tag `v0.25.0` when released.
+- `OdinSecurity-v0.25.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -70,3 +70,7 @@ The in-memory logger captures only method, sanitized route, status or no-respons
 ## Offline message and sample analysis
 
 Compare sanitized HTTP/text messages locally (up to 300 lines and 65536 characters each) and filter changes. Token sample analysis accepts synthetic/non-secret samples and clears input after successful analysis. Frequency entropy and positional variation are descriptive, not a cryptographic estimate. No network requests or automatic sample capture. Hex and HTML escaping are also local.
+
+## GraphQL inventory
+
+Import sanitized introspection JSON via Offline utilities. The parser lists root query/mutation/subscription names and argument counts; it does not perform introspection or send operations. Limits: 1 MiB input characters and 300 fields. Live GraphQL checks and WebSocket interception remain pending.
