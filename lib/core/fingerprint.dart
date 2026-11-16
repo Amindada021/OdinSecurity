@@ -45,6 +45,8 @@ class TechnologyDetector {
       'nginx': 'Nginx', 'apache': 'Apache', 'microsoft-iis': 'IIS',
       'cloudflare': 'Cloudflare', 'caddy': 'Caddy', 'kestrel': 'Kestrel',
       'gunicorn': 'Gunicorn', 'uvicorn': 'Uvicorn',
+      'openresty': 'OpenResty', 'litespeed': 'LiteSpeed', 'tomcat': 'Tomcat',
+      'jetty': 'Jetty', 'vercel': 'Vercel', 'traefik': 'Traefik',
     }.entries) {
       if (server.contains(entry.key)) {
         add(entry.value, TechnologyLayer.server, Confidence.medium, 'Server header');
@@ -61,6 +63,15 @@ class TechnologyDetector {
     } else if (body.contains('drupalsettings')) {
       add('Drupal', TechnologyLayer.cms, Confidence.medium, 'Drupal frontend settings');
     }
+    if (generator.contains('woocommerce') || anyBody(['/wp-content/plugins/woocommerce/', 'woocommerce-no-js'])) {
+      add('WooCommerce', TechnologyLayer.cms, Confidence.medium, 'WooCommerce asset or generator marker');
+    }
+    if (generator.contains('shopify') || anyBody(['cdn.shopify.com/', 'shopify-section'])) {
+      add('Shopify', TechnologyLayer.cms, Confidence.medium, 'Shopify page or asset marker');
+    }
+    if (generator.contains('ghost')) {
+      add('Ghost', TechnologyLayer.cms, Confidence.high, 'Generator meta tag');
+    }
     if (generator.contains('joomla')) {
       add('Joomla', TechnologyLayer.cms, Confidence.high, 'Generator meta tag');
     }
@@ -69,8 +80,8 @@ class TechnologyDetector {
     } else if (cookies.contains('phpsessid=')) {
       add('PHP', TechnologyLayer.backend, Confidence.medium, 'PHP session cookie name');
     }
-    if (cookies.contains('laravel_session=')) {
-      add('Laravel', TechnologyLayer.backend, Confidence.medium, 'Laravel session cookie name');
+    if (cookies.contains('laravel_session=') || powered.contains('laravel')) {
+      add('Laravel', TechnologyLayer.backend, Confidence.medium, 'Laravel-specific cookie or header');
     }
     if (observation.header('x-debug-token').isNotEmpty && observation.header('x-debug-token-link').isNotEmpty) {
       add('Symfony', TechnologyLayer.backend, Confidence.medium, 'Framework debugger headers');
@@ -89,8 +100,26 @@ class TechnologyDetector {
     if (cookies.contains('csrftoken=') && cookies.contains('sessionid=')) {
       add('Django (possible)', TechnologyLayer.backend, Confidence.low, 'Common Django cookie names');
     }
-    if (server.contains('werkzeug')) {
+    if (server.contains('werkzeug') || powered.contains('flask')) {
       add('Flask (possible)', TechnologyLayer.backend, Confidence.low, 'Werkzeug server marker');
+    }
+    if (powered.contains('fastapi') || (body.contains('fastapi') && body.contains('swagger-ui'))) {
+      add('FastAPI (likely)', TechnologyLayer.backend, Confidence.medium, 'Framework-specific header or documentation marker');
+    }
+    if (powered.contains('django') || body.contains('django version:')) {
+      add('Django', TechnologyLayer.backend, Confidence.medium, 'Framework-specific header or page marker');
+    }
+    if (powered.contains('spring boot') || body.contains('spring boot actuator')) {
+      add('Spring Boot', TechnologyLayer.backend, Confidence.medium, 'Framework-specific header or documentation marker');
+    }
+    if (powered.contains('nestjs') || powered.contains('nest.js')) {
+      add('NestJS', TechnologyLayer.backend, Confidence.medium, 'NestJS header');
+    }
+    if (powered.contains('node.js') || powered.contains('nodejs')) {
+      add('Node.js', TechnologyLayer.backend, Confidence.medium, 'Runtime-specific header');
+    }
+    if (RegExp(r'^go(?:/|\s|$)').hasMatch(powered) || server.contains('go-http-server')) {
+      add('Go (possible)', TechnologyLayer.backend, Confidence.low, 'Go-specific header marker');
     }
     if (powered.contains('express')) {
       add('Express / Node.js', TechnologyLayer.backend, Confidence.medium, 'Express header');
@@ -101,7 +130,7 @@ class TechnologyDetector {
     if (powered.contains('phusion passenger')) {
       add('Passenger', TechnologyLayer.server, Confidence.medium, 'Passenger header');
     }
-    if (cookies.contains('_rails_session=')) {
+    if (cookies.contains('_rails_session=') || powered.contains('ruby on rails')) {
       add('Ruby on Rails (possible)', TechnologyLayer.backend, Confidence.low, 'Rails session cookie marker');
     }
 
@@ -116,6 +145,9 @@ class TechnologyDetector {
     }
     if (anyBody(['data-v-app', '__vue__'])) {
       add('Vue', TechnologyLayer.frontend, Confidence.medium, 'Vue markup');
+    }
+    if (anyBody(['data-sveltekit', '/_app/immutable/'])) {
+      add('SvelteKit', TechnologyLayer.frontend, Confidence.medium, 'Frontend asset marker');
     }
     if (anyBody(['__nuxt__', '/_nuxt/'])) {
       add('Nuxt', TechnologyLayer.frontend, Confidence.medium, 'Nuxt page marker');

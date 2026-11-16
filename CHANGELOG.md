@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0+10
+- Expanded CMS, backend runtime, frontend, server and API technology markers.
+- Passive development traceback/profiler, additional cookie attributes, CORS consistency and header observations.
+- All checks retain bounded, sanitized evidence with no exploit probes.
+- Additional technology and false-positive fixtures.
+
 ## 0.9.0+9
 - Same-origin, user-driven WebView sign-in for session-cookie websites, including manual OTP.
 - Explicit session import into secure identity profile; cookie path constraint and header validation.
