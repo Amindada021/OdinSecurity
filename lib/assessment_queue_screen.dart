@@ -103,7 +103,7 @@ class _AssessmentQueueScreenState extends State<AssessmentQueueScreen> with Widg
       ],
       if (failed) const LText('Queue could not complete.'),
       for (final entry in observations) ListTile(title: Text(entry.target.toString()), trailing: Text(entry.status?.toString() ?? '—')),
-      if (!locked && observations.isNotEmpty) const LText('Completed responses saved to scan history; unstarted targets are not assessed.'),
+      if (!locked && observations.isNotEmpty && !failed) const LText('Completed responses saved to scan history; unstarted targets are not assessed.'),
     ]),
   );
 }

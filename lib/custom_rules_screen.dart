@@ -61,14 +61,14 @@ class _CustomRulesScreenState extends State<CustomRulesScreen> {
     ));
     if (!mounted || mode == null || busy) return;
     try {
-      final draft = mode == 'replace' ? HeaderRulePack.import(pack) : HeaderRulePack.merge(source.text, pack);
+      final draft = mode == 'replace' ? HeaderRulePack.decode(pack) : HeaderRulePack.merge(source.text, pack);
       setState(() { source.text = draft; failed = false; });
     } catch (_) { setState(() => failed = true); }
   }
 
   Future<void> exportPack() async {
     try {
-      final data = HeaderRulePack.export(source.text);
+      final data = HeaderRulePack.encode(source.text);
       if (!mounted) return;
       await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
         title: const LText('Export rule pack'),

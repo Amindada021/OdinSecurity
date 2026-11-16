@@ -75,7 +75,8 @@ class TokenSampleAnalyzer {
     final positionCounts = List.generate(maxLength, (_) => <int, int>{});
     var adjacentDuplicates = 0, compared = 0, differences = 0, oneBits = 0, hexBits = 0;
     List<int>? previous;
-    final hex = RegExp(r'^[0-9a-fA-F]+
+    final hex = RegExp(r'^[0-9a-fA-F]+$');
+    final allHex = tokens.every((s) => s.length.isEven && hex.hasMatch(s));
     var minLength = maxLength, longest = 0, total = 0;
     for (final token in tokens) {
       final units = token.runes.toList();
@@ -126,29 +127,5 @@ class TokenSampleAnalyzer {
       positions: List.unmodifiable(positions), adjacentDuplicates: adjacentDuplicates,
       adjacentDifferenceRatio: compared == 0 ? null : differences / compared,
       hexOneBitRatio: hexBits == 0 ? null : oneBits / hexBits);
-  }
-}
-);
-    final allHex = tokens.every((s) => s.length.isEven && hex.hasMatch(s));
-    var minLength = maxLength, longest = 0, total = 0;
-    for (final token in tokens) {
-      final units = token.runes.toList();
-      minLength = min(minLength, units.length);
-      longest = max(longest, units.length);
-      total += units.length;
-      for (var i = 0; i < units.length; i++) {
-        frequencies.update(units[i], (n) => n + 1, ifAbsent: () => 1);
-        positionSets[i].add(units[i]);
-      }
-    }
-    var entropy = 0.0;
-    for (final count in frequencies.values) {
-      final probability = count / total;
-      entropy -= probability * log(probability) / ln2;
-    }
-    return SampleReport(count: tokens.length, unique: tokens.toSet().length,
-      minLength: minLength, maxLength: longest, distinctCharacters: frequencies.length,
-      observedCharacterEntropy: entropy,
-      varyingPositions: List.unmodifiable([for (var i = 0; i < minLength; i++) if (positionSets[i].length > 1) i + 1]));
   }
 }

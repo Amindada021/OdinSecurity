@@ -81,7 +81,7 @@ class CustomRuleRepository {
 
 /// Versioned, declarative and non-executable interchange format.
 class HeaderRulePack {
-  static String export(String source) {
+  static String encode(String source) {
     final checked = CustomHeaderRules.parse(source);
     return const JsonEncoder.withIndent('  ').convert({
       'schema': 'odin.security.headers.v1',
@@ -89,7 +89,7 @@ class HeaderRulePack {
     });
   }
 
-  static String import(String source) {
+  static String decode(String source) {
     if (source.length > 16000) throw const FormatException('Pack exceeds limit.');
     final decoded = jsonDecode(source);
     if (decoded is! Map<String, dynamic> || decoded['schema'] != 'odin.security.headers.v1' ||
@@ -105,7 +105,7 @@ class HeaderRulePack {
   }
 
   static String merge(String current, String pack) {
-    final incoming = import(pack);
+    final incoming = decode(pack);
     return CustomHeaderRules.parse([current, incoming].where((part) => part.trim().isNotEmpty).join('\n'))
         .map((r) => r.line).join('\n');
   }
