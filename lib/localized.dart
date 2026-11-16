@@ -19,6 +19,15 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Offline HTTPS response review': 'بررسی آفلاین پاسخ HTTPS',
+  'Paste an authorized sanitized HAR containing response headers. Remove tokens, cookies, personal data and unnecessary contents before import. Missing headers in the export can cause false observations.': 'فایل HAR پاک‌سازی‌شده و مجاز شامل هدرهای پاسخ وارد کنید. توکن‌ها، کوکی‌ها و داده شخصی را حذف کنید؛ هدرهای حذف‌شده ممکن است نتیجه اشتباه ایجاد کنند.',
+  'Sanitized HAR JSON': 'HAR پاک‌سازی‌شده (JSON)',
+  'Also analyze sanitized text response bodies offline': 'تحلیل آفلاین متن پاک‌سازی‌شده پاسخ',
+  'I confirm this is an authorized sanitized capture.': 'تأیید می‌کنم این داده مجاز و پاک‌سازی‌شده است.',
+  'Analyze imported responses': 'تحلیل پاسخ‌های واردشده',
+  'Invalid or oversized capture.': 'داده نامعتبر یا بیش از حد بزرگ است.',
+  'Results are offline observations, not evidence of a live TLS interception.': 'نتایج مشاهدات آفلاین هستند، نه رهگیری زنده TLS.',
+  'Headers only; body not reviewed.': 'فقط هدرها؛ بدنه بررسی نشده است.',
   'Representation test matrix': 'ماتریس بررسی نوع پاسخ',
   'On an isolated authorized test route, compare ordinary fixed Accept headers. Up to four anonymous GET requests; no custom payload or response content retained.': 'در مسیر آزمایشی مجاز، هدرهای ثابت Accept را مقایسه کنید؛ حداکثر چهار GET بدون حساب، بدون داده سفارشی یا ذخیره محتوا.',
   'Run representation matrix': 'اجرای ماتریس بررسی',

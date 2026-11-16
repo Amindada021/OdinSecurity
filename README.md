@@ -36,7 +36,7 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.66.0+68**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.67.0+69**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
 
 Offline CVE review accepts a user-supplied, exact-version advisory catalog; it does not retrieve advisories or confirm exploitability.
 
@@ -65,3 +65,5 @@ Configuration review suite sequences trusted TLS, one anonymous GET and an optio
 Local laboratory receiver: explicitly started, loopback-only HTTP callback label, exact route and GET/HEAD, transient method/time metadata, two-minute/ten-event expiry. No remotely reachable OAST.
 
 Representation test matrix compares up to four fixed ordinary Accept values on one explicitly approved registered HTTPS test route, retaining only status/size/timing. No arbitrary payload generator or automated attack engine.
+
+Offline HTTPS response review analyzes scoped sanitized HAR exports with an allowlist of response headers and optional bounded text-body examination. No live HTTPS interception, raw capture retention, or replay.

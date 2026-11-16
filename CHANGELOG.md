@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.67.0+69
+- Add scoped offline security analysis of sanitized HAR HTTPS responses, allowlisted headers, optional text-body review, and scope/privacy fixtures.
+
 ## 0.66.0+68
 - Add bounded live representation test matrix with fixed ordinary Accept values, explicit scope/consent, metadata-only comparison and stop controls; unit fixtures.
 
