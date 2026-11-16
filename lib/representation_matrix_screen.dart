@@ -4,6 +4,7 @@ import 'core/representation_matrix.dart';
 import 'core/project.dart';
 import 'core/scan_policy.dart';
 import 'localized.dart';
+import 'response_matrix_analysis_view.dart';
 
 class RepresentationMatrixScreen extends StatefulWidget {
   final SecurityProject project;
@@ -12,29 +13,38 @@ class RepresentationMatrixScreen extends StatefulWidget {
   @override
   State<RepresentationMatrixScreen> createState() => _RepresentationMatrixScreenState();
 }
-class _RepresentationMatrixScreenState extends State<RepresentationMatrixScreen> {
+class _RepresentationMatrixScreenState extends State<RepresentationMatrixScreen> with WidgetsBindingObserver {
   Uri? target;
   final values = <ManualAccept>{};
   final expected = <ManualAccept,int>{};
   bool authorized = false, running = false, stopped = false, failed = false;
   List<RepresentationObservation>? results;
+  int requestedCount = 0;
+  @override
+  void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed && running) setState(() => stopped = true);
+  }
   Future<void> run() async {
-    if (target == null || !authorized || running || values.isEmpty) return;
+    if (target == null || !authorized || running || values.isEmpty ||
+        WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) return;
     final endpoint = target!;
     final modes = List<ManualAccept>.of(values);
     final assertions = Map<ManualAccept,int>.from(expected);
-    setState(() { running = true; stopped = false; authorized = false; failed = false; results = null; });
+    setState(() { running = true; stopped = false; authorized = false; failed = false; results = []; requestedCount = modes.length; });
     try {
       final client = ManualRequestClient();
       final matrix = RepresentationMatrix(send: (accept) => client.send(widget.project, endpoint, 'GET',
         authorized: true, policy: widget.policy, accept: accept));
-      final data = await matrix.run(widget.project, widget.policy, endpoint, modes, authorized: true, cancelled: () => stopped || !mounted, expected: assertions);
+      final data = await matrix.run(widget.project, widget.policy, endpoint, modes, authorized: true, cancelled: () => stopped || !mounted, expected: assertions,
+        onCompleted: (item) { if (mounted) setState(() => results!.add(item)); });
       if (mounted) setState(() => results = data);
     } catch (_) { if (mounted) setState(() => failed = true); }
     finally { if (mounted) setState(() => running = false); }
   }
   @override
-  void dispose() { stopped = true; super.dispose(); }
+  void dispose() { WidgetsBinding.instance.removeObserver(this); stopped = true; super.dispose(); }
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const LText('Representation test matrix')),
@@ -64,10 +74,11 @@ class _RepresentationMatrixScreenState extends State<RepresentationMatrixScreen>
       ],
       if (failed) const LText('Matrix stopped after a transport error.'),
       if (results != null) ...[
+        Text(tr(context,'Completed cases') + ': ' + uiNumber(context,results!.length) + ' / ' + uiNumber(context,requestedCount)),
+        if (!running && results!.length < requestedCount) const LText('Matrix ended before all cases completed.'),
         const LText('Status, captured size and timing are diagnostic, not vulnerability proof.'),
-        for (final item in results!) ListTile(title: Text(item.accept.value),
-          subtitle: Text('HTTP ' + item.status.toString() + ' · ' + item.elapsedMs.toString() + ' ms' + (item.expectedStatus == null ? '' : '\n' + tr(context, 'Expected status (optional)') + ': ' + item.expectedStatus.toString() + ' · ' + tr(context, item.matchesExpectation! ? 'Matches expectation' : 'Differs from expectation'))),
-          trailing: Text(item.bodyBytes.toString() + (item.truncated ? '+ B' : ' B'))),
+        if (!running && results!.isNotEmpty) ResponseMatrixAnalysisView(key:ObjectKey(results),
+          samples:results!.map((item)=>item.metrics).toList(),labels:results!.map((item)=>item.accept.value).toList()),
       ],
     ]),
   );

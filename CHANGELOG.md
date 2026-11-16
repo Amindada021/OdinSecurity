@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.74.0+76
+- Add shared response metrics comparison with reference selection, size/timing tolerance, expectation filtering, truncated-size handling, offline sanitized metric import, and partial fixed Accept matrix results with background stop behavior. Add fixtures and Persian labels.
+
 ## 0.73.0+75
 - Persist validated per-project metadata programs with enable/disable and synthetic response preview; integrate them into single scans, crawling, queues and configuration review with existing history/report integration, header processing budgets, Persian labels and regression fixtures.
 

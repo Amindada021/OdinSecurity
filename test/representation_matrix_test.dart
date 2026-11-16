@@ -20,6 +20,17 @@ void main() {
     await expectLater(matrix.run(project, policy, project.startUrl,[ManualAccept.json],authorized:true,
       cancelled:()=>false,expected:{ManualAccept.html:200}),throwsFormatException);
   });
+  test('completed metadata remains available when a later send fails', () async {
+    final completed=<RepresentationObservation>[];
+    final matrix=RepresentationMatrix(send:(mode) async {
+      if(mode==ManualAccept.html) throw StateError('fixture transport failure');
+      return const ManualResponse(200,{},'private fixture',false,bodyBytes:15,elapsedMs:20);
+    },wait:(_) async {});
+    await expectLater(matrix.run(project,policy,project.startUrl,[ManualAccept.json,ManualAccept.html],
+      authorized:true,cancelled:()=>false,onCompleted:completed.add),throwsStateError);
+    expect(completed.single.metrics.bodyBytes,15);
+    expect(completed.single.metrics.status,200);
+  });
   test('stop after rate limit, results retain only metadata', () async {
     final called = <ManualAccept>[];
     final matrix = RepresentationMatrix(send: (accept) async {
