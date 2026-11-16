@@ -18,6 +18,7 @@ import javax.net.ssl.HttpsURLConnection
 object ScheduledCheck {
     private const val JOB = 7013
     private const val STORE = "odin_scheduled_check_v1"
+    private var activeToken: String? = null
     private fun prefs(context: Context) = context.getSharedPreferences(STORE, Context.MODE_PRIVATE)
     private fun scheduler(context: Context) = context.getSystemService(JobScheduler::class.java)
 
@@ -62,7 +63,8 @@ object ScheduledCheck {
             scheduler(context).cancel(JOB)
             state = "expired"
         }
-        if (state in listOf("pending", "running") && scheduler(context).getPendingJob(JOB) == null) {
+        if ((state == "pending" && scheduler(context).getPendingJob(JOB) == null) ||
+            (state == "running" && activeToken != store.getString("token", ""))) {
             store.edit().putString("state", "interrupted").commit()
             state = "interrupted"
         }
@@ -93,6 +95,7 @@ object ScheduledCheck {
             return null
         }
         if (!store.edit().putString("state", "running").commit()) return null
+        activeToken = token
         return target
     }
 
@@ -104,6 +107,7 @@ object ScheduledCheck {
     fun finish(context: Context, token: String, state: String, status: Int = -1, elapsed: Long = 0L) {
         if (!active(context, token)) return
         prefs(context).edit().putString("state", state).putInt("status", status).putLong("elapsed", elapsed).commit()
+        if (activeToken == token) activeToken = null
     }
 }
 

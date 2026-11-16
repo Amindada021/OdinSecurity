@@ -30,7 +30,9 @@ void main() {
   }
   if (!text.contains('android:icon="@drawable/odin_security_icon"') ||
       !text.contains('android:allowBackup="false"') ||
-      !text.contains('android.permission.INTERNET')) {
+      !text.contains('android.permission.INTERNET') ||
+      !text.contains('android.permission.ACCESS_NETWORK_STATE') ||
+      !text.contains('.ScheduledCheckService') || !text.contains('android.permission.BIND_JOB_SERVICE')) {
     throw StateError('Unexpected manifest layout; review before applying changes.');
   }
 

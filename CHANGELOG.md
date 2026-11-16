@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.65.1+67
+- Guard receiver startup against backgrounding, validate generated job service manifest, and preserve accurate native job state across refresh/process loss.
+
 ## 0.65.0+66
 - Add ephemeral loopback-only laboratory interaction receiver with random label, bounded event metadata and lifecycle cleanup; local receiver fixture.
 

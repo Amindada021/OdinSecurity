@@ -19,6 +19,7 @@ class LocalLabReceiver {
   Timer? _expiry;
   String? _label;
   bool _starting = false, _disposed = false;
+  int _generation = 0;
 
   List<LocalLabEvent> get events => List.unmodifiable(_events);
   Stream<void> get changes => _changes.stream;
@@ -30,9 +31,10 @@ class LocalLabReceiver {
   Future<void> start({required bool approved}) async {
     if (!approved || _disposed || _server != null || _starting) throw StateError('Local listener approval required.');
     _starting = true;
+    final generation = ++_generation;
     try {
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0, shared: false);
-      if (_disposed) { await server.close(force: true); return; }
+      if (_disposed || generation != _generation) { await server.close(force: true); return; }
       _events.clear();
       _label = LabInteractionReview.newLabel();
       _server = server;
@@ -48,7 +50,7 @@ class LocalLabReceiver {
     final approved = _server != null && request.connectionInfo?.remoteAddress.isLoopback == true &&
       request.uri.path == '/lab/' + (_label ?? '') && !request.uri.hasQuery &&
       request.uri.fragment.isEmpty && ['GET','HEAD'].contains(request.method) &&
-      request.contentLength <= 0 && request.headers.value(HttpHeaders.transferEncodingHeader) == null &&
+      request.contentLength <= 0 && request.headers[HttpHeaders.transferEncodingHeader] == null &&
       _events.length < maxEvents;
     try {
       if (approved) {
@@ -65,6 +67,7 @@ class LocalLabReceiver {
   }
 
   Future<void> stop() async {
+    _generation++;
     _expiry?.cancel();
     _expiry = null;
     final server = _server;
