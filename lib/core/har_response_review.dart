@@ -8,6 +8,7 @@ import 'csp_review.dart';
 import 'html_security_checks.dart';
 import 'api_response_checks.dart';
 import 'custom_rules.dart';
+import 'metadata_rule_program.dart';
 
 class ImportedResponseReview {
   final Uri route;
@@ -33,7 +34,7 @@ class HarResponseReview {
   };
 
   static List<ImportedResponseReview> parse(SecurityProject project, ScanPolicy policy, String input,
-      {required bool authorized, required bool includeBody, List<HeaderRule> rules = const []}) {
+      {required bool authorized, required bool includeBody, List<HeaderRule> rules = const [], MetadataRuleProgram? program}) {
     if (!authorized || input.length > maxInput) throw StateError('Explicit offline review approval or size limit.');
     final raw = jsonDecode(input);
     if (raw is! Map || raw['log'] is! Map || raw['log']['entries'] is! List) throw const FormatException('Invalid HAR.');
@@ -73,6 +74,7 @@ class HarResponseReview {
       final findings = <SecurityFinding>[
         ...PassiveSecurityChecks().inspect(route, obs),
         ...HeaderPolicyChecks.inspect(route, obs, status: status),
+        if (program != null) ...program.inspect(obs, status),
         if (html && status >= 200 && status < 300) ...CspReview.inspect(obs),
         if (reviewed && html && status >= 200 && status < 300) ...HtmlSecurityChecks.inspect(route, body),
         if (reviewed) ...ApiResponseChecks.inspect(obs, status: status, truncated: false),

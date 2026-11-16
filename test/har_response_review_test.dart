@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:odin_security/core/har_response_review.dart';
 import 'package:odin_security/core/custom_rules.dart';
+import 'package:odin_security/core/metadata_rule_program.dart';
 import 'package:odin_security/core/project.dart';
 import 'package:odin_security/core/scan_policy.dart';
 
@@ -26,6 +27,13 @@ void main() {
     final rules=CustomHeaderRules.parse('strict-transport-security|present');
     final found=HarResponseReview.parse(p,ScanPolicy(),raw,authorized:true,includeBody:false,rules:rules);
     expect(found.single.findings.map((r)=>r.id),contains('custom.strict-transport-security.present'));
+  });
+  test('metadata program combines status and missing header in scoped HAR', () {
+    final program=MetadataRuleProgram.parse('{"schema":"odin.security.metadata.v1","rules":[{"id":"missing-hsts","match":"all","conditions":[{"op":"statusRange","min":200,"max":299},{"op":"headerAbsent","header":"strict-transport-security"}]}]}');
+    final raw=jsonEncode({'log':{'entries':[entry('https://example.test/a'),entry('https://other.test/a')]}});
+    final results=HarResponseReview.parse(p,ScanPolicy(),raw,authorized:true,includeBody:false,program:program);
+    expect(results,hasLength(1));
+    expect(results.single.findings.map((r)=>r.id),contains('program.missing-hsts'));
   });
   test('body inspection is opt-in and scope exclusions apply', () {
     final raw = jsonEncode({'log':{'entries':[entry('https://example.test/a')]}});

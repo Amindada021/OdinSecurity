@@ -19,6 +19,18 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Optional metadata program JSON': 'برنامه قوانین متادیتا (JSON اختیاری)',
+  'Local contract test matrix': 'ماتریس تست محلی قرارداد ورودی',
+  'Run up to 100 synthetic scalar cases against a local length or integer range contract. No requests are sent.': 'تا ۱۰۰ نمونه مصنوعی را بر اساس طول رشته یا بازه عدد صحیح به‌صورت محلی بررسی کنید. هیچ درخواستی ارسال نمی‌شود.',
+  'Contract and cases JSON': 'قرارداد و نمونه‌ها (JSON)',
+  'Run local cases': 'اجرای تست‌های محلی',
+  'Invalid contract or cases.': 'قرارداد یا نمونه‌ها نامعتبرند.',
+  'Input accepted by local contract': 'ورودی مطابق قرارداد محلی پذیرفته شد',
+  'Input rejected by local contract': 'ورودی مطابق قرارداد محلی رد شد',
+  'Expected result': 'نتیجه مورد انتظار',
+  'Unexpected result': 'نتیجه غیرمنتظره',
+  'Private collector bearer (optional)': 'توکن جمع‌آورنده خصوصی (اختیاری)',
+  'Select your own registered HTTPS collector’s sanitized JSON export endpoint. One GET retrieves metadata with optional private collector bearer authentication; label matching runs locally. No automated probes.': 'نشانی HTTPS ثبت‌شده جمع‌آورنده اختصاصی خود را انتخاب کنید. متادیتای پاک‌سازی‌شده با یک درخواست و احراز هویت اختیاری بازیابی می‌شود. تطبیق شناسه محلی است؛ بدون آزمایش خودکار.',
   'Expected status (optional)': 'وضعیت مورد انتظار (اختیاری)',
   'No expectation': 'بدون انتظار تعیین‌شده',
   'Matches expectation': 'مطابق انتظار',

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.71.0+73
+- Add bounded all/any metadata rule interpreter and scoped offline HAR integration, local synthetic scalar contract matrix, authenticated private loopback lab collector companion and ephemeral optional bearer review; regression fixtures and Persian labels.
+
 ## 0.70.0+72
 - Add optional expected HTTP status per fixed representation test, validation and mismatch comparison fixtures; simplify external severity matching.
 

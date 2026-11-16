@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.70.0+72; pubspec.yaml is the version source of truth.
+Current version is 0.71.0+73; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.70.0+72`.
-- Git tag `v0.70.0` when released.
-- `OdinSecurity-v0.70.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.71.0+73`.
+- Git tag `v0.71.0` when released.
+- `OdinSecurity-v0.71.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -205,7 +205,7 @@ Import up to 100 entries / 1 MiB from an authorized sanitized HAR. Only scoped H
 
 ## User-managed collector review
 
-Register your own authorized collector's dedicated sanitized JSON export URL in the project. Generate a local label and arrange its use manually in your test lab. Fetch once after consent; the label is not transmitted by Odin, redirects are disabled, and only complete application/json responses with up to 200 event rows are accepted. The JSON rows use the existing lab interaction schema. No credentials, remote server provisioning, callback generation, automatic polling or source attribution. Use an isolated collector that exports no secrets.
+Register your own authorized collector's dedicated sanitized JSON export URL in the project. Generate a local label and arrange its use manually in your test lab. Fetch once after consent; the label is not transmitted by Odin, redirects are disabled, and only complete application/json responses with up to 200 event rows are accepted. The JSON rows use the existing lab interaction schema. Optional ephemeral bearer authentication is available for a private companion. No remote server provisioning, automatic callback generation, polling or source attribution. Use an isolated collector that exports no secrets.
 
 ## External assessment findings
 
@@ -214,3 +214,11 @@ Import a normalized array of `{url,source,code,severity}` records from an author
 Compatible declarative header packs can additionally be supplied to offline HAR review; all rules are constrained to its public header allowlist and run only on successful captured responses. No arbitrary code execution or network access.
 
 Each fixed Accept matrix case can now specify an expected status. Actual/expected comparisons remain session-local and diagnostic only; input is validated before any sends and assertions cannot alter the scope or request budget.
+
+## Metadata rule programs and local contract tests
+
+The offline HAR screen accepts a versioned JSON metadata program: up to 20 rules, each with 1–8 conditions, combined using all or any. Supported conditions are statusRange, headerPresent, headerAbsent and headerEquals using the documented allowlist. No arbitrary executable plugins, raw bodies, secrets or network I/O.
+
+Offline utilities → Local contract test matrix runs up to 100 synthetic scalar cases against a declared string length or integer range. Expected and actual acceptance are compared without sending requests. This is not a test of a real server's validation.
+
+For private fixture collection and companion tests, see [private lab collector](private-lab-collector.md).

@@ -3,6 +3,7 @@ import 'localized.dart';
 import 'data_analysis_screen.dart';
 import 'advisory_review_screen.dart';
 import 'test_fixtures_screen.dart';
+import 'contract_matrix_screen.dart';
 import 'local_lab_receiver_screen.dart';
 import 'graphql_inventory_screen.dart';
 import 'core/openapi_inventory.dart';
@@ -96,6 +97,7 @@ class _OfflineToolsScreenState extends State<OfflineToolsScreen> {
     appBar: AppBar(title: const LText('Offline utilities')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
       OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LocalLabReceiverScreen())), icon: const Icon(Icons.sensors), label: const LText('Local laboratory receiver')),
+      OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ContractMatrixScreen())), icon: const Icon(Icons.fact_check_outlined), label: const LText('Local contract test matrix')),
       OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TestFixturesScreen())), icon: const Icon(Icons.science_outlined), label: const LText('Offline test fixtures')),
       OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdvisoryReviewScreen())), icon: const Icon(Icons.security), label: const LText('Offline CVE review')),
       OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const GraphQlInventoryScreen())), icon: const Icon(Icons.account_tree_outlined), label: const LText('GraphQL inventory')),

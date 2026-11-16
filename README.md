@@ -36,7 +36,7 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.70.0+72**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.71.0+73**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
 
 Offline CVE review accepts a user-supplied, exact-version advisory catalog; it does not retrieve advisories or confirm exploitability.
 
@@ -44,7 +44,7 @@ Share declarative custom header-check packs as versioned JSON, import/merge into
 
 Foreground queue supports one-shot delayed, anonymous HTTPS single-page assessments for up to three explicitly registered targets and up to two distinct origins in parallel. No background or recurring scheduling.
 
-Offline test fixtures: bounded literal text variants and exact correlation of sanitized interaction events from an externally managed test collector. No automated Intruder requests or live Collaborator service.
+Offline test fixtures: bounded literal text variants and exact correlation of sanitized interaction events from an externally managed test collector. No automated Intruder requests or public Collaborator service.
 
 Fixed-width hexadecimal test samples additionally support bit-position bias, frequency chi-square and within/adjacent-sample bit changes; offline descriptive analysis only.
 
@@ -62,14 +62,18 @@ Android background scheduling: one separately authorized anonymous HEAD check fo
 
 Configuration review suite sequences trusted TLS, one anonymous GET and an optional single fixed-origin CORS preflight on a registered HTTPS route. Separate explicit approval, delay/cancel, stop on failed control. Not an exploitation scanner.
 
-Local laboratory receiver: explicitly started, loopback-only HTTP callback label, exact route and GET/HEAD, transient method/time metadata, two-minute/ten-event expiry. No remotely reachable OAST.
+Local laboratory receiver: explicitly started, loopback-only HTTP callback label, exact route and GET/HEAD, transient method/time metadata, two-minute/ten-event expiry. No remotely reachable OAST from the Android listener.
 
 Representation test matrix compares up to four fixed ordinary Accept values on one explicitly approved registered HTTPS test route, retaining only status/size/timing. No arbitrary payload generator or automated attack engine.
 
 Offline HTTPS response review analyzes scoped sanitized HAR exports with an allowlist of response headers and optional bounded text-body examination. No live HTTPS interception, raw capture retention, or replay.
 
-Remote lab metadata review supports one explicit anonymous HTTPS GET from an operator-managed, registered collector JSON export route, with local label correlation. No public callback service or automated vulnerability probes.
+Remote lab metadata review supports one explicit HTTPS GET with optional ephemeral bearer authentication from an operator-managed, registered collector JSON export route, with local label correlation. No public callback service or automated vulnerability probes.
 
 External assessment findings import a normalized, sanitized scoped JSON list (source/code/reported severity/URL). Compatible declarative rule packs also execute against imported HAR response metadata. No arbitrary executable plugins, scanner remote execution, or independent verification of external results.
 
 Representation matrix supports optional status expectations per fixed test case, reporting differences without retaining response payloads.
+
+Bounded metadata rule programs combine HTTP status ranges and allowlisted header predicates (all/any) on authorized offline HAR exports. They emit rule identifiers only and cannot execute general code. The local contract matrix executes up to 100 synthetic scalar range/type/length cases and compares expected acceptance without network traffic.
+
+The [private lab collector companion](docs/private-lab-collector.md) provides authenticated, ephemeral metadata ingestion and export for explicit fixture clients. Loopback-only by default; private HTTPS access must be configured by the operator. No public callback hosting or arbitrary payload generation.

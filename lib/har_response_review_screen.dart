@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/har_response_review.dart';
 import 'core/custom_rules.dart';
+import 'core/metadata_rule_program.dart';
 import 'core/project.dart';
 import 'core/scan_policy.dart';
 import 'localized.dart';
@@ -13,18 +14,19 @@ class HarResponseReviewScreen extends StatefulWidget {
   State<HarResponseReviewScreen> createState() => _HarResponseReviewScreenState();
 }
 class _HarResponseReviewScreenState extends State<HarResponseReviewScreen> {
-  final source = TextEditingController(), pack = TextEditingController();
+  final source = TextEditingController(), pack = TextEditingController(), program = TextEditingController();
   bool approved = false, includeBody = false, failed = false;
   List<ImportedResponseReview>? results;
   @override
-  void dispose() { source.dispose(); pack.dispose(); super.dispose(); }
+  void dispose() { source.dispose(); pack.dispose(); program.dispose(); super.dispose(); }
   void review() {
     try {
       final rules = pack.text.trim().isEmpty ? <HeaderRule>[] : CustomHeaderRules.parse(HeaderRulePack.decode(pack.text));
       if (rules.any((r) => !HarResponseReview.allowedHeaders.contains(r.header))) throw const FormatException('Unsupported capture rule.');
+      final parsedProgram = program.text.trim().isEmpty ? null : MetadataRuleProgram.parse(program.text);
       final result = HarResponseReview.parse(widget.project, widget.policy, source.text,
-        authorized: approved, includeBody: includeBody, rules: rules);
-      source.clear(); pack.clear();
+        authorized: approved, includeBody: includeBody, rules: rules, program: parsedProgram);
+      source.clear(); pack.clear(); program.clear();
       setState(() { results = result; approved = false; failed = false; });
     } catch (_) { setState(() { results = null; failed = true; approved = false; }); }
   }
@@ -39,6 +41,11 @@ class _HarResponseReviewScreenState extends State<HarResponseReviewScreen> {
       TextField(controller: pack, maxLines: 4, autocorrect: false, enableSuggestions: false,
         onChanged: (_) => setState(() { approved = false; results = null; failed = false; }),
         decoration: const InputDecoration(label: LText('Optional compatible rule pack JSON'))),
+      TextField(controller: program, maxLines: 5, autocorrect: false, enableSuggestions: false,
+        onChanged: (_) => setState(() { approved = false; results = null; failed = false; }),
+        decoration: const InputDecoration(label: LText('Optional metadata program JSON'))),
+      const SelectableText('{"schema":"odin.security.metadata.v1","rules":[{"id":"missing-hsts","match":"all","conditions":[{"op":"statusRange","min":200,"max":299},{"op":"headerAbsent","header":"strict-transport-security"}]}]}',
+        textDirection: TextDirection.ltr),
       CheckboxListTile(value: includeBody, title: const LText('Also analyze sanitized text response bodies offline'),
         onChanged: (v) => setState(() { includeBody = v ?? false; approved = false; results = null; })),
       CheckboxListTile(value: approved, title: const LText('I confirm this is an authorized sanitized capture.'),
