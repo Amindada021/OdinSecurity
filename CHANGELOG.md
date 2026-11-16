@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0+13
+- Registered public-client OAuth2/OIDC authorization-code + PKCE through native AppAuth.
+- Encrypted refresh token and expiry metadata; explicit refresh and expiry-aware refresh before scan/crawl.
+- Explicit HTTPS provider endpoint configuration and resource-origin binding.
+- Android redirect scheme preparation, OAuth model fixtures; Android/provider integration not yet verified.
+
 ## 0.12.0+12
 - Explicit two-account access-control comparison of one user-selected read-only endpoint.
 - Independently validated identities, exact-origin restrictions, scan exclusions, and status-only outcome.

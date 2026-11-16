@@ -33,6 +33,10 @@ void main() {
   if (!RegExp(r'\bminSdk\s*=\s*24\b').hasMatch(build)) {
     throw StateError('Expected Android minSdk 24. Review generated Gradle project.');
   }
+  if (!build.contains('appAuthRedirectScheme')) {
+    if (!build.contains('defaultConfig {')) throw StateError('Missing Android defaultConfig.');
+    build = build.replaceFirst('defaultConfig {', 'defaultConfig {\n        manifestPlaceholders.putAll(mapOf("appAuthRedirectScheme" to "com.odin.odin_security"))');
+  }
   manifest.writeAsStringSync(text);
   gradle.writeAsStringSync(build);
   stdout.writeln('Android branding, INTERNET permission, secure-storage backup policy and minSdk 24 prepared.');

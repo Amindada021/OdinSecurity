@@ -2,19 +2,22 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'project.dart';
+import 'oauth_grant.dart';
 
 enum AuthMode { none, basic, bearer, cookie, apiKey, jsonLogin, formLogin }
 
 /// Bound to exactly one HTTPS origin. Profile values are secret vault data.
 class AuthProfile {
   final AuthMode mode;
+  final OAuthGrant? oauth;
   final Uri target;
   final String name, username, secret, headerName, loginUrl, usernameField, passwordField, tokenPath, validationUrl, validationMarker, cookiePath;
   AuthProfile({
-    required this.mode, required this.target, this.name = 'Default', this.validationUrl = '', this.validationMarker = '', this.cookiePath = '/', this.username = '', this.secret = '',
+    required this.mode, required this.target, this.oauth, this.name = 'Default', this.validationUrl = '', this.validationMarker = '', this.cookiePath = '/', this.username = '', this.secret = '',
     this.headerName = 'X-API-Key', this.loginUrl = '', this.usernameField = 'username',
     this.passwordField = 'password', this.tokenPath = '',
   }) {
+    if (oauth != null && mode != AuthMode.bearer) throw const FormatException('OAuth requires a bearer profile.');
     if (name.trim().isEmpty || name.length > 80) throw const FormatException('Enter a profile name (1–80 characters).');
     if (validationUrl.isNotEmpty || validationMarker.isNotEmpty) {
       if (mode == AuthMode.none || validationUrl.isEmpty || validationMarker.isEmpty || validationMarker.length > 512) {
@@ -56,13 +59,14 @@ class AuthProfile {
   bool get isLogin => mode == AuthMode.jsonLogin || mode == AuthMode.formLogin;
 
   Map<String, dynamic> toJson() => {
-    'mode': mode.name, 'target': target.toString(), 'name': name, 'validationUrl': validationUrl, 'validationMarker': validationMarker, 'cookiePath': cookiePath, 'username': username, 'secret': secret,
+    'mode': mode.name, 'oauth': oauth?.toJson(), 'target': target.toString(), 'name': name, 'validationUrl': validationUrl, 'validationMarker': validationMarker, 'cookiePath': cookiePath, 'username': username, 'secret': secret,
     'headerName': headerName, 'loginUrl': loginUrl, 'usernameField': usernameField,
     'passwordField': passwordField, 'tokenPath': tokenPath,
   };
 
   factory AuthProfile.fromJson(Map<String, dynamic> data) => AuthProfile(
     mode: AuthMode.values.byName(data['mode'] as String),
+    oauth: data['oauth'] == null ? null : OAuthGrant.fromJson(Map<String, dynamic>.from(data['oauth'] as Map)),
     name: data['name'] as String? ?? 'Default', validationUrl: data['validationUrl'] as String? ?? '', validationMarker: data['validationMarker'] as String? ?? '', cookiePath: data['cookiePath'] as String? ?? '/',
     target: SecurityProject.parseTarget(data['target'] as String),
     username: data['username'] as String? ?? '', secret: data['secret'] as String? ?? '',
@@ -108,6 +112,7 @@ class AuthSession {
 
 class Authenticator {
   static AuthSession manual(AuthProfile profile) {
+    if (profile.oauth?.expired(DateTime.now()) == true) throw StateError('OAuth access token expired; refresh or sign in again.');
     final headers = <String, String>{};
     switch (profile.mode) {
       case AuthMode.none: break;

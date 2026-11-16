@@ -17,6 +17,8 @@ import 'core/crawler.dart';
 import 'core/scan_policy.dart';
 import 'scan_policy_dialog.dart';
 import 'access_check_screen.dart';
+import 'oauth_dialog.dart';
+import 'core/oauth_flow.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -261,6 +263,50 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
+  Future<void> addOAuth() async {
+    final value = await showDialog<AuthProfile>(context: context, builder: (_) => OAuthDialog(project: widget.project, target: target));
+    if (value == null || !mounted) return;
+    setState(() => loadingAuth = true);
+    try {
+      final updated = [...profiles, value];
+      await vault.saveProfiles(widget.project.id, updated);
+      if (mounted) setState(() { profiles = updated; selectedProfile = value.name; authorized = false; });
+    } catch (_) {
+      if (mounted) setState(() => error = 'Could not save OAuth profile. Use a unique identity name.');
+    } finally {
+      if (mounted) setState(() => loadingAuth = false);
+    }
+  }
+
+  Future<AuthProfile?> prepareAuth({bool forceRefresh = false}) async {
+    final current = auth;
+    final grant = current?.oauth;
+    if (current == null || grant == null) return current;
+    if (!forceRefresh && !grant.needsRefresh(DateTime.now())) return current;
+    if (grant.refreshToken.isEmpty) {
+      if (grant.expired(DateTime.now()) || forceRefresh) throw StateError('OAuth sign-in is required again.');
+      return current;
+    }
+    final refreshed = await OAuthFlow().refresh(current);
+    final updated = profiles.map((p) => identical(p, current) ? refreshed : p).toList();
+    await vault.saveProfiles(widget.project.id, updated);
+    if (mounted) setState(() => profiles = updated);
+    return refreshed;
+  }
+
+  Future<void> refreshOAuth() async {
+    if (busy || auth?.oauth == null) return;
+    setState(() { loadingAuth = true; error = null; });
+    try {
+      await prepareAuth(forceRefresh: true);
+      if (mounted) setState(() => authorized = false);
+    } catch (_) {
+      if (mounted) setState(() => error = 'OAuth refresh failed. Sign in again with a valid public-client registration.');
+    } finally {
+      if (mounted) setState(() => loadingAuth = false);
+    }
+  }
+
   Future<void> removeAuth() async {
     final current = auth;
     if (current == null) return;
@@ -299,7 +345,9 @@ class _ScanScreenState extends State<ScanScreen> {
     final flag = CancellationFlag();
     setState(() { busy = true; result = null; crawlResult = null; error = null; visited = 0; cancellation = flag; });
     try {
-      final data = await SiteCrawler().run(widget.project, target, authorized: authorized, cancellation: flag, policy: policy, auth: auth != null && SecurityProject.sameOrigin(auth!.target, target) ? auth : null, onProgress: (n) { if (mounted) setState(() => visited = n); });
+      final selected = await prepareAuth();
+      if (flag.cancelled) return;
+      final data = await SiteCrawler().run(widget.project, target, authorized: authorized, cancellation: flag, policy: policy, auth: selected, onProgress: (n) { if (mounted) setState(() => visited = n); });
       if (mounted) {
         setState(() => crawlResult = data);
         await record(ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled));
@@ -316,7 +364,8 @@ class _ScanScreenState extends State<ScanScreen> {
     if (!authorized || busy || loadingPolicy || policyError != null || !policy.permits(target)) return;
     setState(() { busy = true; result = null; crawlResult = null; error = null; });
     try {
-      final data = await PassiveScanner().scan(widget.project, authorized: authorized, target: target, auth: auth != null && SecurityProject.sameOrigin(auth!.target, target) ? auth : null);
+      final selected = await prepareAuth();
+      final data = await PassiveScanner().scan(widget.project, authorized: authorized, target: target, auth: selected);
       if (mounted) {
         setState(() => result = data);
         await record(ScanRecord.fromPages([data]));
@@ -352,7 +401,9 @@ class _ScanScreenState extends State<ScanScreen> {
         ),
         Wrap(spacing: 8, children: [
           OutlinedButton.icon(onPressed: busy || loadingAuth ? null : () => editAuth(add: true), icon: const Icon(Icons.person_add), label: const Text('Add identity')),
-          if (auth != null) OutlinedButton(onPressed: busy || loadingAuth ? null : () => editAuth(), child: const Text('Edit')),
+          OutlinedButton.icon(onPressed: busy || loadingAuth || target.scheme != 'https' ? null : addOAuth, icon: const Icon(Icons.login), label: const Text('Add OAuth identity')),
+          if (auth != null && auth!.oauth == null) OutlinedButton(onPressed: busy || loadingAuth ? null : () => editAuth(), child: const Text('Edit')),
+          if (auth?.oauth != null) OutlinedButton(onPressed: busy || loadingAuth || auth!.oauth!.refreshToken.isEmpty ? null : refreshOAuth, child: const Text('Refresh OAuth token')),
           if (auth != null) OutlinedButton(onPressed: busy || loadingAuth ? null : removeAuth, child: const Text('Delete')),
         ]),
         if (auth != null && auth!.validationUrl.isEmpty) const Text('Session not independently verified. Configure a protected validation URL for reliable authenticated scanning.'),
