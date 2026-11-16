@@ -4,6 +4,7 @@ import 'brand.dart';
 import 'tools_screen.dart';
 import 'manual_request_screen.dart';
 import 'core/history.dart';
+import 'report_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/project_storage.dart';
 
@@ -427,7 +428,8 @@ class _ScanScreenState extends State<ScanScreen> {
         const Text('Scan history'),
         if (loadingHistory) const LinearProgressIndicator(),
         if (historyError != null) Text(historyError!),
-        for (final item in history) ListTile(
+        for (final (index, item) in history.indexed) ListTile(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReportScreen(record: item, previous: index + 1 < history.length ? history[index + 1] : null))),
           title: Text(item.finishedAt.toLocal().toString().split('.').first),
           subtitle: Text('${item.pages.length} pages · ${item.observationCount} observations'),
           trailing: IconButton(tooltip: 'Copy sanitized JSON report', icon: const Icon(Icons.copy), onPressed: () async {

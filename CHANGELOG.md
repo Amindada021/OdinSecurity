@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.0+14
+- Scan report viewer with severity filters, per-page evidence and remediation.
+- Local JSON, escaped offline HTML and English technical PDF exports via system file picker.
+- Compare observations only on uniquely identified successful and complete shared pages, without claiming a fix.
+- Offline report escaping, comparison and PDF generation fixtures; device export verification pending.
+
 ## 0.13.0+13
 - Registered public-client OAuth2/OIDC authorization-code + PKCE through native AppAuth.
 - Encrypted refresh token and expiry metadata; explicit refresh and expiry-aware refresh before scan/crawl.
