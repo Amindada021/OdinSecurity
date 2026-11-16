@@ -18,7 +18,7 @@ The technology detector reports multiple independent layers with evidence and co
 | 04 | Same-scope discovery, HTML/SPA exploration, OpenAPI import and authenticated endpoint inventory | Partial: bounded static HTML and offline JSON inventory; SPA browser pending |
 | 05 | Passive evidence-based security checks, technology-specific adapters and confidence | Partial: expanded framework-specific passive diagnostics and fingerprints; active adapters pending |
 | 06 | Explicitly authorized bounded active checks with non-destructive defaults, request caps, exclusions, cancellation and test fixtures | Partial: configurable read-only scan policy; active checks pending |
-| 07 | Proxy/history, request editor and repeater, controlled differential testing with test accounts | Partial: GET/HEAD inspector and local utilities; interception and differential testing pending |
+| 07 | Proxy/history, request editor and repeater, controlled differential testing with test accounts | Partial: GET/HEAD inspector and local utilities; explicit two-account status comparison; interception and full differential analysis pending |
 | 08 | Reports, severity/evidence/remediation, trends, export, Farsi/English, and Android APK validation | Partial: JSON report/history, vector branding, build preparation; localization and Android validation pending |
 
 ## Technology coverage goals
@@ -36,4 +36,4 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.11.0+11**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.12.0+12**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.

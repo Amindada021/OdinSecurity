@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.0+12
+- Explicit two-account access-control comparison of one user-selected read-only endpoint.
+- Independently validated identities, exact-origin restrictions, scan exclusions, and status-only outcome.
+- Failed allowed control stops before the second test; unexpected success is a review signal, not an automatic vulnerability claim.
+- Offline comparison and scope fixtures.
+
 ## 0.11.0+11
 - Persistent per-project scan limits: bounded page count, request delay, and excluded path prefixes.
 - Authorization and selected scan policy are checked before the start request.
