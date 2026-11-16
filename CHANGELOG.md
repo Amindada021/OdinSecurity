@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.0+15
+- Search projects by name or URL, edit project details, and manage multiple exact target URLs.
+- Preserve project identity, history and stored identities on edits; scope remains explicit.
+- About screen with current version, target editor scope fixtures.
+
 ## 0.14.0+14
 - Scan report viewer with severity filters, per-page evidence and remediation.
 - Local JSON, escaped offline HTML and English technical PDF exports via system file picker.

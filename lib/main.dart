@@ -50,6 +50,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
   bool loading = true;
   bool saving = false;
   String? loadError;
+  String search = '';
 
   @override
   void initState() {
@@ -86,30 +87,64 @@ class _ProjectScreenState extends State<ProjectScreen> {
     }
   }
 
+  Future<void> editProject(SecurityProject current) async {
+    if (loading || saving) return;
+    final updated = await showDialog<SecurityProject>(
+      context: context, builder: (_) => CreateProjectDialog(existing: current),
+    );
+    if (updated == null || !mounted) return;
+    setState(() => saving = true);
+    try {
+      final next = projects.map((p) => p.id == current.id ? updated : p).toList();
+      await widget.repository.save(next);
+      if (mounted) setState(() { projects.clear(); projects.addAll(next); });
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save project changes.')));
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  List<SecurityProject> get filteredProjects {
+    final term = search.trim().toLowerCase();
+    if (term.isEmpty) return projects;
+    return projects.where((p) => p.name.toLowerCase().contains(term) ||
+      p.targets.any((u) => u.toString().toLowerCase().contains(term))).toList();
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Row(children: [OdinLogo(size: 34), SizedBox(width: 10), Text('Odin Security')]), actions: [IconButton(tooltip: 'Offline utilities', icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        appBar: AppBar(title: const Row(children: [OdinLogo(size: 34), SizedBox(width: 10), Text('Odin Security')]), actions: [IconButton(tooltip: 'About Odin Security', icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.15.0+15', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: 'Offline utilities', icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const Text('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: Text(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('Create a project to assess an authorized website.')))
-            : ListView.builder(
-                itemCount: projects.length,
-                itemBuilder: (context, index) {
-                  final p = projects[index];
-                  return ListTile(
-                    leading: const Icon(Icons.shield_outlined),
-                    title: Text(p.name),
-                    subtitle: Text(p.startUrl.toString()),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScanScreen(project: p))),
-                  );
-                },
-              ),
+            : Column(children: [
+                Padding(padding: const EdgeInsets.all(12), child: TextField(
+                  onChanged: (value) => setState(() => search = value),
+                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search), labelText: 'Search projects or origins'),
+                )),
+                Expanded(child: filteredProjects.isEmpty
+                  ? const Center(child: Text('No matching projects.'))
+                  : ListView.builder(
+                    itemCount: filteredProjects.length,
+                    itemBuilder: (context, index) {
+                      final p = filteredProjects[index];
+                      return ListTile(
+                        leading: const Icon(Icons.shield_outlined),
+                        title: Text(p.name),
+                        subtitle: Text('${p.startUrl}\n${p.targets.length} targets'),
+                        trailing: IconButton(tooltip: 'Edit project', icon: const Icon(Icons.edit_outlined), onPressed: saving ? null : () => editProject(p)),
+                        onTap: saving ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScanScreen(project: p))),
+                      );
+                    },
+                  )),
+              ]),
       );
 }
 
 class CreateProjectDialog extends StatefulWidget {
-  const CreateProjectDialog({super.key});
+  final SecurityProject? existing;
+  const CreateProjectDialog({super.key, this.existing});
   @override
   State<CreateProjectDialog> createState() => _CreateProjectDialogState();
 }
@@ -120,6 +155,16 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
   final api = TextEditingController();
   String? error;
   @override
+  void initState() {
+    super.initState();
+    final existing = widget.existing;
+    if (existing != null) {
+      name.text = existing.name;
+      url.text = existing.startUrl.toString();
+      api.text = existing.additionalUrls.join('\n');
+    }
+  }
+  @override
   void dispose() {
     name.dispose();
     url.dispose();
@@ -129,7 +174,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
 
   void submit() {
     try {
-      Navigator.of(context).pop(SecurityProject(name: name.text, url: url.text, additionalUrls: api.text.trim().isEmpty ? [] : [api.text]));
+      Navigator.of(context).pop(SecurityProject(id: widget.existing?.id, name: name.text, url: url.text, additionalUrls: SecurityProject.parseTargetLines(api.text)));
     } on FormatException catch (e) {
       setState(() => error = e.message);
     }
@@ -137,16 +182,17 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('New security project'),
+        title: Text(widget.existing == null ? 'New security project' : 'Edit security project'),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(controller: name, decoration: const InputDecoration(labelText: 'Project name')),
           TextField(controller: url, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Website URL', hintText: 'https://example.test')),
-          TextField(controller: api, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'API URL (optional)')),
+          TextField(controller: api, keyboardType: TextInputType.multiline, maxLines: 4, decoration: const InputDecoration(labelText: 'Additional website / API URLs', hintText: 'One URL per line')),
+          if (widget.existing != null) const Text('History and saved identities stay with this project. Only explicitly listed origins may be selected for new scans.'),
           if (error != null) Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
         ])),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: submit, child: const Text('Create')),
+          FilledButton(onPressed: submit, child: Text(widget.existing == null ? 'Create' : 'Save')),
         ],
       );
 }

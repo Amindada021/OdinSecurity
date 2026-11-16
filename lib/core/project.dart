@@ -23,7 +23,7 @@ class SecurityProject {
   static Uri parseTarget(String raw) {
     final uri = Uri.tryParse(raw.trim());
     if (uri == null || !['http', 'https'].contains(uri.scheme) ||
-        !uri.hasAuthority || uri.host.isEmpty || uri.userInfo.isNotEmpty ||
+        !uri.hasAuthority || uri.host.isEmpty || uri.host.contains('*') || uri.userInfo.isNotEmpty ||
         uri.hasFragment || uri.hasQuery) {
       throw const FormatException('Enter an HTTP(S) URL without credentials, query or fragment.');
     }
@@ -31,7 +31,17 @@ class SecurityProject {
     return uri;
   }
 
-  List<Uri> get targets => List.unmodifiable([startUrl, ...additionalUrls]);
+  /// Accept one exact target URL per line. No wildcard or implicit subdomains.
+  static List<String> parseTargetLines(String raw) {
+    final result = <String>{};
+    for (final line in raw.split(RegExp(r'\r?\n'))) {
+      if (line.trim().isNotEmpty) result.add(parseTarget(line).toString());
+      if (result.length > 30) throw const FormatException('Enter up to 30 additional targets.');
+    }
+    return result.toList();
+  }
+
+  List<Uri> get targets => List.unmodifiable({startUrl, ...additionalUrls});
 
   static bool sameOrigin(Uri a, Uri b) =>
       b.userInfo.isEmpty && a.scheme == b.scheme &&
