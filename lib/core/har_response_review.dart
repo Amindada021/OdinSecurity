@@ -7,6 +7,7 @@ import 'header_policy_checks.dart';
 import 'csp_review.dart';
 import 'html_security_checks.dart';
 import 'api_response_checks.dart';
+import 'custom_rules.dart';
 
 class ImportedResponseReview {
   final Uri route;
@@ -32,7 +33,7 @@ class HarResponseReview {
   };
 
   static List<ImportedResponseReview> parse(SecurityProject project, ScanPolicy policy, String input,
-      {required bool authorized, required bool includeBody}) {
+      {required bool authorized, required bool includeBody, List<HeaderRule> rules = const []}) {
     if (!authorized || input.length > maxInput) throw StateError('Explicit offline review approval or size limit.');
     final raw = jsonDecode(input);
     if (raw is! Map || raw['log'] is! Map || raw['log']['entries'] is! List) throw const FormatException('Invalid HAR.');
@@ -75,6 +76,7 @@ class HarResponseReview {
         if (html && status >= 200 && status < 300) ...CspReview.inspect(obs),
         if (reviewed && html && status >= 200 && status < 300) ...HtmlSecurityChecks.inspect(route, body),
         if (reviewed) ...ApiResponseChecks.inspect(obs, status: status, truncated: false),
+        if (status >= 200 && status < 300) ...CustomHeaderRules.inspect(rules.where((r) => allowedHeaders.contains(r.header)).toList(), obs),
       ];
       result.add(ImportedResponseReview(route, status, reviewed, List.unmodifiable(findings),
         TechnologyDetector().detect(obs)));

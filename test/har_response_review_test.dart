@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:odin_security/core/har_response_review.dart';
+import 'package:odin_security/core/custom_rules.dart';
 import 'package:odin_security/core/project.dart';
 import 'package:odin_security/core/scan_policy.dart';
 
@@ -19,6 +20,12 @@ void main() {
     expect(result.single.findings.map((r)=>r.id),contains('html.form.http'));
     expect(result.single.technologies.first.observedVersion,'1.2.3');
     expect(result.single.findings.every((r)=>!r.evidence.contains('fixture-secret')),isTrue);
+  });
+  test('compatible declarative rules run on imported response metadata', () {
+    final raw = jsonEncode({'log':{'entries':[entry('https://example.test/a')]}});
+    final rules=CustomHeaderRules.parse('strict-transport-security|present');
+    final found=HarResponseReview.parse(p,ScanPolicy(),raw,authorized:true,includeBody:false,rules:rules);
+    expect(found.single.findings.map((r)=>r.id),contains('custom.strict-transport-security.present'));
   });
   test('body inspection is opt-in and scope exclusions apply', () {
     final raw = jsonEncode({'log':{'entries':[entry('https://example.test/a')]}});

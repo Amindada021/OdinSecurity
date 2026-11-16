@@ -19,6 +19,13 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'External assessment findings': 'یافته‌های بررسی خارجی',
+  'Import normalized sanitized findings from an authorized external assessment. Only scoped routes, tool/rule identifiers and reported severity are retained. These findings are not independently confirmed.': 'یافته‌های پاک‌سازی‌شده بررسی خارجی مجاز را وارد کنید؛ فقط مسیر، شناسه ابزار و قانون و شدت گزارش‌شده نگه‌داری می‌شود. یافته‌ها مستقل تأیید نشده‌اند.',
+  'Normalized findings JSON': 'یافته‌های استانداردشده (JSON)',
+  'Import findings': 'ورود یافته‌ها',
+  'Invalid finding import.': 'ورودی یافته‌ها نامعتبر است.',
+  'Reported severity': 'شدت گزارش‌شده',
+  'Optional compatible rule pack JSON': 'بسته قوانین سازگار (اختیاری)',
   'Remote lab metadata review': 'بررسی رویدادهای آزمایشگاه راه دور',
   'Select your own registered HTTPS collector’s sanitized JSON export endpoint. One anonymous GET retrieves metadata; label matching runs locally. No callback hosting or automated probes.': 'نشانی خروجی JSON پاک‌سازی‌شده جمع‌آورنده HTTPS خود را انتخاب کنید. یک GET بدون حساب انجام می‌شود و تطبیق شناسه محلی است.',
   'Collector export endpoint': 'مقصد خروجی جمع‌آورنده',

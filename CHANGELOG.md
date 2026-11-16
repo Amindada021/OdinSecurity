@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.69.0+71
+- Add normalized external assessment findings import with scope, deduplication and reported-severity filter; allow compatible declarative pack evaluation on imported HAR responses; fixtures.
+
 ## 0.68.0+70
 - Add explicit one-shot HTTPS retrieval of sanitized events from registered operator-managed collector and local correlation; scope and response validation fixtures.
 
