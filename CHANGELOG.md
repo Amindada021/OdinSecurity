@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0+7
+- Explicit scoped GET/HEAD request inspector with bounded response display and selected header redaction.
+- Android scaffold preparation tool: manifest branding, Internet permission, backup policy and minSdk.
+- Build and test handoff; widget, request scope and crawler fixtures. APK generation deferred.
+
 ## 0.6.0+6
 - Offline Swagger/OpenAPI JSON operation inventory.
 - Local Base64, URL, JSON and unverified JWT inspection.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'brand.dart';
 import 'tools_screen.dart';
+import 'manual_request_screen.dart';
 import 'core/history.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/project_storage.dart';
@@ -271,6 +272,7 @@ class _ScanScreenState extends State<ScanScreen> {
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text(widget.project.startUrl.toString(), style: Theme.of(context).textTheme.titleMedium),
         const Text('Technology fingerprint · Scoped request · No redirects'),
+        OutlinedButton.icon(onPressed: busy || loadingAuth ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ManualRequestScreen(project: widget.project, target: target, auth: auth))), icon: const Icon(Icons.http), label: const Text('Request inspector')),
         OutlinedButton.icon(onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InventoryScreen())), icon: const Icon(Icons.description_outlined), label: const Text('Import Swagger / OpenAPI')),
         DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(labelText: 'Target'), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; authorized = false; result = null; crawlResult = null; })),
         OutlinedButton.icon(onPressed: busy || loadingAuth ? null : editAuth, icon: const Icon(Icons.lock_outline), label: Text(auth == null ? 'Configure authentication' : 'Authentication: ${auth!.mode.name}')),

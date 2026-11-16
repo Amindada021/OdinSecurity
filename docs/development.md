@@ -1,17 +1,32 @@
-# Development checkpoint
+# Build and verification
 
-Phase 1 source provides a Flutter project screen, explicit authorization gate, single-request passive technology fingerprinting, independent technology layers and unit test fixtures. Project state is currently in memory, not persistent. Authentication, crawling, security findings and APK packaging are not implemented yet.
+Current version is 0.7.0+7; pubspec.yaml is the version source of truth.
+The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
-Android platform scaffolding is intentionally pending Flutter SDK validation. With Flutter installed, run in this repository:
+## First local build (Windows PowerShell)
 
-```sh
-flutter create --platforms=android --project-name odin_security .
+```powershell
+flutter create --platforms=android --project-name odin_security --org com.odin --no-pub .
+dart run tool/prepare_android.dart
 flutter pub get
 flutter analyze
 flutter test
 flutter build apk --debug
 ```
 
-Review the generated Android manifest and ensure the main manifest declares android.permission.INTERNET before a network-enabled APK is delivered. Verify the generated app does not weaken TLS certificate validation. No real-site scans are part of the test suite.
+The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
-The source was authored without an available Flutter/Android executor, so the commands above have not been executed.
+For distribution after testing, follow the Odin family convention:
+- App semantic version + increasing Android build number, e.g. `0.7.0+7`.
+- Git tag `v0.7.0` when released.
+- `OdinSecurity-v0.7.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- Do not commit signing secrets or keystores.
+
+## Test status
+
+Fixtures have been authored but not executed; Flutter/Android executor unavailable during source preparation.
+No live sites have been tested. Validate first with a controlled test lab.
+
+## Remaining before parity
+
+Authenticated crawling is conservative: static HTML anchors, not a JavaScript browser crawler. JSON/form login supports configurable fields and returned bearer token or same-origin cookies; CSRF-form workflows, OAuth/OIDC, MFA, multiple identities, refresh and full session validity checks are pending. No automated exploitation, live proxy, Intruder, or comprehensive DAST engine is implemented. Manual request inspection supports GET/HEAD only. Active security testing and interception require dedicated Android and controlled lab validation. 
