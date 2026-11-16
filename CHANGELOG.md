@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0+8
+- Named, isolated authentication identities per project, with legacy vault compatibility.
+- Optional protected endpoint and expected content marker; failed verification stops authenticated assessment.
+- Profile selection/edit/removal and additional offline tests.
+- Pre-cancelled crawls stop before authentication.
+
 ## 0.7.0+7
 - Explicit scoped GET/HEAD request inspector with bounded response display and selected header redaction.
 - Android scaffold preparation tool: manifest branding, Internet permission, backup policy and minSdk.

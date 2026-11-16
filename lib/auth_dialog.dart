@@ -13,7 +13,7 @@ class AuthDialog extends StatefulWidget {
 class _AuthDialogState extends State<AuthDialog> {
   late AuthMode mode;
   late Uri target;
-  late final TextEditingController username, secret, header, login, usernameField, passwordField, tokenPath;
+  late final TextEditingController name, username, secret, header, login, usernameField, passwordField, tokenPath, validationUrl, validationMarker;
   String? error;
 
   @override
@@ -22,6 +22,9 @@ class _AuthDialogState extends State<AuthDialog> {
     final a = widget.existing;
     mode = a?.mode ?? AuthMode.bearer;
     target = a != null && widget.project.targets.contains(a.target) ? a.target : widget.project.startUrl;
+    name = TextEditingController(text: a?.name ?? '');
+    validationUrl = TextEditingController(text: a?.validationUrl);
+    validationMarker = TextEditingController(text: a?.validationMarker);
     username = TextEditingController(text: a?.username);
     secret = TextEditingController(text: a?.secret);
     header = TextEditingController(text: a?.headerName ?? 'X-API-Key');
@@ -33,13 +36,13 @@ class _AuthDialogState extends State<AuthDialog> {
 
   @override
   void dispose() {
-    for (final c in [username, secret, header, login, usernameField, passwordField, tokenPath]) { c.dispose(); }
+    for (final c in [name, username, secret, header, login, usernameField, passwordField, tokenPath, validationUrl, validationMarker]) { c.dispose(); }
     super.dispose();
   }
 
   void submit() {
     try {
-      Navigator.pop(context, AuthProfile(mode: mode, target: target, username: username.text,
+      Navigator.pop(context, AuthProfile(mode: mode, target: target, name: name.text.trim(), validationUrl: validationUrl.text.trim(), validationMarker: validationMarker.text, username: username.text,
         secret: secret.text, headerName: header.text, loginUrl: login.text,
         usernameField: usernameField.text, passwordField: passwordField.text, tokenPath: tokenPath.text.trim()));
     } on FormatException catch (e) {
@@ -57,10 +60,11 @@ class _AuthDialogState extends State<AuthDialog> {
     return AlertDialog(
       title: const Text('Authentication'),
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+        field(name, 'Profile name (e.g. accountant)'),
         DropdownButtonFormField<AuthMode>(
           initialValue: mode,
           decoration: const InputDecoration(labelText: 'Method'),
-          items: AuthMode.values.map((m) => DropdownMenuItem(value: m, child: Text(m.name))).toList(),
+          items: AuthMode.values.where((m) => m != AuthMode.none).map((m) => DropdownMenuItem(value: m, child: Text(m.name))).toList(),
           onChanged: (v) => setState(() { mode = v!; error = null; }),
         ),
         DropdownButtonFormField<Uri>(
@@ -79,6 +83,9 @@ class _AuthDialogState extends State<AuthDialog> {
           field(passwordField, 'Password field'),
           field(tokenPath, 'JSON token path (blank = session cookie)'),
         ],
+        field(validationUrl, 'Protected HTTPS URL (optional)'),
+        field(validationMarker, 'Expected response marker (optional)', obscure: true),
+        const Text('If a protected URL is configured, the marker must appear in its 2xx response before scanning.'),
         const Padding(padding: EdgeInsets.only(top: 12), child: Text('Credentials are saved separately in encrypted storage. Only the selected HTTPS origin receives them.')),
         if (error != null) Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
       ])),

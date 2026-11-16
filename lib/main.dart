@@ -181,7 +181,14 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
-  AuthProfile? auth;
+  List<AuthProfile> profiles = [];
+  String selectedProfile = '';
+  AuthProfile? get auth {
+    for (final profile in profiles) {
+      if (profile.name == selectedProfile && SecurityProject.sameOrigin(profile.target, target)) return profile;
+    }
+    return null;
+  }
   late Uri target;
   bool loadingAuth = true;
 
@@ -195,8 +202,8 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future<void> loadAuth() async {
     try {
-      final value = await vault.load(widget.project.id);
-      if (mounted) setState(() => auth = value);
+      final values = await vault.loadProfiles(widget.project.id);
+      if (mounted) setState(() { profiles = values; selectedProfile = ''; });
     } catch (_) {
       if (mounted) setState(() => error = 'Could not load authentication profile.');
     } finally {
@@ -204,20 +211,43 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
-  Future<void> editAuth() async {
-    final value = await showDialog<AuthProfile>(context: context, builder: (_) => AuthDialog(project: widget.project, existing: auth));
+  Future<void> editAuth({bool add = false}) async {
+    final current = add ? null : auth;
+    final value = await showDialog<AuthProfile>(context: context, builder: (_) => AuthDialog(project: widget.project, existing: current));
     if (value == null || !mounted) return;
-    setState(() => loadingAuth = true);
+    setState(() { loadingAuth = true; error = null; });
     try {
-      if (value.mode == AuthMode.none) { await vault.clear(widget.project.id); }
-      else { await vault.save(widget.project.id, value); }
-      if (mounted) setState(() => auth = value.mode == AuthMode.none ? null : value);
+      final updated = [...profiles.where((p) => !identical(p, current)), value];
+      await vault.saveProfiles(widget.project.id, updated);
+      if (mounted) setState(() { profiles = updated; selectedProfile = SecurityProject.sameOrigin(value.target, target) ? value.name : ''; authorized = false; });
     } catch (_) {
-      if (mounted) setState(() => error = 'Could not update the secure vault.');
+      if (mounted) setState(() => error = 'Could not save profile. Check that its name is unique.');
     } finally {
       if (mounted) setState(() => loadingAuth = false);
     }
   }
+
+  Future<void> removeAuth() async {
+    final current = auth;
+    if (current == null) return;
+    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: const Text('Delete authentication profile?'),
+      content: Text(current.name),
+      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete'))],
+    ));
+    if (confirmed != true || !mounted) return;
+    setState(() => loadingAuth = true);
+    try {
+      final updated = profiles.where((p) => !identical(p, current)).toList();
+      await vault.saveProfiles(widget.project.id, updated);
+      if (mounted) setState(() { profiles = updated; selectedProfile = ''; authorized = false; });
+    } catch (_) {
+      if (mounted) setState(() => error = 'Could not delete profile.');
+    } finally {
+      if (mounted) setState(() => loadingAuth = false);
+    }
+  }
+
   bool busy = false;
   PassiveScanResult? result;
   CrawlResult? crawlResult;
@@ -274,9 +304,20 @@ class _ScanScreenState extends State<ScanScreen> {
         const Text('Technology fingerprint · Scoped request · No redirects'),
         OutlinedButton.icon(onPressed: busy || loadingAuth ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ManualRequestScreen(project: widget.project, target: target, auth: auth))), icon: const Icon(Icons.http), label: const Text('Request inspector')),
         OutlinedButton.icon(onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InventoryScreen())), icon: const Icon(Icons.description_outlined), label: const Text('Import Swagger / OpenAPI')),
-        DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(labelText: 'Target'), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; authorized = false; result = null; crawlResult = null; })),
-        OutlinedButton.icon(onPressed: busy || loadingAuth ? null : editAuth, icon: const Icon(Icons.lock_outline), label: Text(auth == null ? 'Configure authentication' : 'Authentication: ${auth!.mode.name}')),
-        if (auth != null && !SecurityProject.sameOrigin(auth!.target, target)) const Text('This target is a different origin. The saved credentials will not be sent.'),
+        DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(labelText: 'Target'), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; selectedProfile = ''; authorized = false; result = null; crawlResult = null; })),
+        DropdownButtonFormField<String>(
+          key: ValueKey('auth.${target.origin}.$selectedProfile'),
+          initialValue: selectedProfile,
+          decoration: const InputDecoration(labelText: 'Test identity'),
+          items: [const DropdownMenuItem(value: '', child: Text('No authentication')), ...profiles.where((p) => SecurityProject.sameOrigin(p.target, target)).map((p) => DropdownMenuItem(value: p.name, child: Text(p.name)))],
+          onChanged: busy || loadingAuth ? null : (value) => setState(() { selectedProfile = value ?? ''; authorized = false; result = null; crawlResult = null; }),
+        ),
+        Wrap(spacing: 8, children: [
+          OutlinedButton.icon(onPressed: busy || loadingAuth ? null : () => editAuth(add: true), icon: const Icon(Icons.person_add), label: const Text('Add identity')),
+          if (auth != null) OutlinedButton(onPressed: busy || loadingAuth ? null : () => editAuth(), child: const Text('Edit')),
+          if (auth != null) OutlinedButton(onPressed: busy || loadingAuth ? null : removeAuth, child: const Text('Delete')),
+        ]),
+        if (auth != null && auth!.validationUrl.isEmpty) const Text('Session not independently verified. Configure a protected validation URL for reliable authenticated scanning.'),
         CheckboxListTile(
           title: const Text('I own this target or have permission to assess it.'),
           value: authorized,

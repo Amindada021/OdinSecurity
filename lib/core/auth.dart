@@ -9,12 +9,22 @@ enum AuthMode { none, basic, bearer, cookie, apiKey, jsonLogin, formLogin }
 class AuthProfile {
   final AuthMode mode;
   final Uri target;
-  final String username, secret, headerName, loginUrl, usernameField, passwordField, tokenPath;
+  final String name, username, secret, headerName, loginUrl, usernameField, passwordField, tokenPath, validationUrl, validationMarker;
   AuthProfile({
-    required this.mode, required this.target, this.username = '', this.secret = '',
+    required this.mode, required this.target, this.name = 'Default', this.validationUrl = '', this.validationMarker = '', this.username = '', this.secret = '',
     this.headerName = 'X-API-Key', this.loginUrl = '', this.usernameField = 'username',
     this.passwordField = 'password', this.tokenPath = '',
   }) {
+    if (name.trim().isEmpty || name.length > 80) throw const FormatException('Enter a profile name (1–80 characters).');
+    if (validationUrl.isNotEmpty || validationMarker.isNotEmpty) {
+      if (mode == AuthMode.none || validationUrl.isEmpty || validationMarker.isEmpty || validationMarker.length > 512) {
+        throw const FormatException('Provide both a validation URL and an expected response marker.');
+      }
+      final verification = SecurityProject.parseTarget(validationUrl);
+      if (!SecurityProject.sameOrigin(target, verification) || verification.scheme != 'https') {
+        throw const FormatException('Validation URL must be on the credential HTTPS origin.');
+      }
+    }
     if (mode != AuthMode.none && (target.scheme != 'https' || target.userInfo.isNotEmpty)) {
       throw const FormatException('Authentication requires an HTTPS target.');
     }
@@ -40,13 +50,14 @@ class AuthProfile {
   bool get isLogin => mode == AuthMode.jsonLogin || mode == AuthMode.formLogin;
 
   Map<String, dynamic> toJson() => {
-    'mode': mode.name, 'target': target.toString(), 'username': username, 'secret': secret,
+    'mode': mode.name, 'target': target.toString(), 'name': name, 'validationUrl': validationUrl, 'validationMarker': validationMarker, 'username': username, 'secret': secret,
     'headerName': headerName, 'loginUrl': loginUrl, 'usernameField': usernameField,
     'passwordField': passwordField, 'tokenPath': tokenPath,
   };
 
   factory AuthProfile.fromJson(Map<String, dynamic> data) => AuthProfile(
     mode: AuthMode.values.byName(data['mode'] as String),
+    name: data['name'] as String? ?? 'Default', validationUrl: data['validationUrl'] as String? ?? '', validationMarker: data['validationMarker'] as String? ?? '',
     target: SecurityProject.parseTarget(data['target'] as String),
     username: data['username'] as String? ?? '', secret: data['secret'] as String? ?? '',
     headerName: data['headerName'] as String? ?? 'X-API-Key',
@@ -113,13 +124,47 @@ class Authenticator {
 
   Future<AuthSession> authenticate(SecurityProject project, AuthProfile profile, {required bool authorized}) async {
     if (!authorized || !project.contains(profile.target)) throw StateError('Authentication target is not authorized.');
-    if (!profile.isLogin) return manual(profile);
+    if (!profile.isLogin) {
+      final session = manual(profile);
+      await _validateIfConfigured(profile, session);
+      return session;
+    }
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
     try {
-      return await _login(client, profile).timeout(const Duration(seconds: 25));
+      final session = await _login(client, profile).timeout(const Duration(seconds: 25));
+      await _validateIfConfigured(profile, session);
+      return session;
     } finally {
       client.close(force: true);
     }
+  }
+
+  static bool validationMatches(int status, String body, String expectedMarker) =>
+      status >= 200 && status < 300 && expectedMarker.isNotEmpty && body.contains(expectedMarker);
+
+  Future<void> _validateIfConfigured(AuthProfile profile, AuthSession session) async {
+    if (profile.validationUrl.isEmpty) return;
+    final url = SecurityProject.parseTarget(profile.validationUrl);
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+    try {
+      final verified = await _verify(client, url, session, profile.validationMarker).timeout(const Duration(seconds: 15));
+      if (!verified) throw StateError('Authentication verification failed.');
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  Future<bool> _verify(HttpClient client, Uri url, AuthSession session, String marker) async {
+    final request = await client.getUrl(url);
+    request.followRedirects = false;
+    session.headersFor(url).forEach((key, value) => request.headers.set(key, value));
+    final response = await request.close();
+    final body = <int>[];
+    await for (final chunk in response) {
+      if (body.length + chunk.length > 256 * 1024) return false;
+      body.addAll(chunk);
+    }
+    return validationMatches(response.statusCode, utf8.decode(body, allowMalformed: true), marker);
   }
 
   Future<AuthSession> _login(HttpClient client, AuthProfile profile) async {

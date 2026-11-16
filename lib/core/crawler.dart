@@ -32,6 +32,7 @@ class SiteCrawler {
     if (!authorized || !project.contains(start)) throw StateError('Unauthorized target.');
     if (maxPages < 1 || maxPages > 30) throw ArgumentError.value(maxPages);
     if (auth != null && !SecurityProject.sameOrigin(auth.target, start)) throw StateError('Credential origin mismatch.');
+    if (cancellation?.cancelled == true) return const CrawlResult([], 0, true);
     final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized);
     final queue = Queue<Uri>()..add(start);
     final seen = <Uri>{start};

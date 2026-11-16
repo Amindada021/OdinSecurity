@@ -14,7 +14,7 @@ The technology detector reports multiple independent layers with evidence and co
 | --- | --- | --- |
 | 01 | Flutter Android foundation, project model, exact-origin scope, technology fingerprints and fixtures | Source implemented; Android verification pending |
 | 02 | Local persistent projects, Android secure credential storage, scan history and job lifecycle | Partial: persistence/history implemented; resumable jobs pending |
-| 03 | Authentication profiles: none, Basic, bearer/JWT, API key, cookie, form/JSON login, browser-assisted login, OAuth/OIDC, MFA and token refresh | Partial: secure manual/form/JSON modes; browser, OAuth, MFA and refresh pending |
+| 03 | Authentication profiles: none, Basic, bearer/JWT, API key, cookie, form/JSON login, browser-assisted login, OAuth/OIDC, MFA and token refresh | Partial: secure named identities, manual/form/JSON modes and optional session verification; browser, OAuth, MFA and refresh pending |
 | 04 | Same-scope discovery, HTML/SPA exploration, OpenAPI import and authenticated endpoint inventory | Partial: bounded static HTML and offline JSON inventory; SPA browser pending |
 | 05 | Passive evidence-based security checks, technology-specific adapters and confidence | Partial: metadata checks and fingerprints; specialty adapters pending |
 | 06 | Explicitly authorized bounded active checks with non-destructive defaults, request caps, exclusions, cancellation and test fixtures | Planned |
@@ -36,4 +36,4 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.7.0+7**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.8.0+8**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
