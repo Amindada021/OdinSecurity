@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.60.0+61; pubspec.yaml is the version source of truth.
+Current version is 0.61.0+62; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.60.0+61`.
-- Git tag `v0.60.0` when released.
-- `OdinSecurity-v0.60.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.61.0+62`.
+- Git tag `v0.61.0` when released.
+- `OdinSecurity-v0.61.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -178,3 +178,5 @@ Advisory rows may additionally specify `ranges: [{"introduced":"1.2.0","fixed":"
 Queue templates save only registered targets, delay and parallel setting; loading revalidates policy and requires fresh consent. An optional per-target static identity is selected for each run, loaded again from secure storage at start and required to match origin and name; no identity/approval persisted in templates. Existing configured validation may make a separate approved same-origin verification request. No automatic login, recurring or background execution. Authentication rejection stops subsequent batches.
 
 Declared technology versions: extract exact numeric declarations for recognized server products, PHP, ASP.NET legacy, WordPress, Joomla, Drupal and Ghost from existing observations; conflicting declarations and unsupported suffixes are omitted. Save only numeric version metadata with scan history. Independently verify the installed version before using advisory review. No follow-up requests or version discovery by guessed URLs.
+
+Additional passive CSP observations cover single-policy broad script sources and inline allowance (suppressed when nonce/hash/strict-dynamic context is observed), duplicate directives, and absent base-uri/explicit object-src. Multiple/complex policies are flagged but not combined. Rule pack schema v2 adds literal absent/equals and public banner headers; v1 packs remain readable. No executable extension code or active requests.

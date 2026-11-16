@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.61.0+62
+- Add passive structured CSP review and declarative header rule pack v2 (absence/equality checks), with offline regression fixtures.
+
 ## 0.60.0+61
 - Add conservative public version evidence to identified technologies, scan result/history/report, with ambiguous versions omitted; tests and queue template dropdown correction.
 

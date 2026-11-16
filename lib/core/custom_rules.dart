@@ -3,14 +3,14 @@ import 'fingerprint.dart';
 import 'project_storage.dart';
 import 'security_checks.dart';
 
-enum HeaderRuleMode { present, contains }
+enum HeaderRuleMode { present, contains, absent, equals }
 
 class HeaderRule {
   final String header, expected;
   final HeaderRuleMode mode;
   const HeaderRule._(this.header, this.mode, this.expected);
   String get key => 'custom.$header.${mode.name}';
-  String get line => mode == HeaderRuleMode.present ? '$header|present' : '$header|contains|$expected';
+  String get line => expected.isEmpty ? '$header|${mode.name}' : '$header|${mode.name}|$expected';
 }
 
 class CustomHeaderRules {
@@ -19,7 +19,7 @@ class CustomHeaderRules {
     'strict-transport-security', 'content-security-policy', 'x-content-type-options',
     'x-frame-options', 'referrer-policy', 'permissions-policy', 'cross-origin-resource-policy',
     'cross-origin-opener-policy', 'cross-origin-embedder-policy', 'cache-control',
-    'content-type', 'x-permitted-cross-domain-policies',
+    'content-type', 'x-permitted-cross-domain-policies', 'server', 'x-powered-by', 'x-aspnet-version',
   };
 
   /// Only an allowlisted public security/configuration header. No executable
@@ -36,11 +36,11 @@ class CustomHeaderRules {
       }
       final header = parts[0].toLowerCase();
       final HeaderRule rule;
-      if (parts[1] == 'present' && parts.length == 2) {
-        rule = HeaderRule._(header, HeaderRuleMode.present, '');
-      } else if (parts[1] == 'contains' && parts.length == 3 && parts[2].isNotEmpty &&
+      if (['present', 'absent'].contains(parts[1]) && parts.length == 2) {
+        rule = HeaderRule._(header, HeaderRuleMode.values.byName(parts[1]), '');
+      } else if (['contains', 'equals'].contains(parts[1]) && parts.length == 3 && parts[2].isNotEmpty &&
           parts[2].length <= 160 && !parts[2].contains(RegExp(r'[\x00-\x1f\x7f]'))) {
-        rule = HeaderRule._(header, HeaderRuleMode.contains, parts[2]);
+        rule = HeaderRule._(header, HeaderRuleMode.values.byName(parts[1]), parts[2]);
       } else {
         throw const FormatException('Invalid rule.');
       }
@@ -55,8 +55,12 @@ class CustomHeaderRules {
     final findings = <SecurityFinding>[];
     for (final rule in rules) {
       final actual = observed.header(rule.header);
-      final passed = rule.mode == HeaderRuleMode.present ? actual.trim().isNotEmpty :
-        actual.toLowerCase().contains(rule.expected.toLowerCase());
+      final passed = switch (rule.mode) {
+        HeaderRuleMode.present => actual.trim().isNotEmpty,
+        HeaderRuleMode.absent => !observed.headers.containsKey(rule.header),
+        HeaderRuleMode.contains => actual.toLowerCase().contains(rule.expected.toLowerCase()),
+        HeaderRuleMode.equals => actual.trim().toLowerCase() == rule.expected.toLowerCase(),
+      };
       if (!passed) {
         findings.add(SecurityFinding(rule.key, 'Custom header rule not met: ${rule.header}', Severity.info,
           'Configured ${rule.mode.name} condition not observed; values omitted',
@@ -84,7 +88,8 @@ class HeaderRulePack {
   static String encode(String source) {
     final checked = CustomHeaderRules.parse(source);
     return const JsonEncoder.withIndent('  ').convert({
-      'schema': 'odin.security.headers.v1',
+      'schema': checked.any((r) => r.mode == HeaderRuleMode.absent || r.mode == HeaderRuleMode.equals ||
+          ['server', 'x-powered-by', 'x-aspnet-version'].contains(r.header)) ? 'odin.security.headers.v2' : 'odin.security.headers.v1',
       'rules': checked.map((r) => r.line).toList(),
     });
   }
@@ -92,7 +97,7 @@ class HeaderRulePack {
   static String decode(String source) {
     if (source.length > 16000) throw const FormatException('Pack exceeds limit.');
     final decoded = jsonDecode(source);
-    if (decoded is! Map<String, dynamic> || decoded['schema'] != 'odin.security.headers.v1' ||
+    if (decoded is! Map<String, dynamic> || !['odin.security.headers.v1', 'odin.security.headers.v2'].contains(decoded['schema']) ||
         decoded.length != 2 || decoded['rules'] is! List) {
       throw const FormatException('Unsupported rule pack.');
     }

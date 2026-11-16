@@ -87,7 +87,8 @@ class _CustomRulesScreenState extends State<CustomRulesScreen> {
     appBar: AppBar(title: const LText('Custom scan rules')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
       const LText('Define up to 20 literal header rules, one per line. Rules apply to successful responses in this project and never send additional requests. Do not include secrets.'),
-      const SelectableText('x-content-type-options|contains|nosniff\nstrict-transport-security|present', textDirection: TextDirection.ltr),
+      const LText('Rule modes: present, absent, contains, equals. Equals compares the complete trimmed header value, case-insensitively.'),
+      const SelectableText('x-content-type-options|equals|nosniff\nstrict-transport-security|present\nx-powered-by|absent', textDirection: TextDirection.ltr),
       TextField(controller: source, enabled: !busy && repository != null, maxLines: 8, autocorrect: false, enableSuggestions: false,
         decoration: const InputDecoration(label: LText('Header rules'))),
       OutlinedButton(onPressed: busy || repository == null ? null : importPack, child: const LText('Import rule pack')),
