@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.72.0+74
+- Add real-response transport phase timings and bounded trusted peer certificate summary in the request inspector, timing-only traffic-journal drilldown, and passive configuration observations from the already received response. Add regression fixtures and Persian labels.
+
 ## 0.71.0+73
 - Add bounded all/any metadata rule interpreter and scoped offline HAR integration, local synthetic scalar contract matrix, authenticated private loopback lab collector companion and ephemeral optional bearer review; regression fixtures and Persian labels.
 

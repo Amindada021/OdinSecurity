@@ -19,6 +19,19 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Request transport trace': 'ردیابی مراحل انتقال درخواست',
+  'Connection/open request': 'اتصال و باز کردن درخواست',
+  'Request to response headers': 'ارسال درخواست تا دریافت هدر پاسخ',
+  'Response body read': 'خواندن بدنه پاسخ',
+  'Timings describe request phases, not separate DNS or TLS handshake timings.': 'این زمان‌ها مراحل درخواست را نشان می‌دهند، نه زمان مستقل DNS یا مذاکره TLS.',
+  'TLS peer certificate from this response': 'گواهی TLS مربوط به همین پاسخ',
+  'Certificate subject': 'صاحب گواهی',
+  'Certificate issuer': 'صادرکننده گواهی',
+  'Certificate validity': 'اعتبار گواهی',
+  'Peer certificate details unavailable in this view.': 'جزئیات گواهی در این نما موجود نیست.',
+  'Response security observations': 'مشاهدات امنیتی پاسخ',
+  'Passive configuration observations from this response only; no additional requests.': 'مشاهدات غیرفعال تنظیمات همین پاسخ؛ بدون ارسال درخواست اضافه.',
+  'Total': 'مجموع',
   'Optional metadata program JSON': 'برنامه قوانین متادیتا (JSON اختیاری)',
   'Local contract test matrix': 'ماتریس تست محلی قرارداد ورودی',
   'Run up to 100 synthetic scalar cases against a local length or integer range contract. No requests are sent.': 'تا ۱۰۰ نمونه مصنوعی را بر اساس طول رشته یا بازه عدد صحیح به‌صورت محلی بررسی کنید. هیچ درخواستی ارسال نمی‌شود.',

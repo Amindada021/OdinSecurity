@@ -36,7 +36,7 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.71.0+73**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.72.0+74**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
 
 Offline CVE review accepts a user-supplied, exact-version advisory catalog; it does not retrieve advisories or confirm exploitability.
 
@@ -77,3 +77,5 @@ Representation matrix supports optional status expectations per fixed test case,
 Bounded metadata rule programs combine HTTP status ranges and allowlisted header predicates (all/any) on authorized offline HAR exports. They emit rule identifiers only and cannot execute general code. The local contract matrix executes up to 100 synthetic scalar range/type/length cases and compares expected acceptance without network traffic.
 
 The [private lab collector companion](docs/private-lab-collector.md) provides authenticated, ephemeral metadata ingestion and export for explicit fixture clients. Loopback-only by default; private HTTPS access must be configured by the operator. No public callback hosting or arbitrary payload generation.
+
+Request inspector now shows measured connection/open, response-header and body-read durations, plus validity/issuer/subject of the server certificate on the actual trusted HTTPS response. Session traffic logger retains timings only. Passive response configuration observations (HSTS, CSP, cookie attributes, redirects and authenticated caching) are computed without further requests; raw evidence is excluded. This is direct client diagnostics, not interception of another application’s TLS traffic.

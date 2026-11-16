@@ -4,6 +4,9 @@ import 'auth.dart';
 import 'project.dart';
 import 'scan_policy.dart';
 import 'traffic_journal.dart';
+import 'request_transport_trace.dart';
+import 'manual_response_review.dart';
+import 'security_checks.dart';
 
 enum ManualAccept {
   any('*/*'), json('application/json'), html('text/html'), text('text/plain');
@@ -64,7 +67,9 @@ class ManualResponse {
   final String body;
   final bool truncated;
   final int elapsedMs, bodyBytes;
-  const ManualResponse(this.status, this.headers, this.body, this.truncated, {this.elapsedMs = 0, this.bodyBytes = 0});
+  final RequestTransportTrace? trace;
+  final List<SecurityFinding> observations;
+  const ManualResponse(this.status, this.headers, this.body, this.truncated, {this.elapsedMs = 0, this.bodyBytes = 0, this.trace, this.observations = const []});
 }
 
 /// Explicitly initiated requests for project-approved origins.
@@ -120,7 +125,7 @@ class ManualRequestClient {
     try {
       final result = await _send(client, target, method, session, accept, options).timeout(const Duration(seconds: 25));
       TrafficJournal.shared.record(project, target, source: 'manual', method: method,
-        status: result.status, capturedBytes: result.bodyBytes, elapsedMs: result.elapsedMs, truncated: result.truncated);
+        status: result.status, capturedBytes: result.bodyBytes, elapsedMs: result.elapsedMs, truncated: result.truncated, trace: result.trace);
       return result;
     } catch (_) {
       TrafficJournal.shared.record(project, target, source: 'manual', method: method, elapsedMs: timer.elapsedMilliseconds);
@@ -135,6 +140,7 @@ class ManualRequestClient {
     final identityHeaders = session?.headersFor(target) ?? const <String, String>{};
     if (session?.expectsCredentials == true && identityHeaders.isEmpty) throw StateError('Saved identity is not applicable.');
     final req = await client.openUrl(method, target);
+    final openedMs = timer.elapsedMilliseconds;
     req.followRedirects = false;
     req.headers.set(HttpHeaders.acceptHeader, accept.value);
     identityHeaders.forEach((key, value) => req.headers.set(key, value));
@@ -146,6 +152,9 @@ class ManualRequestClient {
       req.add(bytes);
     }
     final res = await req.close();
+    final headersMs = timer.elapsedMilliseconds;
+    final peer = target.scheme == 'https' ? res.certificate : null;
+    final certificate = peer == null ? null : PeerCertificateSummary.fromCertificate(peer);
     final headers = <String, List<String>>{};
     res.headers.forEach((key, values) => headers[key] = List.of(values));
     final body = <int>[];
@@ -155,7 +164,12 @@ class ManualRequestClient {
       if (chunk.length > remaining) { body.addAll(chunk.take(remaining)); truncated = true; break; }
       body.addAll(chunk);
     }
+    final completedMs = timer.elapsedMilliseconds;
     return ManualResponse(res.statusCode, safeHeaders(headers), utf8.decode(body, allowMalformed: true), truncated,
-      elapsedMs: timer.elapsedMilliseconds, bodyBytes: body.length);
+      elapsedMs: completedMs, bodyBytes: body.length,
+      trace: RequestTransportTrace(openedMs: openedMs, headersMs: headersMs, completedMs: completedMs,
+        https: target.scheme == 'https', certificate: certificate),
+      observations: ManualResponseReview.inspect(target, res.statusCode, headers,
+        identityHeadersSent: identityHeaders.isNotEmpty));
   }
 }

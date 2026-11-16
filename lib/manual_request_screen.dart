@@ -7,6 +7,7 @@ import 'core/request_history.dart';
 import 'core/request_workspace.dart';
 import 'core/request_review.dart';
 import 'core/scan_policy.dart';
+import 'request_transport_trace_view.dart';
 
 class ManualRequestScreen extends StatefulWidget {
   final SecurityProject project;
@@ -195,6 +196,14 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
             if (!previous.truncated && !data.truncated) Text('Captured bytes: ${previous.bodyBytes} → ${data.bodyBytes}'),
             const LText('Differences are diagnostic observations, not proof of a vulnerability.'),
           ],
+          if (data.trace != null) RequestTransportTraceView(trace: data.trace!),
+          ExpansionTile(title: const LText('Response security observations'),
+            subtitle: Text(uiNumber(context, data.observations.length)),
+            children: [
+              const LText('Passive configuration observations from this response only; no additional requests.'),
+              for (final finding in data.observations) ListTile(title: Text(finding.title),
+                subtitle: Text(finding.evidence + '\n' + finding.remediation), trailing: LText(finding.severity.name)),
+            ]),
           const LText('Response headers (unrecognized values redacted)'),
           SelectableText(data.headers.entries.map((e) => '${e.key}: ${e.value.join(', ')}').join('\n')),
           const Divider(),

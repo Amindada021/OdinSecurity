@@ -6,6 +6,7 @@ import 'manual_request_screen.dart';
 import 'core/scan_policy.dart';
 import 'core/traffic_journal.dart';
 import 'core/traffic_filter.dart';
+import 'request_transport_trace_view.dart';
 
 class TrafficLoggerScreen extends StatefulWidget {
   final SecurityProject project;
@@ -67,6 +68,8 @@ class _TrafficLoggerScreenState extends State<TrafficLoggerScreen> {
             if (entry.hadQuery) 'query omitted',
           ].join(' | ');
           return ListTile(title: Text('${entry.method} ${entry.route}'), subtitle: Text(details),
+            onTap: entry.trace == null ? null : () => showModalBottomSheet<void>(context: context, isScrollControlled: true,
+              builder: (_) => SafeArea(child: SingleChildScrollView(child: RequestTransportTraceView(trace: entry.trace!)))),
             trailing: TrafficJournal.canInspect(entry, widget.project, widget.policy) ? IconButton(
               tooltip: tr(context, 'Open request inspector'), icon: const Icon(Icons.http),
               onPressed: () {

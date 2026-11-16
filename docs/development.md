@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.71.0+73; pubspec.yaml is the version source of truth.
+Current version is 0.72.0+74; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.71.0+73`.
-- Git tag `v0.71.0` when released.
-- `OdinSecurity-v0.71.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.72.0+74`.
+- Git tag `v0.72.0` when released.
+- `OdinSecurity-v0.72.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -222,3 +222,9 @@ The offline HAR screen accepts a versioned JSON metadata program: up to 20 rules
 Offline utilities → Local contract test matrix runs up to 100 synthetic scalar cases against a declared string length or integer range. Expected and actual acceptance are compared without sending requests. This is not a test of a real server's validation.
 
 For private fixture collection and companion tests, see [private lab collector](private-lab-collector.md).
+
+## Request transport diagnostics
+
+On a manually approved request the inspector displays cumulative phase durations and a bounded summary of the peer certificate obtained from the actual HTTPS response. Existing standard TLS trust and redirect restrictions remain unchanged. Click a journal entry to review its phase timings; neither certificate names nor raw headers are stored there. No TLS key material, CA installation or traffic from other apps is captured. These timings are not individual DNS/handshake metrics.
+
+Passive security observations are derived from the same response’s bounded relevant header set before redaction, including cookie attributes, HSTS, CSP, redirects and cache directives. Findings are fixed messages without raw values. No additional probes or replay. Tests cover phase ordering, journal data minimization and header-review privacy and limits.
