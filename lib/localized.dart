@@ -19,6 +19,11 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Review multiple components': 'بررسی چند مؤلفه',
+  'Component inventory JSON': 'فهرست مؤلفه‌ها (JSON)',
+  'Optional version ranges: introduced is inclusive and fixed is exclusive. Three numeric components only. Use vendor-confirmed intervals.': 'بازه نسخه اختیاری: از نسخه شروع (شامل) تا نسخه اصلاح‌شده (غیرشامل). فقط سه بخش عددی و بازه تأییدشده سازنده.',
+  'No matches in the supplied catalog.': 'در فهرست واردشده تطبیقی یافت نشد.',
+  'No matches in the supplied catalog. This does not establish safety.': 'در فهرست واردشده تطبیقی یافت نشد؛ این نتیجه امنیت را تضمین نمی‌کند.',
   'Fixed-width hexadecimal bit statistics': 'آمار بیت نمونه‌های هگز هم‌اندازه',
   'Bits per sample': 'تعداد بیت هر نمونه',
   'Total bits': 'کل بیت‌ها',

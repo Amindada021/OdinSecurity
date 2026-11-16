@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.58.0+59
+- Add validated vendor-provided numeric advisory intervals and bulk component inventory review; boundary and input fixtures.
+
 ## 0.57.0+58
 - Add fixed-width hexadecimal bit-position bias, frequency chi-square, intra-sample transitions and adjacent-sample bit-change statistics; unit fixtures.
 
