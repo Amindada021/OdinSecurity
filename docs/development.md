@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.44.0+44; pubspec.yaml is the version source of truth.
+Current version is 0.45.0+45; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.44.0+44`.
-- Git tag `v0.44.0` when released.
-- `OdinSecurity-v0.44.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.45.0+45`.
+- Git tag `v0.45.0` when released.
+- `OdinSecurity-v0.45.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -124,3 +124,7 @@ The dedicated Android platform view uses WebViewClient.shouldInterceptRequest to
 ## Parsed HTML checks
 
 Successful complete HTML responses are parsed locally for insecure form actions, GET password fields, cross-origin password form destinations, HTTP active subresources and external scripts without integrity metadata. These are observations, not exploitation proof. No form submission or subresource fetch is performed. Anchor discovery uses parsed DOM and a same-origin document base, with the existing scope and path exclusions.
+
+## Rendered crawl waves
+
+Capture rendered anchors, form/script references and Fetch/XHR resource metadata twice per page, separated by 500 ms, with unchanged page validation. The browser includes bounded open shadow roots. Each reviewed wave selects up to five known queryless read-only links; the total attempted page count is limited by project policy and previously attempted paths are excluded. Newly discovered links appear in the next reviewed wave. No automatic clicks, form submission, guessed URLs or unrestricted recursive browsing.

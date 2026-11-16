@@ -19,6 +19,10 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'No new eligible rendered links in the current inventory.': 'مسیر جدید مجازی در فهرست فعلی یافت نشد.',
+  'Select only known read-only staging pages. The browser will visit these exact URLs using the current session. Newly discovered links can be reviewed in the next wave. Site scripts may run; no forms or buttons are automatically submitted.': 'فقط صفحات شناخته‌شده و خواندنی محیط آزمایشی را انتخاب کنید. مسیرهای جدید در دور بعدی قابل بازبینی هستند. اسکریپت‌های سایت ممکن است اجرا شوند؛ فرم یا دکمه‌ای خودکار ارسال نمی‌شود.',
+  'Rendered crawl budget': 'سقف پیمایش صفحات رندرشده',
+  'Review next crawl wave': 'بررسی مرحله بعدی پیمایش',
   'Request': 'درخواست',
   'New request tab': 'تب درخواست جدید',
   'Close current request tab': 'بستن تب جاری',

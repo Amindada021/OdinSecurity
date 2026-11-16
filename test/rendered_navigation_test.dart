@@ -23,6 +23,14 @@ void main() {
     ]);
     expect(candidates.map((u) => u.toString()), ['https://example.test/reports']);
   });
+  test('next wave excludes attempted routes and obeys remaining budget', () {
+    final p = SecurityProject(name: 'Fixture', url: 'https://example.test');
+    final routes = ['/done', '/new1', '/new2'].map((path) => RouteObservation(p.startUrl.resolve(path), 'navigation'));
+    final result = RenderedNavigation.candidates(p, ScanPolicy(maxPages: 12), p.startUrl, p.startUrl, routes,
+      attempted: [p.startUrl.resolve('/done')], remaining: 1);
+    expect(result.map((u) => u.path), ['/new1']);
+    expect(RenderedNavigation.candidates(p, ScanPolicy(), p.startUrl, p.startUrl, routes, remaining: 0), isEmpty);
+  });
   test('candidate count is capped by configured policy', () {
     final p = SecurityProject(name: 'Fixture', url: 'https://example.test');
     final routes = List.generate(8, (i) => RouteObservation(p.startUrl.resolve('/page$i'), 'navigation'));

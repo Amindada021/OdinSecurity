@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.0+45
+- Rendered SPA crawl waves with cumulative page budget, attempted-route exclusion and fresh review per wave.
+- Two metadata snapshots per page, open shadow root capture, deduplication and next-wave selection; source tests for candidate bounds.
+
 ## 0.44.0+44
 - Parse HTML with an HTML5 DOM parser rather than anchor regex; honor same-origin document base and ignore comments/script text.
 - Add passive mixed-resource, insecure form, GET password form, cross-origin password form and external script integrity observations without submitting forms or fetching resources. Added offline fixtures.

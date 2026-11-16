@@ -104,21 +104,49 @@ class RouteInventory {
     } catch (_) { return null; }
   };
   const routes = [];
+  const seen = new Set();
+  // Inspect the rendered document plus a bounded number of open shadow roots.
+  // Closed roots, iframe contents and application storage are not accessed.
+  const roots = [document];
+  let inspected = 0;
+  for (let index = 0; index < roots.length && inspected < 4000; index++) {
+    const walker = document.createTreeWalker(roots[index], NodeFilter.SHOW_ELEMENT);
+    let element;
+    while (inspected < 4000 && (element = walker.nextNode())) {
+      inspected++;
+      if (element.shadowRoot && roots.length < 12) roots.push(element.shadowRoot);
+    }
+  }
+  const select = (selector, cap) => {
+    const matches = [];
+    for (const root of roots) {
+      for (const node of root.querySelectorAll(selector)) {
+        matches.push(node);
+        if (matches.length >= cap) return matches;
+      }
+    }
+    return matches;
+  };
   const add = (url, source) => {
     const value = clean(url);
-    if (value && routes.length < 299) routes.push({url: value, source});
+    const key = source + '\n' + value;
+    if (value && routes.length < 299 && !seen.has(key)) {
+      seen.add(key);
+      routes.push({url: value, source});
+    }
   };
-  for (const anchor of Array.from(document.querySelectorAll('a[href]')).slice(0, 100)) {
+  for (const anchor of select('a[href]', 100)) {
     try {
+      if (typeof anchor.href !== 'string') continue;
       const destination = new URL(anchor.href, location.href);
       add(anchor.href, !destination.search && !destination.hash ? 'navigation' : 'link');
     } catch (_) { /* invalid anchor */ }
   }
-  for (const form of Array.from(document.querySelectorAll('form')).slice(0, 60)) {
+  for (const form of select('form', 60)) {
     const method = form.method.toLowerCase();
     if (method === 'get' || method === 'post') add(form.action, 'form-' + method);
   }
-  for (const script of Array.from(document.querySelectorAll('script[src]')).slice(0, 20)) {
+  for (const script of select('script[src]', 20)) {
     add(script.src, 'script');
   }
   for (const entry of performance.getEntriesByType('resource').filter(

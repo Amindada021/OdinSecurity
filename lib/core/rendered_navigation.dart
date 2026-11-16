@@ -8,18 +8,24 @@ import 'scan_policy.dart';
 class RenderedNavigation {
   static const maxPages = 5;
 
+  static String routeKey(Uri url) => url.replace(path: url.path.isEmpty ? '/' : url.path).toString();
+
   static List<Uri> candidates(SecurityProject project, ScanPolicy policy, Uri origin,
-      Uri current, Iterable<RouteObservation> observed) {
+      Uri current, Iterable<RouteObservation> observed, {Iterable<Uri> attempted = const [], int? remaining}) {
     final routes = <Uri>{};
     final currentPath = current.path.isEmpty ? '/' : current.path;
-    final cap = policy.maxPages < maxPages ? policy.maxPages : maxPages;
+    final previous = attempted.map((url) => routeKey(url)).toSet();
+    final budget = remaining ?? policy.maxPages;
+    final cap = [policy.maxPages, maxPages, budget].reduce((a, b) => a < b ? a : b);
+    if (cap <= 0) return const [];
     for (final item in observed) {
       final target = item.url;
-      if (item.source != 'navigation' || target == current ||
+      if (item.source != 'navigation' || previous.contains(routeKey(target)) || target == current ||
           (SecurityProject.sameOrigin(current, target) && !current.hasQuery && !current.hasFragment &&
             (target.path.isEmpty ? '/' : target.path) == currentPath) || target.scheme != 'https' ||
           target.hasFragment || !project.contains(target) || !policy.permits(target) ||
           !LinkDiscovery.eligible(origin, target)) continue;
+      if (!previous.add(routeKey(target))) continue;
       routes.add(target);
       if (routes.length >= cap) break;
     }
