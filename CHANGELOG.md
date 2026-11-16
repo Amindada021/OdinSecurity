@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0+5
+- Persistent per-project scan history, capped at 20 records, and copyable sanitized JSON report.
+- Original Odin Security shield/monogram vector branding and matching Flutter painter.
+- Android vector icon resource ready for manifest wiring after platform generation.
+- History round-trip and report fixtures.
+
 ## 0.4.0+4
 - Bounded same-origin anchor discovery and cancellable read-only page assessment.
 - Passive HTTP/TLS scheme, HSTS, CSP, framing, disclosure and cookie attribute observations.

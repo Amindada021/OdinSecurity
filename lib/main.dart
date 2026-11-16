@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'brand.dart';
+import 'core/history.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/project_storage.dart';
 
@@ -77,7 +80,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Odin Security')),
+        appBar: AppBar(title: const Row(children: [OdinLogo(size: 34), SizedBox(width: 10), Text('Odin Security')])),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const Text('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: Text(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('Create a project to assess an authorized website.')))
@@ -150,6 +153,32 @@ class ScanScreen extends StatefulWidget {
 class _ScanScreenState extends State<ScanScreen> {
   bool authorized = false;
   final vault = AuthVault();
+  List<ScanRecord> history = [];
+  bool loadingHistory = true;
+  String? historyError;
+
+  Future<HistoryRepository> _historyRepo() async => HistoryRepository(PreferencesStorage(await SharedPreferences.getInstance()));
+
+  Future<void> loadHistory() async {
+    try {
+      final records = await (await _historyRepo()).load(widget.project.id);
+      if (mounted) setState(() => history = records);
+    } catch (_) {
+      if (mounted) setState(() => historyError = 'Could not load scan history.');
+    } finally {
+      if (mounted) setState(() => loadingHistory = false);
+    }
+  }
+
+  Future<void> record(ScanRecord item) async {
+    try {
+      final updated = await (await _historyRepo()).append(widget.project.id, item);
+      if (mounted) setState(() => history = updated);
+    } catch (_) {
+      if (mounted) setState(() => historyError = 'Could not save scan history.');
+    }
+  }
+
   AuthProfile? auth;
   late Uri target;
   bool loadingAuth = true;
@@ -159,6 +188,7 @@ class _ScanScreenState extends State<ScanScreen> {
     super.initState();
     target = widget.project.startUrl;
     loadAuth();
+    loadHistory();
   }
 
   Future<void> loadAuth() async {
@@ -204,7 +234,10 @@ class _ScanScreenState extends State<ScanScreen> {
     setState(() { busy = true; result = null; crawlResult = null; error = null; visited = 0; cancellation = flag; });
     try {
       final data = await SiteCrawler().run(widget.project, target, authorized: authorized, cancellation: flag, auth: auth != null && SecurityProject.sameOrigin(auth!.target, target) ? auth : null, onProgress: (n) { if (mounted) setState(() => visited = n); });
-      if (mounted) setState(() => crawlResult = data);
+      if (mounted) {
+        setState(() => crawlResult = data);
+        await record(ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled));
+      }
     } catch (_) {
       if (mounted) setState(() => error = 'Could not finish the assessment. Check authentication and scope.');
     } finally {
@@ -218,7 +251,10 @@ class _ScanScreenState extends State<ScanScreen> {
     setState(() { busy = true; result = null; crawlResult = null; error = null; });
     try {
       final data = await PassiveScanner().scan(widget.project, authorized: authorized, target: target, auth: auth != null && SecurityProject.sameOrigin(auth!.target, target) ? auth : null);
-      if (mounted) setState(() => result = data);
+      if (mounted) {
+        setState(() => result = data);
+        await record(ScanRecord.fromPages([data]));
+      }
     } catch (_) {
       if (mounted) setState(() => error = 'Could not complete the request. Check the URL, connection and TLS.');
     } finally {
@@ -253,6 +289,18 @@ class _ScanScreenState extends State<ScanScreen> {
           ]),
         ],
         if (error != null) Text(error!),
+        const Divider(),
+        const Text('Scan history'),
+        if (loadingHistory) const LinearProgressIndicator(),
+        if (historyError != null) Text(historyError!),
+        for (final item in history) ListTile(
+          title: Text(item.finishedAt.toLocal().toString().split('.').first),
+          subtitle: Text('${item.pages.length} pages · ${item.observationCount} observations'),
+          trailing: IconButton(tooltip: 'Copy sanitized JSON report', icon: const Icon(Icons.copy), onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: item.exportJson()));
+            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report copied.')));
+          }),
+        ),
         if (data != null) ...[
           const SizedBox(height: 16),
           Text('HTTP ${data.statusCode}'),
