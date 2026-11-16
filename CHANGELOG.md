@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.21.0+21
+- Import bounded sanitized HAR files using Android's document picker (or paste JSON).
+- Explicitly save scoped SPA/HAR route metadata per project, search/filter saved routes, reapply current scope and exclusions on load.
+- Open a known read-only route in the request inspector without sending automatically; unknown and mutation-method observations remain inventory-only.
+- Route persistence and scope fixtures; device file picker verification pending.
+
 ## 0.20.0+20
 - Persian and English navigation, form labels and guidance; Persian RTL via Flutter localization delegates.
 - Light, dark and system theme; persistent UI preferences with defaults and fallback.

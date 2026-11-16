@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.20.0+20; pubspec.yaml is the version source of truth.
+Current version is 0.21.0+21; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.20.0+20`.
-- Git tag `v0.20.0` when released.
-- `OdinSecurity-v0.20.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.21.0+21`.
+- Git tag `v0.21.0` when released.
+- `OdinSecurity-v0.21.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -41,7 +41,7 @@ Open a recorded scan to view findings, severity filters, technology evidence and
 
 ## SPA and HAR inventory
 
-Select a scoped HTTPS target, open Explore rendered SPA, authorize browsing, sign in manually, navigate to pages and tap Capture routes. It reads rendered anchors and available Fetch/XHR Resource Timing URL metadata only; no method inference, automatic replay, storage inspection or credential extraction. Normal WebView scripts may contact external resources, but only exact project origins and non-excluded route metadata are retained. Browser state is reset on start and on explicit close; validate on device. For existing authorized browser traffic, import sanitized HAR JSON (max 1 MiB) offline. Only method and route URL without query or fragment are retained, maximum 300 unique entries. Route names may be sensitive. The inventory is session-local and does not initiate a scan.
+Select a scoped HTTPS target, open Explore rendered SPA, authorize browsing, sign in manually, navigate to pages and tap Capture routes. It reads rendered anchors and available Fetch/XHR Resource Timing URL metadata only; no method inference, automatic replay, storage inspection or credential extraction. Normal WebView scripts may contact external resources, but only exact project origins and non-excluded route metadata are retained. Browser state is reset on start and on explicit close; validate on device. For existing authorized browser traffic, import sanitized HAR JSON (max 1 MiB) offline. Only method and route URL without query or fragment are retained, maximum 300 unique entries. Route names may be sensitive. The capture inventory is session-local unless explicitly saved from either screen. Saved metadata has a 300-route cap and is filtered against current scope/exclusions; it does not initiate a scan. HAR file picker reads at most 1 MiB; paths can still contain sensitive identifiers. Open known read-only routes in the inspector, which requires fresh consent. Unknown Fetch/XHR methods and mutation verbs remain inventory-only.
 
 ## TLS audit
 

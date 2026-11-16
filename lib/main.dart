@@ -9,6 +9,7 @@ import 'manual_request_screen.dart';
 import 'core/history.dart';
 import 'report_screen.dart';
 import 'spa_inventory_screen.dart';
+import 'saved_routes_screen.dart';
 import 'tls_audit_screen.dart';
 import 'cors_audit_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -187,7 +188,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             CheckedPopupMenuItem(value: 'dark', checked: widget.preferences.theme == 'dark', child: const LText('Dark theme')),
             CheckedPopupMenuItem(value: 'system', checked: widget.preferences.theme == 'system', child: const LText('System theme')),
           ],
-        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.20.0+20', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.21.0+21', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const LText('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: LText(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: LText('Create a project to assess an authorized website.')))
@@ -514,6 +515,7 @@ class _ScanScreenState extends State<ScanScreen> {
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CorsAuditScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.security), label: const LText('CORS configuration audit')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' || !policy.permits(target) ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TlsAuditScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.lock_outline), label: const LText('TLS certificate audit')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' || !policy.permits(target) ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SpaInventoryScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.language), label: const LText('Explore rendered SPA')),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || loadingAuth ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SavedRoutesScreen(project: widget.project, policy: policy, auth: auth))), icon: const Icon(Icons.list_alt), label: const LText('Saved route inventory')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HarInventoryScreen(project: widget.project, policy: policy))), icon: const Icon(Icons.file_open), label: const LText('Import HAR traffic inventory')),
         DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(label: LText('Target')), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; selectedProfile = ''; authorized = false; result = null; crawlResult = null; })),
         DropdownButtonFormField<String>(

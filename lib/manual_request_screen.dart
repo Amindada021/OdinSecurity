@@ -11,7 +11,8 @@ class ManualRequestScreen extends StatefulWidget {
   final Uri target;
   final AuthProfile? auth;
   final ScanPolicy policy;
-  const ManualRequestScreen({super.key, required this.project, required this.target, this.auth, required this.policy});
+  final String initialMethod;
+  const ManualRequestScreen({super.key, required this.project, required this.target, this.auth, required this.policy, this.initialMethod = 'GET'});
   @override
   State<ManualRequestScreen> createState() => _ManualRequestScreenState();
 }
@@ -28,6 +29,7 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
   void initState() {
     super.initState();
     url = TextEditingController(text: widget.target.toString());
+    method = widget.initialMethod == 'HEAD' ? 'HEAD' : 'GET';
   }
 
   @override

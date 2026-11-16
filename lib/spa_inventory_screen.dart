@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'saved_routes_screen.dart';
 import 'localized.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -123,6 +127,11 @@ class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
             RouteList(routes: routes),
           ])),
           SafeArea(top: false, child: Wrap(spacing: 8, children: [
+            if (showRoutes) OutlinedButton(onPressed: busy || closing || routes.isEmpty ? null : () async {
+              setState(() => busy = true);
+              try { await saveObservedRoutes(context, widget.project, widget.policy, routes); }
+              finally { if (mounted) setState(() => busy = false); }
+            }, child: const LText('Save routes')),
             FilledButton.icon(onPressed: loaded && !busy && !closing ? capture : null, icon: const Icon(Icons.search), label: const LText('Capture routes')),
             OutlinedButton(onPressed: busy || closing ? null : () => setState(() => showRoutes = !showRoutes),
               child: Text(showRoutes ? tr(context, 'Back to browser') : '${tr(context, 'Routes')} (${uiNumber(context, routes.length)})')),
@@ -160,6 +169,7 @@ class _HarInventoryScreenState extends State<HarInventoryScreen> {
   final source = TextEditingController();
   List<RouteObservation> routes = [];
   String? error;
+  bool busy = false;
   @override
   void dispose() { source.dispose(); super.dispose(); }
 
@@ -174,6 +184,31 @@ class _HarInventoryScreenState extends State<HarInventoryScreen> {
     }
   }
 
+  Future<void> importFile() async {
+    if (busy) return;
+    setState(() { busy = true; error = null; });
+    try {
+      final selected = await FilePicker.platform.pickFiles(type: FileType.custom,
+        allowedExtensions: ['har', 'json'], allowMultiple: false, withData: false, withReadStream: true);
+      if (selected == null || !mounted) return;
+      final file = selected.files.single;
+      if (file.size > RouteInventory.maxInput) throw const FormatException();
+      final stream = file.readStream ?? (file.path == null ? null : File(file.path!).openRead());
+      if (stream == null) throw const FormatException();
+      final bytes = <int>[];
+      await for (final chunk in stream) {
+        if (bytes.length + chunk.length > RouteInventory.maxInput) throw const FormatException();
+        bytes.addAll(chunk);
+      }
+      final found = RouteInventory.fromHar(widget.project, widget.policy, utf8.decode(bytes));
+      if (mounted) setState(() { routes = found; source.clear(); });
+    } catch (_) {
+      if (mounted) setState(() => error = 'Invalid or oversized HAR JSON.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const LText('Offline HAR inventory')),
@@ -182,7 +217,16 @@ class _HarInventoryScreenState extends State<HarInventoryScreen> {
         const LText('Paste HAR JSON from an authorized test session. Import is offline. Use a sanitized HAR; only scoped URL paths and HTTP methods are retained.'),
         TextField(controller: source, maxLines: 4, autocorrect: false, enableSuggestions: false,
           decoration: const InputDecoration(label: LText('HAR JSON (max 1 MiB)'))),
-        FilledButton(onPressed: parse, child: const LText('Import routes')),
+        Wrap(spacing: 8, children: [
+          FilledButton(onPressed: busy ? null : parse, child: const LText('Import routes')),
+          OutlinedButton.icon(onPressed: busy ? null : importFile, icon: const Icon(Icons.file_open), label: const LText('Import HAR file')),
+          OutlinedButton(onPressed: busy || routes.isEmpty ? null : () async {
+            setState(() => busy = true);
+            try { await saveObservedRoutes(context, widget.project, widget.policy, routes); }
+            finally { if (mounted) setState(() => busy = false); }
+          }, child: const LText('Save routes')),
+        ]),
+        if (busy) const LinearProgressIndicator(),
         if (error != null) LText(error!),
       ])),
       Expanded(child: RouteList(routes: routes)),
