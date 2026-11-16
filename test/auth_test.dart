@@ -26,6 +26,26 @@ void main() {
     expect(session.headersFor(Uri.parse('https://api.example.test/api/v1'))['Cookie'], 'session=fixture');
     expect(session.headersFor(Uri.parse('https://api.example.test/api2')), isEmpty);
   });
+  test('session cookie max age expires relative to session creation', () {
+    final start = DateTime.utc(2026, 1, 1);
+    final cookie = Cookie('session', 'fixture')..path = '/'..maxAge = 5;
+    final session = AuthSession(origin, {}, [cookie], '/', start);
+    expect(session.headersFor(origin, at: start.add(const Duration(seconds: 4)))['Cookie'], 'session=fixture');
+    expect(session.headersFor(origin, at: start.add(const Duration(seconds: 5))), isEmpty);
+  });
+  test('token expiry removes credentials even during a long session', () {
+    final end = DateTime.utc(2026, 1, 1);
+    final session = AuthSession(origin, {'Authorization': 'Bearer fixture'}, const [], '/', null, end);
+    expect(session.headersFor(origin, at: end), isEmpty);
+    expect(session.expectsCredentials, isTrue);
+  });
+  test('login and validation are both checked against exclusions before transport', () async {
+    final p = SecurityProject(name: 'test', url: origin.toString());
+    final a = AuthProfile(mode: AuthMode.jsonLogin, target: origin, secret: 'fixture',
+      loginUrl: origin.resolve('/login').toString(), validationUrl: origin.resolve('/verify').toString(), validationMarker: 'fixture');
+    await expectLater(Authenticator().authenticate(p, a, authorized: true, permits: (url) => url.path != '/login'), throwsStateError);
+    await expectLater(Authenticator().authenticate(p, a, authorized: true, permits: (url) => url.path != '/verify'), throwsStateError);
+  });
   test('no authorization prevents login', () async {
     final p = SecurityProject(name: 'test', url: origin.toString());
     final a = AuthProfile(mode: AuthMode.bearer, target: origin, secret: 'fixture');

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.48.0+48
+- Add explicit saved-session health screen and enforce project exclusions on configured login/verification endpoints.
+- Enforce cookie lifetime and OAuth expiry across requests; refuse accidental unauthenticated sends when saved credentials are not applicable. Added offline scope/expiry fixtures.
+
 ## 0.47.0+47
 - Passive JSON/API response checks for potentially sensitive internal fields, token-like fields, stack traces and mismatched serialization, with bounded traversal and sanitized evidence.
 - Added offline structured-response fixtures; no payload injection or extra requests.

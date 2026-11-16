@@ -53,6 +53,9 @@ class AccessAssessment {
         expectedAllowed.validationUrl.isEmpty || expectedDenied.validationUrl.isEmpty) {
       throw StateError('Two distinct verified test identities from this origin are required.');
     }
+    for (final identity in [expectedAllowed, expectedDenied]) {
+      Authenticator.validateScope(project, identity, authorized: authorized, permits: policy.permits);
+    }
     final allowed = await probe.status(project, endpoint, expectedAllowed);
     if (allowed < 200 || allowed >= 300) {
       // A failing control makes the comparison meaningless. Do not send

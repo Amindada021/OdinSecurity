@@ -19,6 +19,17 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Session check': 'بررسی نشست',
+  'Check the saved identity against its configured HTTPS login and protected verification endpoint. No credential values or response bodies are displayed.': 'حساب ذخیره‌شده را با مسیر ورود HTTPS و مسیر اعتبارسنجی محافظت‌شده بررسی کنید. مقادیر محرمانه و بدنه پاسخ نمایش داده نمی‌شوند.',
+  'No protected verification endpoint configured. Session validity cannot be confirmed.': 'مسیر اعتبارسنجی محافظت‌شده تنظیم نشده است؛ اعتبار نشست قابل تأیید نیست.',
+  'Protected verification URL': 'نشانی اعتبارسنجی محافظت‌شده',
+  'Token expiration': 'انقضای توکن',
+  'I authorize checking this saved identity.': 'بررسی این حساب ذخیره‌شده را مجاز می‌دانم.',
+  'Check session': 'بررسی نشست',
+  'Identity does not have applicable credentials for the selected target.': 'اعتبار احراز هویت برای مقصد انتخاب‌شده قابل استفاده نیست.',
+  'Credentials prepared; no protected verification was configured.': 'اعتبار آماده شد، اما مسیر اعتبارسنجی محافظت‌شده تنظیم نشده است.',
+  'Protected verification endpoint returned the expected marker.': 'مسیر اعتبارسنجی محافظت‌شده نشانگر مورد انتظار را برگرداند.',
+  'Session verification failed. Check scope, expiry and identity configuration.': 'اعتبارسنجی نشست ناموفق بود. محدوده، انقضا و تنظیمات حساب را بررسی کنید.',
   'Local HTTPS tunnel': 'تونل محلی HTTPS',
   'Local CONNECT proxy for the selected HTTPS origin only. Use an explicitly configured test client on this device. TLS remains end-to-end; no request or response content is decrypted or stored.': 'پراکسی CONNECT محلی فقط برای دامنه HTTPS انتخاب‌شده. از کلاینت آزمایشی تنظیم‌شده روی همین دستگاه استفاده کنید. TLS سرتاسری باقی می‌ماند و محتوای درخواست و پاسخ رمزگشایی یا ذخیره نمی‌شود.',
   'The tunnel listens only on loopback, requires a random session password and stops after 90 seconds. It does not change system proxy settings.': 'تونل صرفاً روی لوپ‌بک فعال است، رمز تصادفی نشست دارد و پس از ۹۰ ثانیه متوقف می‌شود. تنظیمات پراکسی سیستم تغییر نمی‌کند.',

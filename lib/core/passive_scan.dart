@@ -43,12 +43,12 @@ class PassiveScanner {
   PassiveScanner({TechnologyDetector? detector, List<HeaderRule> customRules = const []}) :
     detector = detector ?? TechnologyDetector(), customRules = List.unmodifiable(customRules);
 
-  Future<PassiveScanResult> scan(SecurityProject project, {required bool authorized, Uri? target, AuthProfile? auth}) async {
+  Future<PassiveScanResult> scan(SecurityProject project, {required bool authorized, Uri? target, AuthProfile? auth, bool Function(Uri)? permits}) async {
     if (!authorized) throw StateError('Explicit authorization is required.');
     final url = target ?? project.startUrl;
-    if (!project.contains(url)) throw StateError('Target is outside scope.');
+    if (!project.contains(url) || (permits != null && !permits(url))) throw StateError('Target is outside scope.');
     if (auth != null && !SecurityProject.sameOrigin(auth.target, url)) throw StateError('Select the matching credential origin.');
-    final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized);
+    final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized, permits: permits);
     return scanWithSession(project, url, authorized: authorized, session: session);
   }
 
@@ -73,10 +73,13 @@ class PassiveScanner {
   }
 
   Future<PassiveScanResult> _fetch(HttpClient client, Uri url, AuthSession? session) async {
+    final identityHeaders = session?.headersFor(url) ?? const <String, String>{};
+    if (session?.expectsCredentials == true && identityHeaders.isEmpty) {
+      throw StateError('Saved identity has no applicable credentials for this URL.');
+    }
     final request = await client.getUrl(url);
     request.followRedirects = false;
     request.headers.set(HttpHeaders.acceptHeader, 'text/html, application/json;q=0.9, */*;q=0.1');
-    final identityHeaders = session?.headersFor(url) ?? const <String, String>{};
     identityHeaders.forEach((key, value) => request.headers.set(key, value));
     final response = await request.close();
     final certificate = response.certificate;

@@ -68,7 +68,7 @@ class SiteCrawler {
     if (auth != null && !SecurityProject.sameOrigin(auth.target, start)) throw StateError('Credential origin mismatch.');
     await cancellation?.waitIfPaused();
     if (cancellation?.cancelled == true) return const CrawlResult([], 0, true, 'cancelled');
-    final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized);
+    final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized, permits: settings.permits);
     final queue = Queue<Uri>()..add(start);
     final seen = <Uri>{start};
     final pages = <PassiveScanResult>[];
@@ -91,6 +91,10 @@ class SiteCrawler {
       await waitForResume();
       if (cancellation?.cancelled == true || elapsed.elapsed >= timeBudget) break;
       final next = queue.removeFirst();
+      if (session != null && session.expectsCredentials && session.headersFor(next).isEmpty) {
+        stopReason = 'authentication_rejected';
+        break;
+      }
       try {
         final page = await scanner.scanWithSession(project, next, authorized: authorized, session: session);
         pages.add(page);

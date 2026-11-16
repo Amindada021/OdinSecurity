@@ -114,7 +114,7 @@ class ManualRequestClient {
         ['accept', 'content-type'].contains(auth.headerName.toLowerCase()))) {
       throw StateError('Custom header conflicts with saved identity.');
     }
-    final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized);
+    final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized, permits: policy?.permits);
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
     final timer = Stopwatch()..start();
     try {
@@ -132,10 +132,12 @@ class ManualRequestClient {
 
   Future<ManualResponse> _send(HttpClient client, Uri target, String method, AuthSession? session, ManualAccept accept, ManualRequestOptions options) async {
     final timer = Stopwatch()..start();
+    final identityHeaders = session?.headersFor(target) ?? const <String, String>{};
+    if (session?.expectsCredentials == true && identityHeaders.isEmpty) throw StateError('Saved identity is not applicable.');
     final req = await client.openUrl(method, target);
     req.followRedirects = false;
     req.headers.set(HttpHeaders.acceptHeader, accept.value);
-    session?.headersFor(target).forEach((key, value) => req.headers.set(key, value));
+    identityHeaders.forEach((key, value) => req.headers.set(key, value));
     options.headers.forEach((name, value) => req.headers.set(name, value));
     if (options.content != ManualContent.none) {
       req.headers.contentType = options.content == ManualContent.json ? ContentType.json : ContentType.text;

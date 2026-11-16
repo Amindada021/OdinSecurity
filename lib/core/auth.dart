@@ -83,26 +83,31 @@ class AuthSession {
   final Map<String, String> _headers;
   final List<Cookie> _cookies;
   final String rawCookiePath;
-  AuthSession(this.origin, Map<String, String> headers, [List<Cookie> cookies = const [], this.rawCookiePath = '/'])
-      : _headers = Map.unmodifiable(headers), _cookies = List.unmodifiable(cookies);
+  final DateTime createdAt;
+  final DateTime? expiresAt;
+  AuthSession(this.origin, Map<String, String> headers, [List<Cookie> cookies = const [], this.rawCookiePath = '/', DateTime? createdAt, this.expiresAt])
+      : _headers = Map.unmodifiable(headers), _cookies = List.unmodifiable(cookies), createdAt = createdAt ?? DateTime.now();
+
+  bool get expectsCredentials => _headers.isNotEmpty || _cookies.isNotEmpty;
 
   static bool matchesPath(String path, String candidate) {
     final targetPath = candidate.isEmpty ? '/' : candidate;
     return targetPath == path || targetPath.startsWith(path.endsWith('/') ? path : '$path/');
   }
 
-  Map<String, String> headersFor(Uri url) {
-    if (!SecurityProject.sameOrigin(origin, url) || url.scheme != 'https') return {};
+  Map<String, String> headersFor(Uri url, {DateTime? at}) {
+    final now = at ?? DateTime.now();
+    if (!SecurityProject.sameOrigin(origin, url) || url.scheme != 'https' ||
+        (expiresAt != null && !expiresAt!.isAfter(now))) return {};
     final headers = Map<String, String>.of(_headers);
     if (!matchesPath(rawCookiePath, url.path)) headers.remove('Cookie');
-    final now = DateTime.now();
     final cookies = _cookies.where((c) {
       final domain = c.domain?.replaceFirst(RegExp(r'^\.'), '').toLowerCase();
       final path = c.path ?? '/';
       final targetPath = url.path.isEmpty ? '/' : url.path;
       return (domain == null || domain == url.host.toLowerCase()) &&
-          (c.expires == null || c.expires!.isAfter(now)) &&
-          (c.maxAge == null || c.maxAge! > 0) &&
+          (c.maxAge != null ? c.maxAge! > 0 && now.difference(createdAt).inSeconds < c.maxAge! :
+            c.expires == null || c.expires!.isAfter(now)) &&
           (targetPath == path || targetPath.startsWith(path.endsWith('/') ? path : '$path/'));
     }).map((c) => '${c.name}=${c.value}').join('; ');
     if (cookies.isNotEmpty) headers['Cookie'] = cookies;
@@ -125,7 +130,7 @@ class Authenticator {
       case AuthMode.jsonLogin:
       case AuthMode.formLogin: throw StateError('Login requires a network session.');
     }
-    return AuthSession(profile.target, headers, const [], profile.cookiePath);
+    return AuthSession(profile.target, headers, const [], profile.cookiePath, null, profile.oauth?.expiresAt);
   }
 
   static String extractToken(String jsonBody, String path) {
@@ -140,8 +145,18 @@ class Authenticator {
     return value;
   }
 
-  Future<AuthSession> authenticate(SecurityProject project, AuthProfile profile, {required bool authorized}) async {
+  /// Validate every configured authentication endpoint before any network call.
+  static void validateScope(SecurityProject project, AuthProfile profile, {required bool authorized, bool Function(Uri)? permits}) {
     if (!authorized || !project.contains(profile.target)) throw StateError('Authentication target is not authorized.');
+    for (final raw in [if (profile.isLogin) profile.loginUrl, if (profile.validationUrl.isNotEmpty) profile.validationUrl]) {
+      final url = SecurityProject.parseTarget(raw);
+      if (!project.contains(url) || !SecurityProject.sameOrigin(profile.target, url) ||
+          (permits != null && !permits(url))) throw StateError('Authentication endpoint is outside permitted scope.');
+    }
+  }
+
+  Future<AuthSession> authenticate(SecurityProject project, AuthProfile profile, {required bool authorized, bool Function(Uri)? permits}) async {
+    validateScope(project, profile, authorized: authorized, permits: permits);
     if (!profile.isLogin) {
       final session = manual(profile);
       await _validateIfConfigured(profile, session);
@@ -173,9 +188,11 @@ class Authenticator {
   }
 
   Future<bool> _verify(HttpClient client, Uri url, AuthSession session, String marker) async {
+    final headers = session.headersFor(url);
+    if (headers.isEmpty) return false;
     final request = await client.getUrl(url);
     request.followRedirects = false;
-    session.headersFor(url).forEach((key, value) => request.headers.set(key, value));
+    headers.forEach((key, value) => request.headers.set(key, value));
     final response = await request.close();
     final body = <int>[];
     await for (final chunk in response) {

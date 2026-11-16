@@ -18,6 +18,7 @@ import 'regression_audit_screen.dart';
 import 'websocket_inventory_screen.dart';
 import 'live_websocket_screen.dart';
 import 'tunnel_screen.dart';
+import 'session_check_screen.dart';
 import 'review_organizer_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/project_storage.dart';
@@ -197,7 +198,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             CheckedPopupMenuItem(value: 'dark', checked: widget.preferences.theme == 'dark', child: const LText('Dark theme')),
             CheckedPopupMenuItem(value: 'system', checked: widget.preferences.theme == 'system', child: const LText('System theme')),
           ],
-        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.47.0+47', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.48.0+48', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const LText('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: LText(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: LText('Create a project to assess an authorized website.')))
@@ -499,7 +500,7 @@ class _ScanScreenState extends State<ScanScreen> {
       final selected = await prepareAuth();
       final rules = await CustomRuleRepository(PreferencesStorage(await SharedPreferences.getInstance())).load(widget.project.id);
       if (!mounted) return;
-      final data = await PassiveScanner(customRules: rules).scan(widget.project, authorized: authorized, target: target, auth: selected);
+      final data = await PassiveScanner(customRules: rules).scan(widget.project, authorized: authorized, target: target, auth: selected, permits: policy.permits);
       if (mounted) {
         setState(() => result = data);
         await record(ScanRecord.fromPages([data]));
@@ -551,6 +552,11 @@ class _ScanScreenState extends State<ScanScreen> {
           OutlinedButton.icon(onPressed: busy || loadingAuth || target.scheme != 'https' ? null : addOAuth, icon: const Icon(Icons.login), label: const LText('Add OAuth identity')),
           if (auth != null && auth!.oauth == null) OutlinedButton(onPressed: busy || loadingAuth ? null : () => editAuth(), child: const LText('Edit')),
           if (auth?.oauth != null) OutlinedButton(onPressed: busy || loadingAuth || auth!.oauth!.refreshToken.isEmpty ? null : refreshOAuth, child: const LText('Refresh OAuth token')),
+          if (auth != null) OutlinedButton(onPressed: busy || loadingAuth || loadingPolicy || policyError != null ? null : () {
+            final profile = auth;
+            if (profile == null) return;
+            Navigator.of(context).push(MaterialPageRoute(builder: (_) => SessionCheckScreen(project: widget.project, target: target, profile: profile, policy: policy)));
+          }, child: const LText('Check session')),
           if (auth != null) OutlinedButton(onPressed: busy || loadingAuth ? null : removeAuth, child: const LText('Delete')),
         ]),
         if (auth != null && auth!.validationUrl.isEmpty) const LText('Session not independently verified. Configure a protected validation URL for reliable authenticated scanning.'),
