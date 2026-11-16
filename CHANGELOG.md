@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.24.0+24
+- Local bounded line-based message comparer with additions/removals and changes-only filter.
+- Descriptive offline token sample analysis: counts, duplicates, lengths, character frequencies and varying positions; not a cryptographic randomness verdict.
+- Hex encoding/decoding and HTML escaping tools; pure offline fixtures.
+
 ## 0.23.0+23
 - Central scope-filtered session metadata logger for passive scans, manual requests and CORS preflights.
 - Project-scoped filtering, response status, timing, size, and explicit clear; no body, headers, credentials or query values logged.

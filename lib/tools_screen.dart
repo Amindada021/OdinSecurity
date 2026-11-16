@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'localized.dart';
+import 'data_analysis_screen.dart';
 import 'core/openapi_inventory.dart';
 import 'core/offline_tools.dart';
 
@@ -53,6 +54,7 @@ class _OfflineToolsScreenState extends State<OfflineToolsScreen> {
   final operations = <String, String Function(String)>{
     'Base64 encode': OfflineTools.encodeBase64, 'Base64 decode': OfflineTools.decodeBase64,
     'URL encode': OfflineTools.encodeUrl, 'URL decode': OfflineTools.decodeUrl,
+    'Hex encode': OfflineTools.encodeHex, 'Hex decode': OfflineTools.decodeHex, 'HTML escape': OfflineTools.encodeHtml,
     'Format JSON': OfflineTools.formatJson, 'Inspect JWT (unverified)': OfflineTools.inspectJwt,
   };
   @override
@@ -61,6 +63,8 @@ class _OfflineToolsScreenState extends State<OfflineToolsScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const LText('Offline utilities')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
+      OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ComparerScreen())), icon: const Icon(Icons.compare_arrows), label: const LText('Message comparer')),
+      OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TokenSamplesScreen())), icon: const Icon(Icons.analytics_outlined), label: const LText('Token sample analysis')),
       DropdownButtonFormField<String>(initialValue: mode, items: operations.keys.map((op) => DropdownMenuItem(value: op, child: LText(op))).toList(),
         onChanged: (value) => setState(() { mode = value!; output = ''; })),
       TextField(controller: source, maxLines: 5, autocorrect: false, enableSuggestions: false, decoration: const InputDecoration(label: LText('Input (local only)'))),
