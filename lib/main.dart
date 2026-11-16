@@ -26,6 +26,8 @@ import 'core/auth.dart';
 import 'core/auth_vault.dart';
 import 'auth_dialog.dart';
 import 'core/crawler.dart';
+import 'core/custom_rules.dart';
+import 'custom_rules_screen.dart';
 import 'core/scan_policy.dart';
 import 'scan_policy_dialog.dart';
 import 'access_check_screen.dart';
@@ -192,7 +194,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             CheckedPopupMenuItem(value: 'dark', checked: widget.preferences.theme == 'dark', child: const LText('Dark theme')),
             CheckedPopupMenuItem(value: 'system', checked: widget.preferences.theme == 'system', child: const LText('System theme')),
           ],
-        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.34.0+34', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.35.0+35', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const LText('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: LText(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: LText('Create a project to assess an authorized website.')))
@@ -472,7 +474,9 @@ class _ScanScreenState extends State<ScanScreen> {
     try {
       final selected = await prepareAuth();
       if (flag.cancelled) return;
-      final data = await SiteCrawler().run(widget.project, target, authorized: authorized, cancellation: flag, policy: policy, auth: selected, onProgress: (n) { if (mounted) setState(() => visited = n); });
+      final rules = await CustomRuleRepository(PreferencesStorage(await SharedPreferences.getInstance())).load(widget.project.id);
+      if (flag.cancelled || !mounted) return;
+      final data = await SiteCrawler(scanner: PassiveScanner(customRules: rules)).run(widget.project, target, authorized: authorized, cancellation: flag, policy: policy, auth: selected, onProgress: (n) { if (mounted) setState(() => visited = n); });
       if (mounted) {
         setState(() => crawlResult = data);
         await record(ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled));
@@ -490,7 +494,9 @@ class _ScanScreenState extends State<ScanScreen> {
     setState(() { busy = true; result = null; crawlResult = null; error = null; });
     try {
       final selected = await prepareAuth();
-      final data = await PassiveScanner().scan(widget.project, authorized: authorized, target: target, auth: selected);
+      final rules = await CustomRuleRepository(PreferencesStorage(await SharedPreferences.getInstance())).load(widget.project.id);
+      if (!mounted) return;
+      final data = await PassiveScanner(customRules: rules).scan(widget.project, authorized: authorized, target: target, auth: selected);
       if (mounted) {
         setState(() => result = data);
         await record(ScanRecord.fromPages([data]));
@@ -510,6 +516,7 @@ class _ScanScreenState extends State<ScanScreen> {
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text(widget.project.startUrl.toString(), style: Theme.of(context).textTheme.titleMedium),
         const LText('Technology fingerprint · Scoped request · No redirects'),
+        OutlinedButton.icon(onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomRulesScreen(projectId: widget.project.id))), icon: const Icon(Icons.rule), label: const LText('Custom scan rules')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy ? null : editPolicy, icon: const Icon(Icons.tune), label: Text('Scan limits: ${policy.maxPages} pages / ${policy.delayMs} ms')),
         if (policyError != null) LText(policyError!),
         if (!policy.permits(target)) const LText('The selected URL is excluded from scanning.'),

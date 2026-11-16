@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.35.0+35
+- Declarative custom HTTP security-header rules, project-local editor and persistence.
+- Applied to successful responses during scan and crawl; informational findings included in normal reports. Offline rule and storage tests.
+
 ## 0.34.0+34
 - Added cooperative pause/resume/stop for the bounded crawler, with pause-aware active time budget and progress controls.
 - Added offline fixtures for pause, resume and cancellation; guarded explicit start routes.

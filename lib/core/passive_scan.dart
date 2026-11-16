@@ -6,6 +6,7 @@ import 'project.dart';
 import 'auth.dart';
 import 'discovery.dart';
 import 'security_checks.dart';
+import 'custom_rules.dart';
 import 'tls_audit.dart';
 import 'traffic_journal.dart';
 
@@ -35,7 +36,9 @@ class PassiveScanResult {
 class PassiveScanner {
   static const maxBytes = 256 * 1024;
   final TechnologyDetector detector;
-  PassiveScanner({TechnologyDetector? detector}) : detector = detector ?? TechnologyDetector();
+  final List<HeaderRule> customRules;
+  PassiveScanner({TechnologyDetector? detector, List<HeaderRule> customRules = const []}) :
+    detector = detector ?? TechnologyDetector(), customRules = List.unmodifiable(customRules);
 
   Future<PassiveScanResult> scan(SecurityProject project, {required bool authorized, Uri? target, AuthProfile? auth}) async {
     if (!authorized) throw StateError('Explicit authorization is required.');
@@ -96,6 +99,7 @@ class PassiveScanner {
       statusCode: response.statusCode,
       findings: List.unmodifiable([
         ...PassiveSecurityChecks().inspect(url, observation),
+        if (response.statusCode >= 200 && response.statusCode < 300) ...CustomHeaderRules.inspect(customRules, observation),
         if (certificate != null) ...CertificateChecks.inspect(certificate.startValidity, certificate.endValidity, DateTime.now()),
       ]),
       links: isHtml && response.statusCode >= 200 && response.statusCode < 300 ? LinkDiscovery.extract(url, observation.body) : [],
