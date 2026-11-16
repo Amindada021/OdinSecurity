@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.33.0+33
+- Added project-scoped manual review organizer with persistent notes, status filters, editing and deletion.
+- Added storage and scope validation fixtures; no raw traffic retention.
+
 ## 0.32.0+32
 - Expanded user-led SPA inventory to capture scoped form destinations and declared GET/POST method labels, script URLs and Fetch/XHR route metadata.
 - No form field values or automatic submissions; scope and query redaction fixtures.

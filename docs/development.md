@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.32.0+32; pubspec.yaml is the version source of truth.
+Current version is 0.33.0+33; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.32.0+32`.
-- Git tag `v0.32.0` when released.
-- `OdinSecurity-v0.32.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.33.0+33`.
+- Git tag `v0.33.0` when released.
+- `OdinSecurity-v0.33.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -92,3 +92,7 @@ Review explicitly provided HTTPS URLs paired with expected status codes. Perform
 ## WebSocket inventory
 
 Import sanitized HAR JSON from the project. WebSocket upgrade HTTP 101 and ws/wss request records are mapped to exact HTTP(S) origins for scope checks; query values, headers and payloads are not retained. If an exporter provides the optional _webSocketMessages array, direction counts are displayed; otherwise frame data is unavailable. This is offline inventory, not a live WebSocket proxy.
+
+## Review organizer
+
+Maintain manual sanitized review notes per project with open, resolved or false-positive status. Stored locally as ordinary preferences; never include secrets or customer data. Route queries are rejected and current project scope is checked on load and save. No captured request or response content is stored.
