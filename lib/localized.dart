@@ -19,6 +19,11 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Request': 'درخواست',
+  'New request tab': 'تب درخواست جدید',
+  'Close current request tab': 'بستن تب جاری',
+  'Up to five independent request tabs are kept in memory. Each send requires fresh consent; closing the inspector discards all tabs.': 'حداکثر پنج تب مستقل در حافظه نگهداری می‌شود. هر ارسال نیاز به تأیید مجدد دارد؛ با بستن بررسی درخواست همه تب‌ها پاک می‌شوند.',
+  'Write methods require HTTPS staging confirmation. Only the latest response in each tab is retained.': 'متدهای تغییردهنده نیاز به تأیید محیط آزمایشی HTTPS دارند. فقط آخرین پاسخ هر تب نگهداری می‌شود.',
   'Live WebSocket': 'وب‌سوکت زنده',
   'Connect to an authorized WSS test endpoint. Receive only; no application messages are sent.': 'به آدرس آزمایشی مجاز WSS متصل شوید. فقط دریافت پیام انجام می‌شود.',
   'WebSocket URL': 'نشانی وب‌سوکت',

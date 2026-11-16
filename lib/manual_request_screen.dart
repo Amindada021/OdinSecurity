@@ -4,6 +4,7 @@ import 'core/auth.dart';
 import 'core/manual_request.dart';
 import 'core/project.dart';
 import 'core/request_history.dart';
+import 'core/request_workspace.dart';
 import 'core/request_review.dart';
 import 'core/scan_policy.dart';
 
@@ -29,13 +30,57 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
   ManualAccept accept = ManualAccept.any;
   ManualResponse? response;
   String? error;
-  final history = RequestHistory();
+  late final RequestWorkspace workspace;
+  RequestHistory get history => workspace.active.history;
   final sinceLast = Stopwatch();
   @override
   void initState() {
     super.initState();
     url = TextEditingController(text: widget.target.toString());
-    method = widget.initialMethod == 'HEAD' ? 'HEAD' : 'GET';
+    workspace = RequestWorkspace(widget.target.toString(), initialMethod: widget.initialMethod);
+    method = workspace.active.method;
+  }
+
+  void saveDraft() {
+    final tab = workspace.active;
+    tab.url = url.text;
+    tab.method = method;
+    tab.accept = accept;
+    tab.headers = headers.text;
+    tab.content = content;
+    tab.body = body.text;
+    tab.useAuth = useAuth;
+    tab.response = response;
+    tab.error = error;
+  }
+
+  void loadDraft() {
+    final tab = workspace.active;
+    url.text = tab.url;
+    method = tab.method;
+    accept = tab.accept;
+    headers.text = tab.headers;
+    content = tab.content;
+    body.text = tab.body;
+    useAuth = tab.useAuth;
+    response = tab.response;
+    error = tab.error;
+    invalidate();
+  }
+
+  void switchTab(int id) {
+    if (busy || workspace.active.id == id) return;
+    setState(() { saveDraft(); workspace.select(id); loadDraft(); });
+  }
+
+  void addTab() {
+    if (busy || !workspace.canAdd) return;
+    setState(() { saveDraft(); workspace.add(); loadDraft(); });
+  }
+
+  void closeTab() {
+    if (busy || !workspace.canClose) return;
+    setState(() { workspace.closeActive(); loadDraft(); });
   }
 
   @override
@@ -48,7 +93,7 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
     final chosenAccept = accept;
     final chosenAuth = useAuth ? widget.auth : null;
     final chosenStaging = stagingConfirmed;
-    setState(() { busy = true; invalidate(); error = null; response = null; });
+    setState(() { busy = true; invalidate(); error = null; response = null; workspace.active.response = null; });
     try {
       final options = ManualRequestOptions.parse(headers.text, content, body.text);
       final review = RequestReview.prepare(widget.project, raw, chosenMethod, chosenAccept, widget.policy,
@@ -107,20 +152,30 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
     return Scaffold(
       appBar: AppBar(title: const LText('Request inspector')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        const LText('Compose a single authorized HTTP request. Write methods require HTTPS staging confirmation. Only the latest response content is displayed.'),
-        DropdownButtonFormField<String>(initialValue: method, items: ManualRequestClient.methods.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(), onChanged: busy ? null : (v) => setState(() { method = v!; invalidate(); if (!ManualRequestClient.bodyMethods.contains(method)) { content = ManualContent.none; body.clear(); } })),
-        TextField(controller: url, enabled: !busy, keyboardType: TextInputType.url, decoration: const InputDecoration(label: LText('Request URL')), onChanged: (_) => setState(invalidate)),
-        DropdownButtonFormField<ManualAccept>(initialValue: accept, decoration: const InputDecoration(label: LText('Accept')), items: ManualAccept.values.map((value) => DropdownMenuItem(value: value, child: Text(value.value))).toList(),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final tab in workspace.tabs)
+            ChoiceChip(label: Text('${tr(context, 'Request')} ${uiNumber(context, tab.id)}'),
+              selected: workspace.active.id == tab.id, onSelected: busy ? null : (_) => switchTab(tab.id)),
+          IconButton(onPressed: busy || !workspace.canAdd ? null : addTab,
+            tooltip: tr(context, 'New request tab'), icon: const Icon(Icons.add)),
+          IconButton(onPressed: busy || !workspace.canClose ? null : closeTab,
+            tooltip: tr(context, 'Close current request tab'), icon: const Icon(Icons.close)),
+        ]),
+        const LText('Up to five independent request tabs are kept in memory. Each send requires fresh consent; closing the inspector discards all tabs.'),
+        const LText('Write methods require HTTPS staging confirmation. Only the latest response in each tab is retained.'),
+        DropdownButtonFormField<String>(key: ValueKey('method-${workspace.active.id}'), initialValue: method, items: ManualRequestClient.methods.map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(), onChanged: busy ? null : (v) => setState(() { method = v!; invalidate(); if (!ManualRequestClient.bodyMethods.contains(method)) { content = ManualContent.none; body.clear(); } })),
+        TextField(controller: url, enabled: !busy, maxLength: 2048, keyboardType: TextInputType.url, decoration: const InputDecoration(label: LText('Request URL')), onChanged: (_) => setState(invalidate)),
+        DropdownButtonFormField<ManualAccept>(key: ValueKey('accept-${workspace.active.id}'), initialValue: accept, decoration: const InputDecoration(label: LText('Accept')), items: ManualAccept.values.map((value) => DropdownMenuItem(value: value, child: Text(value.value))).toList(),
           onChanged: busy ? null : (value) => setState(() { accept = value!; invalidate(); })),
-        TextField(controller: headers, enabled: !busy, minLines: 2, maxLines: 5,
+        TextField(controller: headers, enabled: !busy, maxLength: 4096, minLines: 2, maxLines: 5,
           decoration: const InputDecoration(label: LText('Custom headers (one Name: value per line)'),
             helper: LText('Allowed: Cache-Control, If-None-Match, If-Modified-Since, Accept-Language, X-Requested-With')),
           onChanged: (_) => setState(invalidate)),
         if (ManualRequestClient.bodyMethods.contains(method)) ...[
-          DropdownButtonFormField<ManualContent>(initialValue: content, decoration: const InputDecoration(label: LText('Request content')),
+          DropdownButtonFormField<ManualContent>(key: ValueKey('content-${workspace.active.id}'), initialValue: content, decoration: const InputDecoration(label: LText('Request content')),
             items: ManualContent.values.map((v) => DropdownMenuItem(value: v, child: Text(v.name))).toList(),
             onChanged: busy ? null : (v) => setState(() { content = v!; if (content == ManualContent.none) body.clear(); invalidate(); })),
-          if (content != ManualContent.none) TextField(controller: body, enabled: !busy, minLines: 4, maxLines: 12,
+          if (content != ManualContent.none) TextField(controller: body, enabled: !busy, maxLength: 32768, minLines: 4, maxLines: 12,
             textDirection: TextDirection.ltr, decoration: const InputDecoration(label: LText('Request body (max 32 KiB)')),
             onChanged: (_) => setState(invalidate)),
         ],
@@ -150,7 +205,7 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
         const Divider(),
         Row(children: [
           Expanded(child: Text('${tr(context, 'Session history')} (${uiNumber(context, records.length)})')),
-          TextButton(onPressed: records.isEmpty || busy ? null : () => setState(() { history.clear(); response = null; }), child: const LText('Clear')),
+          TextButton(onPressed: records.isEmpty || busy ? null : () => setState(() { history.clear(); response = null; workspace.active.response = null; }), child: const LText('Clear')),
         ]),
         const LText('Only route, method, status, timing and captured size are retained in memory. Query values are omitted; paths can still be sensitive.'),
         for (final record in records) ListTile(
