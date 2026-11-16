@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'bit_statistics.dart';
 
 enum DiffKind { same, removed, added }
 
@@ -51,10 +52,11 @@ class SampleReport {
   final List<PositionStatistics> positions;
   final int adjacentDuplicates;
   final double? adjacentDifferenceRatio, hexOneBitRatio;
+  final BitStatistics? bitStatistics;
   const SampleReport({required this.count, required this.unique, required this.minLength,
     required this.maxLength, required this.distinctCharacters, required this.observedCharacterEntropy,
     required this.varyingPositions, this.positions = const [], this.adjacentDuplicates = 0,
-    this.adjacentDifferenceRatio, this.hexOneBitRatio});
+    this.adjacentDifferenceRatio, this.hexOneBitRatio, this.bitStatistics});
   int get duplicates => count - unique;
 }
 
@@ -126,6 +128,7 @@ class TokenSampleAnalyzer {
       varyingPositions: List.unmodifiable([for (var i = 0; i < minLength; i++) if (positionCounts[i].length > 1) i + 1]),
       positions: List.unmodifiable(positions), adjacentDuplicates: adjacentDuplicates,
       adjacentDifferenceRatio: compared == 0 ? null : differences / compared,
-      hexOneBitRatio: hexBits == 0 ? null : oneBits / hexBits);
+      hexOneBitRatio: hexBits == 0 ? null : oneBits / hexBits,
+      bitStatistics: HexBitAnalyzer.analyze(tokens));
   }
 }

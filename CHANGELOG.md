@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.57.0+58
+- Add fixed-width hexadecimal bit-position bias, frequency chi-square, intra-sample transitions and adjacent-sample bit-change statistics; unit fixtures.
+
 ## 0.56.0+57
 - Add bounded local test-text variant preview and offline lab interaction label correlation with strict metadata schema; fixture tests.
 

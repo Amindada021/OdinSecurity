@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.56.0+57; pubspec.yaml is the version source of truth.
+Current version is 0.57.0+58; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.56.0+57`.
-- Git tag `v0.56.0` when released.
-- `OdinSecurity-v0.56.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.57.0+58`.
+- Git tag `v0.57.0` when released.
+- `OdinSecurity-v0.57.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -168,3 +168,7 @@ Select up to three exact registered HTTPS URLs, subject to current exclusions an
 ## Offline test fixtures
 
 Render up to 20 non-secret synthetic values at a single literal `[VALUE]` marker. Review resulting strings locally; no requests or automated test payloads. Offline lab interaction review generates a random 128-bit hex label and matches user-provided JSON rows with exactly `label`, `protocol` (`dns`, `http`, `https`), and `observedAt` (UTC). No network callback service, injection or source attribution. Matches are correlations, not vulnerability proof.
+
+## Fixed-width bit review
+
+For equally sized, even-length hexadecimal synthetic tokens only: display one-bit frequency, descriptive two-bin Pearson chi-square, per-position bias and adjacent-sample Hamming-change ratio. Within-token transitions exclude sample boundaries. No statistical certification or live token harvesting.

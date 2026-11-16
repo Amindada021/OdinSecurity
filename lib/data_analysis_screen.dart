@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'core/data_analysis.dart';
+import 'core/bit_statistics.dart';
 import 'localized.dart';
 
 class ComparerScreen extends StatefulWidget {
@@ -106,6 +107,20 @@ class _TokenSamplesScreenState extends State<TokenSamplesScreen> {
               ListTile(dense: true, title: Text('#${position.position} · ${position.distinct}'),
                 subtitle: Text('Shannon ${position.shannonEntropy.toStringAsFixed(3)} | Min ${position.empiricalMinEntropy.toStringAsFixed(3)} bits')),
           ]),
+          if (data.bitStatistics != null) ...[
+            const LText('Fixed-width hexadecimal bit statistics'),
+            for (final row in <String, String>{
+              'Bits per sample': uiNumber(context, data.bitStatistics!.bitsPerSample),
+              'Total bits': uiNumber(context, data.bitStatistics!.totalBits),
+              'Frequency chi-square (descriptive)': data.bitStatistics!.frequencyChiSquare.toStringAsFixed(3),
+              'Adjacent sample bit change': (data.bitStatistics!.adjacentBitChangeRatio! * 100).toStringAsFixed(2) + '%',
+              'Within-sample bit transitions': (data.bitStatistics!.withinSampleTransitionRatio! * 100).toStringAsFixed(2) + '%',
+            }.entries) ListTile(title: LText(row.key), subtitle: Text(row.value)),
+            ExpansionTile(title: const LText('Most biased bit positions (up to 32)'), children: [
+              for (final bit in HexBitAnalyzer.mostBiased(data.bitStatistics!))
+                ListTile(dense: true, title: Text('#${bit.index}'), subtitle: Text((bit.ratio * 100).toStringAsFixed(2) + '%')),
+            ]),
+          ],
           const LText('These are descriptive sample statistics, not proof of cryptographic randomness or token security.'),
         ],
       ]));

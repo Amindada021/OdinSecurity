@@ -19,6 +19,13 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Fixed-width hexadecimal bit statistics': 'آمار بیت نمونه‌های هگز هم‌اندازه',
+  'Bits per sample': 'تعداد بیت هر نمونه',
+  'Total bits': 'کل بیت‌ها',
+  'Frequency chi-square (descriptive)': 'کای‌دو فراوانی (توصیفی)',
+  'Adjacent sample bit change': 'تغییر بیت نمونه‌های متوالی',
+  'Within-sample bit transitions': 'تغییر بیت درون نمونه',
+  'Most biased bit positions (up to 32)': 'بیشترین سوگیری موقعیت بیت (تا ۳۲ مورد)',
   'Offline test fixtures': 'نمونه‌های تست آفلاین',
   'Generate synthetic text variants locally. No automatic requests are sent. Use non-secret sample values.': 'نمونه‌های متنی آزمایشی را به‌صورت محلی تولید کنید؛ هیچ درخواست خودکاری ارسال نمی‌شود.',
   'Template with one [VALUE] marker': 'الگو با یک نشانگر [VALUE]',
