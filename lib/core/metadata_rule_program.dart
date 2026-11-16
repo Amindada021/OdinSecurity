@@ -36,13 +36,59 @@ class MetadataRuleProgram {
     return MetadataRuleProgram._(List.unmodifiable(rules));
   }
 
+  int get ruleCount => _rules.length;
+
+  /// Evaluate a synthetic response, never a network request. Only public
+  /// metadata headers from the same allowlist are accepted in fixtures.
+  List<SecurityFinding> preview(String source) {
+    if (source.length > 16000) throw const FormatException('Fixture too large.');
+    final json = jsonDecode(source);
+    if (json is! Map || json.length != 2 || json['status'] is! int || json['headers'] is! Map) {
+      throw const FormatException('Invalid fixture.');
+    }
+    final fields = json['headers'] as Map;
+    if (fields.length > headers.length) throw const FormatException('Invalid fixture headers.');
+    final checked = <String,List<String>>{};
+    for (final entry in fields.entries) {
+      if (entry.key is! String || !headers.contains(entry.key) || entry.value is! List) {
+        throw const FormatException('Unsupported fixture header.');
+      }
+      final values = entry.value as List;
+      if (values.isEmpty || values.length > 20 || values.any((v) => v is! String ||
+          v.length > 4096 || v.contains(RegExp(r'[\r\n\x00]')))) {
+        throw const FormatException('Invalid fixture values.');
+      }
+      checked[entry.key as String] = List<String>.from(values);
+    }
+    return inspect(HttpObservation(headers:checked, body:''), json['status'] as int);
+  }
+
   List<SecurityFinding> inspect(HttpObservation observation, int status) {
     if (status < 100 || status > 599) throw const FormatException('Invalid HTTP status.');
+    // Extract only permitted metadata. If the selected header budget is
+    // exceeded, report incomplete rather than falsely marking a header absent.
+    final sanitized = <String,List<String>>{};
+    var size = 0, count = 0;
+    for (final name in headers) {
+      final values = observation.headers[name];
+      if (values == null) continue;
+      for (final value in values) {
+        size += value.length;
+        count++;
+        if (count > 200 || size > 65536 || value.length > 16384) {
+          return const [SecurityFinding('program.review.limit','Metadata program review incomplete',
+            Severity.info,'Selected headers exceeded the processing budget',
+            'Review response metadata manually.')];
+        }
+      }
+      sanitized[name] = List<String>.of(values);
+    }
+    final metadata = HttpObservation(headers:sanitized,body:'');
     final result = <SecurityFinding>[];
     for (final rule in _rules) {
       final matched = rule.all
-        ? rule.conditions.every((c) => c.test(observation, status))
-        : rule.conditions.any((c) => c.test(observation, status));
+        ? rule.conditions.every((c) => c.test(metadata, status))
+        : rule.conditions.any((c) => c.test(metadata, status));
       if (matched) result.add(SecurityFinding('program.' + rule.id,
         'Metadata rule matched: ' + rule.id, Severity.info,
         'Configured conditions matched; raw values omitted',

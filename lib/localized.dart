@@ -19,6 +19,16 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Project metadata rules': 'قوانین متادیتای پروژه',
+  'Save a project-only declarative metadata program. It runs on existing scanner responses, not additional requests. No credentials or scripts.': 'قوانین متادیتا را فقط برای این پروژه ذخیره کنید. روی پاسخ‌های دریافتی اسکن اجرا می‌شوند و درخواست اضافه نمی‌فرستند. اطلاعات ورود یا اسکریپت وارد نکنید.',
+  'Enable rules for project scans': 'فعال‌سازی قوانین برای اسکن‌های پروژه',
+  'Metadata program JSON': 'برنامه قوانین متادیتا (JSON)',
+  'Load example into empty draft': 'بارگذاری نمونه در پیش‌نویس خالی',
+  'Preview against a synthetic HTTP response; this does not test a live server.': 'پیش‌نمایش با پاسخ مصنوعی HTTP؛ این کار سرور واقعی را آزمایش نمی‌کند.',
+  'Synthetic response metadata JSON': 'متادیتای پاسخ مصنوعی (JSON)',
+  'Preview metadata rules': 'پیش‌نمایش نتیجه قوانین',
+  'Invalid rules, fixture or storage error.': 'قوانین یا پاسخ نمونه نامعتبر است، یا خطایی در ذخیره رخ داده.',
+  'Project rule settings saved.': 'تنظیمات قوانین پروژه ذخیره شد.',
   'Request transport trace': 'ردیابی مراحل انتقال درخواست',
   'Connection/open request': 'اتصال و باز کردن درخواست',
   'Request to response headers': 'ارسال درخواست تا دریافت هدر پاسخ',

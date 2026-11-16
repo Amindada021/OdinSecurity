@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/custom_rules.dart';
 import 'core/project_storage.dart';
 import 'localized.dart';
+import 'metadata_program_screen.dart';
 
 class CustomRulesScreen extends StatefulWidget {
   final String projectId;
@@ -86,6 +87,8 @@ class _CustomRulesScreenState extends State<CustomRulesScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const LText('Custom scan rules')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
+      OutlinedButton.icon(onPressed:busy ? null : ()=>Navigator.of(context).push(MaterialPageRoute(builder:(_)=>MetadataProgramScreen(projectId:widget.projectId))),
+        icon:const Icon(Icons.rule),label:const LText('Project metadata rules')),
       const LText('Define up to 20 literal header rules, one per line. Rules apply to successful responses in this project and never send additional requests. Do not include secrets.'),
       const LText('Rule modes: present, absent, contains, equals. Equals compares the complete trimmed header value, case-insensitively.'),
       const SelectableText('x-content-type-options|equals|nosniff\nstrict-transport-security|present\nx-powered-by|absent', textDirection: TextDirection.ltr),

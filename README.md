@@ -36,7 +36,7 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.72.0+74**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.73.0+75**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
 
 Offline CVE review accepts a user-supplied, exact-version advisory catalog; it does not retrieve advisories or confirm exploitability.
 
@@ -79,3 +79,5 @@ Bounded metadata rule programs combine HTTP status ranges and allowlisted header
 The [private lab collector companion](docs/private-lab-collector.md) provides authenticated, ephemeral metadata ingestion and export for explicit fixture clients. Loopback-only by default; private HTTPS access must be configured by the operator. No public callback hosting or arbitrary payload generation.
 
 Request inspector now shows measured connection/open, response-header and body-read durations, plus validity/issuer/subject of the server certificate on the actual trusted HTTPS response. Session traffic logger retains timings only. Passive response configuration observations (HSTS, CSP, cookie attributes, redirects and authenticated caching) are computed without further requests; raw evidence is excluded. This is direct client diagnostics, not interception of another application’s TLS traffic.
+
+Project metadata programs: save a validated JSON rule set locally per project, enable/disable it explicitly, and preview it with synthetic metadata. Enabled rules execute against existing acquired responses during single scans, crawling, foreground assessment queues and configuration reviews. Their fixed observations use the existing scan history/report pipeline. No executable code, additional probes or body/credential access.

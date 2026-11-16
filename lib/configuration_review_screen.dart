@@ -7,6 +7,7 @@ import 'core/tls_audit.dart';
 import 'core/passive_scan.dart';
 import 'core/cors_audit.dart';
 import 'core/custom_rules.dart';
+import 'core/metadata_program_settings.dart';
 import 'core/project_storage.dart';
 import 'localized.dart';
 
@@ -29,9 +30,10 @@ class _ConfigurationReviewScreenState extends State<ConfigurationReviewScreen> {
     try {
       final storage = PreferencesStorage(await SharedPreferences.getInstance());
       final rules = await CustomRuleRepository(storage).load(widget.project.id);
+      final program = (await MetadataProgramRepository(storage).load(widget.project.id)).activeProgram;
       final review = ConfigurationReview(
         tls: (u) => TlsAudit().run(widget.project, u, widget.policy, authorized: true),
-        read: (u) => PassiveScanner(customRules: rules).scan(widget.project, target: u, authorized: true, permits: widget.policy.permits),
+        read: (u) => PassiveScanner(customRules: rules, metadataProgram: program).scan(widget.project, target: u, authorized: true, permits: widget.policy.permits),
         preflight: (u) => CorsAudit().run(widget.project, u, widget.policy, authorized: true));
       final data = await review.run(widget.project, widget.policy, endpoint, authorized: true,
         includeCors: cors, cancelled: () => stopped || !mounted);

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.73.0+75
+- Persist validated per-project metadata programs with enable/disable and synthetic response preview; integrate them into single scans, crawling, queues and configuration review with existing history/report integration, header processing budgets, Persian labels and regression fixtures.
+
 ## 0.72.0+74
 - Add real-response transport phase timings and bounded trusted peer certificate summary in the request inspector, timing-only traffic-journal drilldown, and passive configuration observations from the already received response. Add regression fixtures and Persian labels.
 

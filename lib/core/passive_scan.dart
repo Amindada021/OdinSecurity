@@ -7,6 +7,7 @@ import 'auth.dart';
 import 'discovery.dart';
 import 'security_checks.dart';
 import 'custom_rules.dart';
+import 'metadata_rule_program.dart';
 import 'header_policy_checks.dart';
 import 'csp_review.dart';
 import 'html_security_checks.dart';
@@ -41,8 +42,17 @@ class PassiveScanner {
   static const maxBytes = 256 * 1024;
   final TechnologyDetector detector;
   final List<HeaderRule> customRules;
-  PassiveScanner({TechnologyDetector? detector, List<HeaderRule> customRules = const []}) :
+  final MetadataRuleProgram? metadataProgram;
+  PassiveScanner({TechnologyDetector? detector, List<HeaderRule> customRules = const [], this.metadataProgram}) :
     detector = detector ?? TechnologyDetector(), customRules = List.unmodifiable(customRules);
+
+  /// Both configured rule families consume the already acquired response.
+  /// Legacy header checks retain their successful-response-only behavior.
+  List<SecurityFinding> inspectConfiguredRules(HttpObservation observation, int status) =>
+    List.unmodifiable([
+      if (status >= 200 && status < 300) ...CustomHeaderRules.inspect(customRules, observation),
+      if (metadataProgram != null) ...metadataProgram!.inspect(observation, status),
+    ]);
 
   Future<PassiveScanResult> scan(SecurityProject project, {required bool authorized, Uri? target, AuthProfile? auth, bool Function(Uri)? permits}) async {
     if (!authorized) throw StateError('Explicit authorization is required.');
@@ -111,7 +121,7 @@ class PassiveScanner {
         ...HeaderPolicyChecks.inspect(url, observation, status: response.statusCode, identityHeadersSent: identityHeaders.isNotEmpty),
         if (isHtml && response.statusCode >= 200 && response.statusCode < 300) ...CspReview.inspect(observation),
         if (isHtml && !truncated && response.statusCode >= 200 && response.statusCode < 300) ...HtmlSecurityChecks.inspect(url, observation.body),
-        if (response.statusCode >= 200 && response.statusCode < 300) ...CustomHeaderRules.inspect(customRules, observation),
+        ...inspectConfiguredRules(observation, response.statusCode),
         if (certificate != null) ...CertificateChecks.inspect(certificate.startValidity, certificate.endValidity, DateTime.now()),
       ]),
       links: isHtml && response.statusCode >= 200 && response.statusCode < 300 ? LinkDiscovery.extract(url, observation.body) : [],

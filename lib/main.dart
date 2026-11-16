@@ -40,6 +40,7 @@ import 'auth_dialog.dart';
 import 'core/crawler.dart';
 import 'core/crawl_checkpoint.dart';
 import 'core/custom_rules.dart';
+import 'core/metadata_program_settings.dart';
 import 'custom_rules_screen.dart';
 import 'core/scan_policy.dart';
 import 'scan_policy_dialog.dart';
@@ -208,7 +209,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             CheckedPopupMenuItem(value: 'dark', checked: widget.preferences.theme == 'dark', child: const LText('Dark theme')),
             CheckedPopupMenuItem(value: 'system', checked: widget.preferences.theme == 'system', child: const LText('System theme')),
           ],
-        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.72.0+74', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.73.0+75', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const LText('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: LText(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: LText('Create a project to assess an authorized website.')))
@@ -519,10 +520,12 @@ class _ScanScreenState extends State<ScanScreen> {
     try {
       final selected = await prepareAuth();
       if (flag.cancelled) return;
-      final rules = await CustomRuleRepository(PreferencesStorage(await SharedPreferences.getInstance())).load(widget.project.id);
+      final storage = PreferencesStorage(await SharedPreferences.getInstance());
+      final rules = await CustomRuleRepository(storage).load(widget.project.id);
+      final program = (await MetadataProgramRepository(storage).load(widget.project.id)).activeProgram;
       if (flag.cancelled || !mounted) return;
       final repository = await _checkpointRepo();
-      final data = await SiteCrawler(scanner: PassiveScanner(customRules: rules)).run(widget.project, target,
+      final data = await SiteCrawler(scanner: PassiveScanner(customRules: rules, metadataProgram: program)).run(widget.project, target,
         authorized: authorized, cancellation: flag, policy: policy, auth: selected, resumeFrom: saved,
         onCheckpoint: (value) async {
           await repository.save(widget.project.id, value);
@@ -545,9 +548,11 @@ class _ScanScreenState extends State<ScanScreen> {
     setState(() { busy = true; result = null; crawlResult = null; error = null; });
     try {
       final selected = await prepareAuth();
-      final rules = await CustomRuleRepository(PreferencesStorage(await SharedPreferences.getInstance())).load(widget.project.id);
+      final storage = PreferencesStorage(await SharedPreferences.getInstance());
+      final rules = await CustomRuleRepository(storage).load(widget.project.id);
+      final program = (await MetadataProgramRepository(storage).load(widget.project.id)).activeProgram;
       if (!mounted) return;
-      final data = await PassiveScanner(customRules: rules).scan(widget.project, authorized: authorized, target: target, auth: selected, permits: policy.permits);
+      final data = await PassiveScanner(customRules: rules, metadataProgram: program).scan(widget.project, authorized: authorized, target: target, auth: selected, permits: policy.permits);
       if (mounted) {
         setState(() => result = data);
         await record(ScanRecord.fromPages([data]));

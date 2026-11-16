@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.72.0+74; pubspec.yaml is the version source of truth.
+Current version is 0.73.0+75; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.72.0+74`.
-- Git tag `v0.72.0` when released.
-- `OdinSecurity-v0.72.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.73.0+75`.
+- Git tag `v0.73.0` when released.
+- `OdinSecurity-v0.73.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -228,3 +228,7 @@ For private fixture collection and companion tests, see [private lab collector](
 On a manually approved request the inspector displays cumulative phase durations and a bounded summary of the peer certificate obtained from the actual HTTPS response. Existing standard TLS trust and redirect restrictions remain unchanged. Click a journal entry to review its phase timings; neither certificate names nor raw headers are stored there. No TLS key material, CA installation or traffic from other apps is captured. These timings are not individual DNS/handshake metrics.
 
 Passive security observations are derived from the same response’s bounded relevant header set before redaction, including cookie attributes, HSTS, CSP, redirects and cache directives. Findings are fixed messages without raw values. No additional probes or replay. Tests cover phase ordering, journal data minimization and header-review privacy and limits.
+
+## Project metadata programs
+
+Open Custom scan rules → Project metadata rules. Programs start disabled, even when a draft exists. Paste or load the example, preview against a synthetic response JSON (status + allowlisted header arrays), enable and save explicitly. Each project stores an independent validated document. Enabled programs are loaded once at scan/queue execution and applied to the already acquired response for each page. Legacy header rules retain their 2xx-only semantics; metadata rules may express status ranges across 100–599. Rule matches are informational observations, not vulnerability confirmations. Only bounded allowlisted metadata is supplied to the evaluator; an excess budget yields an incomplete-review observation. Scan history/report includes only result identifiers and fixed messages, not rule source or raw response values. Offline HAR review still accepts its separately supplied one-shot program.

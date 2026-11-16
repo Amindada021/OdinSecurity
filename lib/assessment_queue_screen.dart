@@ -6,6 +6,7 @@ import 'core/queue_template.dart';
 import 'core/auth.dart';
 import 'core/auth_vault.dart';
 import 'core/custom_rules.dart';
+import 'core/metadata_program_settings.dart';
 import 'core/passive_scan.dart';
 import 'core/project.dart';
 import 'core/project_storage.dart';
@@ -99,7 +100,8 @@ class _AssessmentQueueScreenState extends State<AssessmentQueueScreen> with Widg
     try {
       final storage = PreferencesStorage(await SharedPreferences.getInstance());
       final rules = await CustomRuleRepository(storage).load(widget.project.id);
-      final scanner = PassiveScanner(customRules: rules);
+      final program = (await MetadataProgramRepository(storage).load(widget.project.id)).activeProgram;
+      final scanner = PassiveScanner(customRules: rules, metadataProgram: program);
       // Re-load vault at execution time; never persist or export credentials.
       final available = await AuthVault().loadProfiles(widget.project.id);
       final selected = <Uri, AuthProfile?>{for (final u in snapshot) u: QueueIdentity.resolve(u, selectedNames[u] ?? '', available)};
