@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.65.0+66
+- Add ephemeral loopback-only laboratory interaction receiver with random label, bounded event metadata and lifecycle cleanup; local receiver fixture.
+
 ## 0.64.0+65
 - Add unified bounded TLS/GET/CORS configuration review, fail-closed stage sequencing, scope and cancellation fixtures.
 

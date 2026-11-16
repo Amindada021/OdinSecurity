@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.64.0+65; pubspec.yaml is the version source of truth.
+Current version is 0.65.0+66; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.64.0+65`.
-- Git tag `v0.64.0` when released.
-- `OdinSecurity-v0.64.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.65.0+66`.
+- Git tag `v0.65.0` when released.
+- `OdinSecurity-v0.65.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -190,3 +190,7 @@ Native JobScheduler runs a one-shot anonymous HEAD check after 15/60/180 minutes
 ## Configuration review suite
 
 Choose one exact registered HTTPS route and opt into TLS/GET plus optional CORS preflight. No credentials, payload variants, redirect traversal or guessing. Stop after unsuccessful TLS/GET before further stages; obey policy delay and HTTP request cap. Cancellation prevents subsequent stages. Results are transient review signals; validate in a controlled lab.
+
+## Local laboratory receiver
+
+Offline utilities include a loopback-only HTTP listener bound to 127.0.0.1 on a dynamic port, with a random exact label route. Only matching local GET/HEAD with no query, body or transfer encoding is accepted. Store only method/time; close after 10 accepted events, two minutes, backgrounding or screen disposal. No remote callbacks, DNS listener, tunneling, source attribution or request payload capture. Test local lifecycle on Android; never expose the listener publicly.

@@ -19,6 +19,14 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Local laboratory receiver': 'گیرنده آزمایشگاهی محلی',
+  'Starts an HTTP listener bound only to this device’s loopback address. Use local test clients only. It closes after two minutes or ten accepted events. No request content is retained.': 'گیرنده HTTP فقط روی نشانی داخلی همین دستگاه فعال می‌شود. پس از دو دقیقه یا ده رویداد بسته می‌شود و محتوای درخواست ذخیره نمی‌شود.',
+  'I approve starting the local test listener.': 'فعال‌سازی گیرنده آزمایشی محلی را تأیید می‌کنم.',
+  'Start local listener': 'شروع گیرنده محلی',
+  'Could not start the local listener.': 'شروع گیرنده محلی ناموفق بود.',
+  'Local callback URL': 'آدرس برگشت محلی',
+  'Accepted events': 'رویدادهای پذیرفته‌شده',
+  'This is not a remotely reachable OAST or DNS service. Events do not prove which application generated them.': 'این ابزار سرویس OAST یا DNS از راه دور نیست؛ رویدادها منبع ارسال را اثبات نمی‌کنند.',
   'Configuration review suite': 'مجموعه بررسی پیکربندی امنیت',
   'One registered HTTPS route: trusted TLS handshake, one anonymous GET and optional fixed CORS preflight. No exploit payloads or redirects.': 'برای یک مقصد HTTPS ثبت‌شده: اتصال TLS معتبر، یک GET بدون حساب و یک بررسی اختیاری CORS؛ بدون تغییر مسیر یا ارسال داده بهره‌برداری.',
   'Include one CORS preflight': 'افزودن یک بررسی CORS',
