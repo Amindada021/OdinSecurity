@@ -1,0 +1,190 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'core/project.dart';
+import 'core/route_inventory.dart';
+import 'core/scan_policy.dart';
+
+class SpaInventoryScreen extends StatefulWidget {
+  final SecurityProject project;
+  final Uri target;
+  final ScanPolicy policy;
+  const SpaInventoryScreen({super.key, required this.project, required this.target, required this.policy});
+  @override
+  State<SpaInventoryScreen> createState() => _SpaInventoryScreenState();
+}
+
+class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
+  WebViewController? browser;
+  final cookies = WebViewCookieManager();
+  List<RouteObservation> routes = [];
+  bool authorized = false, busy = false, loaded = false, closing = false, showRoutes = false;
+  String? error;
+
+  bool permits(Uri? url) => url != null && url.scheme == 'https' &&
+    SecurityProject.sameOrigin(widget.target, url) &&
+    widget.project.contains(url) && widget.policy.permits(url);
+
+  Future<void> start() async {
+    if (!authorized || busy || !permits(widget.target)) return;
+    setState(() { busy = true; error = null; });
+    try {
+      final web = WebViewController();
+      await cookies.clearCookies();
+      await web.clearCache();
+      await web.clearLocalStorage();
+      await web.setJavaScriptMode(JavaScriptMode.unrestricted);
+      await web.setNavigationDelegate(NavigationDelegate(
+        onNavigationRequest: (request) {
+          final allowed = !closing && permits(Uri.tryParse(request.url));
+          if (!allowed && mounted && !closing) setState(() => error = 'Navigation outside the selected HTTPS origin or allowed paths was blocked.');
+          return allowed ? NavigationDecision.navigate : NavigationDecision.prevent;
+        },
+        onPageStarted: (_) { if (mounted && !closing) setState(() => loaded = false); },
+        onPageFinished: (url) { if (mounted && !closing) setState(() => loaded = permits(Uri.tryParse(url))); },
+        onWebResourceError: (failure) {
+          if (mounted && !closing && failure.isForMainFrame == true) {
+            setState(() { loaded = false; error = 'Page failed to load.'; });
+          }
+        },
+      ));
+      if (!mounted) return;
+      setState(() => browser = web);
+      await web.loadRequest(widget.target);
+    } catch (_) {
+      if (mounted) setState(() => error = 'Could not start the embedded browser.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> capture() async {
+    final web = browser;
+    if (web == null || busy || !loaded) return;
+    setState(() { busy = true; error = null; });
+    try {
+      final before = Uri.tryParse(await web.currentUrl() ?? '');
+      if (!permits(before)) throw const FormatException();
+      final result = await web.runJavaScriptReturningResult(RouteInventory.browserSnapshot);
+      final after = Uri.tryParse(await web.currentUrl() ?? '');
+      if (before != after || !permits(after)) throw const FormatException();
+      final found = RouteInventory.fromBrowser(widget.project, widget.policy, before!, result);
+      if (mounted) setState(() { routes = RouteInventory.merge(routes, found); showRoutes = true; });
+    } catch (_) {
+      if (mounted) setState(() => error = 'Capture failed or the page changed. Try again after navigation finishes.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> close() async {
+    if (busy || closing) return;
+    setState(() => closing = true);
+    try {
+      final web = browser;
+      if (web != null) {
+        // Disable page navigation, then reset this app's WebView data.
+        await web.setJavaScriptMode(JavaScriptMode.disabled);
+        await web.clearLocalStorage();
+        await web.clearCache();
+        await cookies.clearCookies();
+      }
+    } catch (_) {
+      if (mounted) setState(() { closing = false; error = 'Browser cleanup failed. Retry closing.'; });
+      return;
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, _) { if (!didPop) close(); },
+    child: Scaffold(
+      appBar: AppBar(title: const Text('SPA explorer'), leading: IconButton(
+        onPressed: busy || closing ? null : close, icon: const Icon(Icons.arrow_back)),
+        actions: [if (browser != null) IconButton(
+          tooltip: 'Browser / captured routes', onPressed: busy || closing ? null : () => setState(() => showRoutes = !showRoutes),
+          icon: Icon(showRoutes ? Icons.language : Icons.list_alt))]),
+      body: Column(children: [
+        if (error != null) Padding(padding: const EdgeInsets.all(8), child: Text(error!)),
+        if (busy || closing) const LinearProgressIndicator(),
+        if (browser == null)
+          Expanded(child: ListView(padding: const EdgeInsets.all(16), children: [
+            Text('Open ${widget.target.host} and sign in manually, including OTP if required.'),
+            const Text('You control browsing. Normal site scripts and subresources may contact other origins; only in-scope metadata is collected. Avoid actions that modify data. No automatic clicks, credential extraction, or request replay.'),
+            CheckboxListTile(value: authorized, title: const Text('I am authorized to browse this target.'), onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
+            FilledButton(onPressed: busy || !authorized || !permits(widget.target) ? null : start, child: const Text('Open browser')),
+          ]))
+        else ...[
+          Expanded(child: IndexedStack(index: showRoutes ? 1 : 0, children: [
+            WebViewWidget(controller: browser!),
+            RouteList(routes: routes),
+          ])),
+          SafeArea(top: false, child: Wrap(spacing: 8, children: [
+            FilledButton.icon(onPressed: loaded && !busy && !closing ? capture : null, icon: const Icon(Icons.search), label: const Text('Capture routes')),
+            OutlinedButton(onPressed: busy || closing ? null : () => setState(() => showRoutes = !showRoutes),
+              child: Text(showRoutes ? 'Back to browser' : 'Routes (${routes.length})')),
+          ])),
+        ],
+      ]),
+    ),
+  );
+}
+
+class RouteList extends StatelessWidget {
+  final List<RouteObservation> routes;
+  const RouteList({super.key, required this.routes});
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(12), children: [
+    Text('${routes.length} observed routes (cap ${RouteInventory.maxEntries})'),
+    const Text('Query strings and fragments omitted. Route paths may be sensitive. Resource timing does not establish an HTTP method or security finding.'),
+    for (final route in routes) ListTile(
+      title: SelectableText(route.url.toString()), subtitle: Text(route.source),
+      trailing: IconButton(tooltip: 'Copy route', icon: const Icon(Icons.copy),
+        onPressed: () => Clipboard.setData(ClipboardData(text: route.url.toString()))),
+    ),
+  ]);
+}
+
+class HarInventoryScreen extends StatefulWidget {
+  final SecurityProject project;
+  final ScanPolicy policy;
+  const HarInventoryScreen({super.key, required this.project, required this.policy});
+  @override
+  State<HarInventoryScreen> createState() => _HarInventoryScreenState();
+}
+
+class _HarInventoryScreenState extends State<HarInventoryScreen> {
+  final source = TextEditingController();
+  List<RouteObservation> routes = [];
+  String? error;
+  @override
+  void dispose() { source.dispose(); super.dispose(); }
+
+  void parse() {
+    try {
+      final found = RouteInventory.fromHar(widget.project, widget.policy, source.text);
+      source.clear();
+      setState(() { routes = found; error = null; });
+    } catch (_) {
+      source.clear();
+      setState(() { routes = []; error = 'Invalid or oversized HAR JSON.'; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Offline HAR inventory')),
+    body: Column(children: [
+      Padding(padding: const EdgeInsets.all(12), child: Column(children: [
+        const Text('Paste HAR JSON from an authorized test session. Import is offline. Use a sanitized HAR; only scoped URL paths and HTTP methods are retained.'),
+        TextField(controller: source, maxLines: 4, autocorrect: false, enableSuggestions: false,
+          decoration: const InputDecoration(labelText: 'HAR JSON (max 1 MiB)')),
+        FilledButton(onPressed: parse, child: const Text('Import routes')),
+        if (error != null) Text(error!),
+      ])),
+      Expanded(child: RouteList(routes: routes)),
+    ]),
+  );
+}

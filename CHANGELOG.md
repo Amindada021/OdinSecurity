@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.0+16
+- User-led HTTPS browser for rendered SPA route discovery, including Fetch/XHR resource timing metadata and rendered anchors.
+- Offline HAR import of scoped routes and HTTP methods; no replay, cookies, headers, bodies or query values retained.
+- Route metadata limits, scope/exclusion checks, deduplication and offline fixtures. Android WebView validation pending.
+
 ## 0.15.0+15
 - Search projects by name or URL, edit project details, and manage multiple exact target URLs.
 - Preserve project identity, history and stored identities on edits; scope remains explicit.

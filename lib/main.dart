@@ -5,6 +5,7 @@ import 'tools_screen.dart';
 import 'manual_request_screen.dart';
 import 'core/history.dart';
 import 'report_screen.dart';
+import 'spa_inventory_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/project_storage.dart';
 
@@ -114,7 +115,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Row(children: [OdinLogo(size: 34), SizedBox(width: 10), Text('Odin Security')]), actions: [IconButton(tooltip: 'About Odin Security', icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.15.0+15', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: 'Offline utilities', icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        appBar: AppBar(title: const Row(children: [OdinLogo(size: 34), SizedBox(width: 10), Text('Odin Security')]), actions: [IconButton(tooltip: 'About Odin Security', icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.16.0+16', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: 'Offline utilities', icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const Text('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: Text(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('Create a project to assess an authorized website.')))
@@ -438,6 +439,8 @@ class _ScanScreenState extends State<ScanScreen> {
         OutlinedButton.icon(onPressed: busy || loadingAuth || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AccessCheckScreen(project: widget.project, target: target, profiles: profiles, policy: policy))), icon: const Icon(Icons.people_outline), label: const Text('Compare test account access')),
         OutlinedButton.icon(onPressed: busy || loadingAuth ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ManualRequestScreen(project: widget.project, target: target, auth: auth))), icon: const Icon(Icons.http), label: const Text('Request inspector')),
         OutlinedButton.icon(onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InventoryScreen())), icon: const Icon(Icons.description_outlined), label: const Text('Import Swagger / OpenAPI')),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' || !policy.permits(target) ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SpaInventoryScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.language), label: const Text('Explore rendered SPA')),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HarInventoryScreen(project: widget.project, policy: policy))), icon: const Icon(Icons.file_open), label: const Text('Import HAR traffic inventory')),
         DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(labelText: 'Target'), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; selectedProfile = ''; authorized = false; result = null; crawlResult = null; })),
         DropdownButtonFormField<String>(
           key: ValueKey('auth.${target.origin}.$selectedProfile'),
