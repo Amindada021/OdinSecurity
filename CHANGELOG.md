@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.28.0+28
+- Corrected malformed hex decoder source; retained invalid-input validation and UTF-8 roundtrip fixtures.
+
 ## 0.27.0+27
 - Added Android CI for static analysis, tests and debug APK artifacts. Device validation remains separate.
 
