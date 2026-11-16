@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.47.0+47
+- Passive JSON/API response checks for potentially sensitive internal fields, token-like fields, stack traces and mismatched serialization, with bounded traversal and sanitized evidence.
+- Added offline structured-response fixtures; no payload injection or extra requests.
+
 ## 0.46.0+46
 - Explicit authenticated IPv4 loopback CONNECT tunnel restricted to a selected project HTTPS origin. Displays connection and byte totals, with time, connection and relayed-byte caps.
 - TLS remains encrypted end-to-end; no system proxy changes or interception. Added offline CONNECT parser and scope fixtures.
