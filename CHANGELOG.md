@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.0+18
+- Explicit CORS configuration audit for one scoped read-only HTTPS endpoint using a fixed synthetic origin and one unauthenticated OPTIONS preflight.
+- Classify advertised policy without replaying requests, accessing data or claiming a confirmed vulnerability.
+- Scope, exclusion, authorization and response classification fixtures.
+
 ## 0.17.0+17
 - Trusted TLS certificate audit for one scoped HTTPS target, with explicit authorization and no HTTP payload or credentials.
 - Certificate expiry warnings at 30 and 7 days in passive scan reports; invalid validity period checks.
