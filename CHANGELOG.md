@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.0+39
+- Native Android embedded browser metadata observer for actual WebView requests, with exact-origin filtering, bounded memory, pause/clear and local scope validation.
+- No certificate changes, TLS interception, full request content or other-app capture. Android device verification pending.
+
 ## 0.38.0+38
 - Scoped Logger-to-Inspector handoff for known read-only routes without omitted query values.
 - Selectable prior scan baseline, unique route coverage differences and status transitions, with independent evidence comparison and fixtures.
