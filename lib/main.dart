@@ -14,6 +14,8 @@ import 'core/auth.dart';
 import 'core/auth_vault.dart';
 import 'auth_dialog.dart';
 import 'core/crawler.dart';
+import 'core/scan_policy.dart';
+import 'scan_policy_dialog.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -154,6 +156,9 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> {
   bool authorized = false;
+  ScanPolicy policy = ScanPolicy();
+  bool loadingPolicy = true;
+  String? policyError;
   final vault = AuthVault();
   List<ScanRecord> history = [];
   bool loadingHistory = true;
@@ -198,6 +203,34 @@ class _ScanScreenState extends State<ScanScreen> {
     target = widget.project.startUrl;
     loadAuth();
     loadHistory();
+    loadPolicy();
+  }
+
+  Future<ScanPolicyRepository> _policyRepo() async => ScanPolicyRepository(PreferencesStorage(await SharedPreferences.getInstance()));
+
+  Future<void> loadPolicy() async {
+    try {
+      final loaded = await (await _policyRepo()).load(widget.project.id);
+      if (mounted) setState(() { policy = loaded; policyError = null; });
+    } catch (_) {
+      if (mounted) setState(() => policyError = 'Could not load scan policy; scanning is disabled.');
+    } finally {
+      if (mounted) setState(() => loadingPolicy = false);
+    }
+  }
+
+  Future<void> editPolicy() async {
+    final next = await showDialog<ScanPolicy>(context: context, builder: (_) => ScanPolicyDialog(policy: policy));
+    if (next == null || !mounted) return;
+    setState(() => loadingPolicy = true);
+    try {
+      await (await _policyRepo()).save(widget.project.id, next);
+      if (mounted) setState(() { policy = next; policyError = null; authorized = false; });
+    } catch (_) {
+      if (mounted) setState(() => policyError = 'Could not save scan policy.');
+    } finally {
+      if (mounted) setState(() => loadingPolicy = false);
+    }
   }
 
   Future<void> loadAuth() async {
@@ -261,11 +294,11 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future<void> crawl() async {
-    if (!authorized || busy) return;
+    if (!authorized || busy || loadingPolicy || policyError != null || !policy.permits(target)) return;
     final flag = CancellationFlag();
     setState(() { busy = true; result = null; crawlResult = null; error = null; visited = 0; cancellation = flag; });
     try {
-      final data = await SiteCrawler().run(widget.project, target, authorized: authorized, cancellation: flag, auth: auth != null && SecurityProject.sameOrigin(auth!.target, target) ? auth : null, onProgress: (n) { if (mounted) setState(() => visited = n); });
+      final data = await SiteCrawler().run(widget.project, target, authorized: authorized, cancellation: flag, policy: policy, auth: auth != null && SecurityProject.sameOrigin(auth!.target, target) ? auth : null, onProgress: (n) { if (mounted) setState(() => visited = n); });
       if (mounted) {
         setState(() => crawlResult = data);
         await record(ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled));
@@ -279,7 +312,7 @@ class _ScanScreenState extends State<ScanScreen> {
   String? error;
 
   Future<void> scan() async {
-    if (!authorized || busy) return;
+    if (!authorized || busy || loadingPolicy || policyError != null || !policy.permits(target)) return;
     setState(() { busy = true; result = null; crawlResult = null; error = null; });
     try {
       final data = await PassiveScanner().scan(widget.project, authorized: authorized, target: target, auth: auth != null && SecurityProject.sameOrigin(auth!.target, target) ? auth : null);
@@ -302,6 +335,9 @@ class _ScanScreenState extends State<ScanScreen> {
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text(widget.project.startUrl.toString(), style: Theme.of(context).textTheme.titleMedium),
         const Text('Technology fingerprint · Scoped request · No redirects'),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy ? null : editPolicy, icon: const Icon(Icons.tune), label: Text('Scan limits: ${policy.maxPages} pages / ${policy.delayMs} ms')),
+        if (policyError != null) Text(policyError!),
+        if (!policy.permits(target)) const Text('The selected URL is excluded from scanning.'),
         OutlinedButton.icon(onPressed: busy || loadingAuth ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ManualRequestScreen(project: widget.project, target: target, auth: auth))), icon: const Icon(Icons.http), label: const Text('Request inspector')),
         OutlinedButton.icon(onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InventoryScreen())), icon: const Icon(Icons.description_outlined), label: const Text('Import Swagger / OpenAPI')),
         DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(labelText: 'Target'), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; selectedProfile = ''; authorized = false; result = null; crawlResult = null; })),
@@ -323,12 +359,12 @@ class _ScanScreenState extends State<ScanScreen> {
           value: authorized,
           onChanged: busy ? null : (value) => setState(() => authorized = value ?? false),
         ),
-        FilledButton.icon(onPressed: authorized && !busy && !loadingAuth && !loadingHistory ? scan : null, icon: const Icon(Icons.search), label: const Text('Identify technologies')),
-        FilledButton.tonalIcon(onPressed: authorized && !busy && !loadingAuth ? crawl : null, icon: const Icon(Icons.account_tree_outlined), label: const Text('Assess linked pages (up to 12)')),
+        FilledButton.icon(onPressed: authorized && !busy && !loadingAuth && !loadingHistory && !loadingPolicy && policyError == null && policy.permits(target) ? scan : null, icon: const Icon(Icons.search), label: const Text('Identify technologies')),
+        FilledButton.tonalIcon(onPressed: authorized && !busy && !loadingAuth && !loadingPolicy && policyError == null && policy.permits(target) ? crawl : null, icon: const Icon(Icons.account_tree_outlined), label: Text('Assess linked pages (up to ${policy.maxPages})')),
         if (busy) const LinearProgressIndicator(),
         if (busy && cancellation != null) OutlinedButton(onPressed: cancellation!.cancel, child: Text('Stop ($visited visited)')),
         if (crawlResult != null) ...[
-          Text('Pages: ${crawlResult!.pages.length} · Failed: ${crawlResult!.failedCount}'),
+          Text('Pages: ${crawlResult!.pages.length} · Failed: ${crawlResult!.failedCount} · ${crawlResult!.stopReason}'),
           for (final page in crawlResult!.pages) ExpansionTile(title: Text(page.url.toString()), subtitle: Text('HTTP ${page.statusCode} · ${page.findings.length} observations'), children: [
             for (final finding in page.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: Text(finding.severity.name)),
           ]),

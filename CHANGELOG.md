@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0+11
+- Persistent per-project scan limits: bounded page count, request delay, and excluded path prefixes.
+- Authorization and selected scan policy are checked before the start request.
+- Crawler stops on 429, repeated 5xx or rejected authenticated session, and reports the reason.
+- Offline policy repository and crawler stop-condition fixtures.
+
 ## 0.10.0+10
 - Expanded CMS, backend runtime, frontend, server and API technology markers.
 - Passive development traceback/profiler, additional cookie attributes, CORS consistency and header observations.
