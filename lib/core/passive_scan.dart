@@ -6,6 +6,7 @@ import 'project.dart';
 import 'auth.dart';
 import 'discovery.dart';
 import 'security_checks.dart';
+import 'tls_audit.dart';
 
 class PassiveScanResult {
   final Uri url;
@@ -61,6 +62,7 @@ class PassiveScanner {
     request.headers.set(HttpHeaders.acceptHeader, 'text/html, application/json;q=0.9, */*;q=0.1');
     session?.headersFor(url).forEach((key, value) => request.headers.set(key, value));
     final response = await request.close();
+    final certificate = response.certificate;
     final headers = <String, List<String>>{};
     response.headers.forEach((name, values) => headers[name] = List.of(values));
     final bytes = <int>[];
@@ -82,7 +84,10 @@ class PassiveScanner {
     return PassiveScanResult(
       url: url,
       statusCode: response.statusCode,
-      findings: PassiveSecurityChecks().inspect(url, observation),
+      findings: List.unmodifiable([
+        ...PassiveSecurityChecks().inspect(url, observation),
+        if (certificate != null) ...CertificateChecks.inspect(certificate.startValidity, certificate.endValidity, DateTime.now()),
+      ]),
       links: isHtml && response.statusCode >= 200 && response.statusCode < 300 ? LinkDiscovery.extract(url, observation.body) : [],
       technologies: technologies,
       bodyTruncated: truncated,

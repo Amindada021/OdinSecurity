@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.0+17
+- Trusted TLS certificate audit for one scoped HTTPS target, with explicit authorization and no HTTP payload or credentials.
+- Certificate expiry warnings at 30 and 7 days in passive scan reports; invalid validity period checks.
+- Distinguish accepted handshake, rejected handshake and unavailable connection without bypassing certificate validation.
+- Offline expiry and scope test fixtures; live/device verification pending.
+
 ## 0.16.0+16
 - User-led HTTPS browser for rendered SPA route discovery, including Fetch/XHR resource timing metadata and rendered anchors.
 - Offline HAR import of scoped routes and HTTP methods; no replay, cookies, headers, bodies or query values retained.
