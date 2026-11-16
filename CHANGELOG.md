@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.64.0+65
+- Add unified bounded TLS/GET/CORS configuration review, fail-closed stage sequencing, scope and cancellation fixtures.
+
 ## 0.63.0+64
 - Add one-shot native Android background HEAD check with explicit consent, scope/policy cancellation, status and expiry; validation fixtures. Android runtime unverified.
 

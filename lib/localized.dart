@@ -19,6 +19,12 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Configuration review suite': 'مجموعه بررسی پیکربندی امنیت',
+  'One registered HTTPS route: trusted TLS handshake, one anonymous GET and optional fixed CORS preflight. No exploit payloads or redirects.': 'برای یک مقصد HTTPS ثبت‌شده: اتصال TLS معتبر، یک GET بدون حساب و یک بررسی اختیاری CORS؛ بدون تغییر مسیر یا ارسال داده بهره‌برداری.',
+  'Include one CORS preflight': 'افزودن یک بررسی CORS',
+  'Start configuration review': 'شروع بررسی پیکربندی',
+  'Could not complete the review.': 'تکمیل بررسی ناموفق بود.',
+  'Configuration observations are review signals, not proof of exploitation.': 'مشاهدات پیکربندی نشانه‌ای برای بررسی هستند، نه اثبات بهره‌برداری.',
   'Android scheduled HEAD check': 'بررسی زمان‌بندی‌شده HEAD اندروید',
   'Schedule one anonymous HTTPS HEAD check of a registered target. Android may delay or interrupt it. No credentials, redirects, retries, or recurring jobs.': 'یک بررسی HEAD بدون حساب برای مقصد HTTPS ثبت‌شده زمان‌بندی کنید؛ اندروید ممکن است آن را به تأخیر بیندازد یا متوقف کند.',
   'I authorize this exact request even when the app is closed.': 'این درخواست مشخص را حتی هنگام بسته بودن برنامه مجاز می‌دانم.',

@@ -21,6 +21,7 @@ import 'tunnel_screen.dart';
 import 'session_check_screen.dart';
 import 'assessment_queue_screen.dart';
 import 'scheduled_check_screen.dart';
+import 'configuration_review_screen.dart';
 import 'core/scheduled_check.dart';
 import 'review_organizer_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -203,7 +204,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             CheckedPopupMenuItem(value: 'dark', checked: widget.preferences.theme == 'dark', child: const LText('Dark theme')),
             CheckedPopupMenuItem(value: 'system', checked: widget.preferences.theme == 'system', child: const LText('System theme')),
           ],
-        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.63.0+64', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.64.0+65', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const LText('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: LText(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: LText('Create a project to assess an authorized website.')))
@@ -562,6 +563,7 @@ class _ScanScreenState extends State<ScanScreen> {
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text(widget.project.startUrl.toString(), style: Theme.of(context).textTheme.titleMedium),
         const LText('Technology fingerprint · Scoped request · No redirects'),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ConfigurationReviewScreen(project: widget.project, policy: policy))), icon: const Icon(Icons.fact_check), label: const LText('Configuration review suite')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScheduledCheckScreen(project: widget.project, policy: policy))), icon: const Icon(Icons.timer_outlined), label: const LText('Android scheduled HEAD check')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () async { await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AssessmentQueueScreen(project: widget.project, policy: policy))); if (mounted) await loadHistory(); }, icon: const Icon(Icons.schedule), label: const LText('Foreground assessment queue')),
         OutlinedButton.icon(onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomRulesScreen(projectId: widget.project.id))), icon: const Icon(Icons.rule), label: const LText('Custom scan rules')),

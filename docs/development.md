@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.63.0+64; pubspec.yaml is the version source of truth.
+Current version is 0.64.0+65; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.63.0+64`.
-- Git tag `v0.63.0` when released.
-- `OdinSecurity-v0.63.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.64.0+65`.
+- Git tag `v0.64.0` when released.
+- `OdinSecurity-v0.64.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -186,3 +186,7 @@ The report's advisory handoff prepopulates editable candidate component/version 
 ## Android background check
 
 Native JobScheduler runs a one-shot anonymous HEAD check after 15/60/180 minutes subject to Android network and scheduling constraints. One active job per app, no reboot persistence, retry, credentials, redirect traversal, or payload capture; expires six hours after due time. Scope or policy edits cancel the job first. Status is stored privately and can be refreshed from the project. Cancellation cannot undo a request already sent. Validate device lifecycle, force-stop, cancellation, network loss, manifest and native channel in a controlled lab before release.
+
+## Configuration review suite
+
+Choose one exact registered HTTPS route and opt into TLS/GET plus optional CORS preflight. No credentials, payload variants, redirect traversal or guessing. Stop after unsuccessful TLS/GET before further stages; obey policy delay and HTTP request cap. Cancellation prevents subsequent stages. Results are transient review signals; validate in a controlled lab.

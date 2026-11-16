@@ -36,7 +36,7 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.63.0+64**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.64.0+65**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
 
 Offline CVE review accepts a user-supplied, exact-version advisory catalog; it does not retrieve advisories or confirm exploitability.
 
@@ -59,3 +59,5 @@ Passive CSP review distinguishes report-only/complex policies and broad script d
 Scan reports can prefill a deduplicated advisory inventory from observed declared technology versions, requiring independent user verification before matching. Declared versions also appear in HTML/PDF exports.
 
 Android background scheduling: one separately authorized anonymous HEAD check for one registered HTTPS target, with cancel/status and Android-managed delayed execution. Not a recurring authenticated crawler; device validation pending.
+
+Configuration review suite sequences trusted TLS, one anonymous GET and an optional single fixed-origin CORS preflight on a registered HTTPS route. Separate explicit approval, delay/cancel, stop on failed control. Not an exploitation scanner.
