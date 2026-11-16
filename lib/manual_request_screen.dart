@@ -4,6 +4,7 @@ import 'core/auth.dart';
 import 'core/manual_request.dart';
 import 'core/project.dart';
 import 'core/request_history.dart';
+import 'core/request_review.dart';
 import 'core/scan_policy.dart';
 
 class ManualRequestScreen extends StatefulWidget {
@@ -43,15 +44,33 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
     final chosenAuth = useAuth ? widget.auth : null;
     setState(() { busy = true; authorized = false; error = null; response = null; });
     try {
-      final endpoint = Uri.parse(raw);
-      ManualRequestClient.validate(widget.project, endpoint, chosenMethod, true, policy: widget.policy);
+      final review = RequestReview.prepare(widget.project, raw, chosenMethod, chosenAccept, widget.policy, auth: chosenAuth);
+      final approved = await showDialog<bool>(context: context, barrierDismissible: false, builder: (context) => AlertDialog(
+        title: const LText('Review pending request'),
+        content: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          const LText('Nothing has been sent. Review the exact destination and request settings.'),
+          const SizedBox(height: 12),
+          SelectableText('${review.method} ${review.target}', textDirection: TextDirection.ltr),
+          const SizedBox(height: 8),
+          Text('Accept: ${review.accept.value}', textDirection: TextDirection.ltr),
+          LText(review.authenticated ? 'Saved identity will be applied to its exact origin.' : 'No saved identity will be applied.'),
+          const LText('Redirects will not be followed.'),
+        ])),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const LText('Drop request')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const LText('Forward request')),
+        ],
+      ));
+      if (!mounted || approved != true) return;
+      review.validate(widget.project, widget.policy, approved: true, auth: chosenAuth);
+      final endpoint = review.target;
       if (sinceLast.isRunning) {
         final remaining = widget.policy.delayMs - sinceLast.elapsedMilliseconds;
         if (remaining > 0) await Future<void>.delayed(Duration(milliseconds: remaining));
       }
       if (!mounted) return;
-      final result = await ManualRequestClient().send(widget.project, endpoint, chosenMethod,
-        authorized: true, auth: chosenAuth, policy: widget.policy, accept: chosenAccept);
+      final result = await ManualRequestClient().send(widget.project, endpoint, review.method,
+        authorized: true, auth: chosenAuth, policy: widget.policy, accept: review.accept);
       if (mounted) setState(() {
         response = result;
         history.add(RequestRecord.fromResponse(endpoint, chosenMethod, chosenAccept, chosenAuth != null, result));
@@ -79,7 +98,7 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
           onChanged: busy ? null : (value) => setState(() { accept = value!; authorized = false; })),
         if (widget.auth != null) CheckboxListTile(value: useAuth, title: const LText('Use saved credentials for their exact origin'), onChanged: busy ? null : (v) => setState(() { useAuth = v ?? false; authorized = false; })),
         CheckboxListTile(value: authorized, title: const LText('I authorize this exact request.'), onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
-        FilledButton(onPressed: busy || !authorized ? null : send, child: LText(records.isEmpty ? 'Send request' : 'Send / repeat request')),
+        FilledButton(onPressed: busy || !authorized ? null : send, child: const LText('Review request')),
         if (busy) const LinearProgressIndicator(),
         if (error != null) LText(error!),
         if (data != null) ...[

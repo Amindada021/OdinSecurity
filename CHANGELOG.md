@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.26.0+26
+- In-app manual request hold/review with explicit forward/drop and immutable destination/method/Accept.
+- Scope and credential-origin validation before review and before send; offline fixtures for approval and scope.
+
 ## 0.25.0+25
 - Offline GraphQL introspection inventory of root queries, mutations, subscriptions and argument counts, with bounded parsing and fixtures.
 - No network requests or operation execution.
