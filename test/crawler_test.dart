@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:odin_security/core/auth.dart';
 import 'package:odin_security/core/crawler.dart';
+import 'package:odin_security/core/crawl_checkpoint.dart';
 import 'package:odin_security/core/passive_scan.dart';
 import 'package:odin_security/core/project.dart';
 
@@ -53,6 +54,17 @@ void main() {
     final report = await future;
     expect(report.cancelled, true);
     expect(fake.urls.length, 1);
+  });
+  test('resume skips completed routes and honors total page limit', () async {
+    final project = SecurityProject(name: 'Fixture', url: 'https://example.test');
+    final start = project.startUrl, next = start.resolve('/about');
+    final saved = CrawlCheckpoint(start, '', [start, next], [next], 1);
+    final fake = FakeScanner();
+    CrawlCheckpoint? last = saved;
+    await SiteCrawler(scanner: fake, wait: (_) async {}).run(project, start, authorized: true, maxPages: 2,
+      resumeFrom: saved, onCheckpoint: (value) async { last = value; });
+    expect(fake.urls, [next]);
+    expect(last, isNull);
   });
   test('pre-cancelled crawl does not fetch', () async {
     final project = SecurityProject(name: 'Fixture', url: 'https://example.test');

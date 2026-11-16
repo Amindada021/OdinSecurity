@@ -30,6 +30,7 @@ import 'core/auth.dart';
 import 'core/auth_vault.dart';
 import 'auth_dialog.dart';
 import 'core/crawler.dart';
+import 'core/crawl_checkpoint.dart';
 import 'core/custom_rules.dart';
 import 'custom_rules_screen.dart';
 import 'core/scan_policy.dart';
@@ -198,7 +199,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             CheckedPopupMenuItem(value: 'dark', checked: widget.preferences.theme == 'dark', child: const LText('Dark theme')),
             CheckedPopupMenuItem(value: 'system', checked: widget.preferences.theme == 'system', child: const LText('System theme')),
           ],
-        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.49.0+49', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.50.0+50', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const LText('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: LText(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: LText('Create a project to assess an authorized website.')))
@@ -297,6 +298,33 @@ class _ScanScreenState extends State<ScanScreen> {
   List<ScanRecord> history = [];
   bool loadingHistory = true;
   String? historyError;
+  CrawlCheckpoint? checkpoint;
+  bool loadingCheckpoint = true;
+  String? checkpointError;
+  Future<CrawlCheckpointRepository> _checkpointRepo() async => CrawlCheckpointRepository(PreferencesStorage(await SharedPreferences.getInstance()));
+  Future<void> loadCheckpoint() async {
+    try {
+      final value = await (await _checkpointRepo()).load(widget.project.id);
+      if (mounted) setState(() { checkpoint = value; checkpointError = null; });
+    } catch (_) {
+      if (mounted) setState(() => checkpointError = 'Could not load saved crawl checkpoint.');
+    } finally { if (mounted) setState(() => loadingCheckpoint = false); }
+  }
+  Future<void> discardCheckpoint() async {
+    if (busy || loadingCheckpoint) return;
+    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: const LText('Discard saved crawl?'), actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const LText('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const LText('Discard saved crawl')),
+      ]));
+    if (confirmed != true || !mounted) return;
+    setState(() => loadingCheckpoint = true);
+    try {
+      await (await _checkpointRepo()).save(widget.project.id, null);
+      if (mounted) setState(() { checkpoint = null; checkpointError = null; authorized = false; });
+    } catch (_) { if (mounted) setState(() => checkpointError = 'Could not save crawl checkpoint.'); }
+    finally { if (mounted) setState(() => loadingCheckpoint = false); }
+  }
 
   Future<HistoryRepository> _historyRepo() async => HistoryRepository(PreferencesStorage(await SharedPreferences.getInstance()));
 
@@ -338,6 +366,7 @@ class _ScanScreenState extends State<ScanScreen> {
     loadAuth();
     loadHistory();
     loadPolicy();
+    loadCheckpoint();
   }
 
   Future<ScanPolicyRepository> _policyRepo() async => ScanPolicyRepository(PreferencesStorage(await SharedPreferences.getInstance()));
@@ -471,8 +500,10 @@ class _ScanScreenState extends State<ScanScreen> {
     super.dispose();
   }
 
-  Future<void> crawl() async {
-    if (!authorized || busy || loadingPolicy || policyError != null || !policy.permits(target)) return;
+  Future<void> crawl({bool resume = false}) async {
+    if (!authorized || busy || loadingPolicy || loadingCheckpoint || policyError != null || checkpointError != null || !policy.permits(target)) return;
+    if (resume ? checkpoint == null : checkpoint != null) return;
+    final saved = resume ? checkpoint : null;
     final flag = CancellationFlag();
     setState(() { busy = true; result = null; crawlResult = null; error = null; visited = 0; cancellation = flag; });
     try {
@@ -480,7 +511,13 @@ class _ScanScreenState extends State<ScanScreen> {
       if (flag.cancelled) return;
       final rules = await CustomRuleRepository(PreferencesStorage(await SharedPreferences.getInstance())).load(widget.project.id);
       if (flag.cancelled || !mounted) return;
-      final data = await SiteCrawler(scanner: PassiveScanner(customRules: rules)).run(widget.project, target, authorized: authorized, cancellation: flag, policy: policy, auth: selected, onProgress: (n) { if (mounted) setState(() => visited = n); });
+      final repository = await _checkpointRepo();
+      final data = await SiteCrawler(scanner: PassiveScanner(customRules: rules)).run(widget.project, target,
+        authorized: authorized, cancellation: flag, policy: policy, auth: selected, resumeFrom: saved,
+        onCheckpoint: (value) async {
+          await repository.save(widget.project.id, value);
+          if (mounted) setState(() => checkpoint = value);
+        }, onProgress: (n) { if (mounted) setState(() => visited = n); });
       if (mounted) {
         setState(() => crawlResult = data);
         await record(ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled));
@@ -566,7 +603,19 @@ class _ScanScreenState extends State<ScanScreen> {
           onChanged: busy ? null : (value) => setState(() => authorized = value ?? false),
         ),
         FilledButton.icon(onPressed: authorized && !busy && !loadingAuth && !loadingHistory && !loadingPolicy && policyError == null && policy.permits(target) ? scan : null, icon: const Icon(Icons.search), label: const LText('Identify technologies')),
-        FilledButton.tonalIcon(onPressed: authorized && !busy && !loadingAuth && !loadingPolicy && policyError == null && policy.permits(target) ? crawl : null, icon: const Icon(Icons.account_tree_outlined), label: Text('${tr(context, 'Assess linked pages')} (${uiNumber(context, policy.maxPages)})')),
+        if (checkpointError != null) LText(checkpointError!),
+        if (checkpoint != null) ...[
+          const LText('Saved crawl checkpoint. Resume with the same target and identity; previously saved findings remain in scan history.'),
+          Text(checkpoint!.start.toString()),
+          Text('${uiNumber(context, checkpoint!.attempted)} / ${uiNumber(context, checkpoint!.seen.length)}'),
+          OutlinedButton(onPressed: authorized && !busy && !loadingAuth && !loadingPolicy && !loadingCheckpoint &&
+            checkpointError == null && policyError == null && checkpoint!.start == target && checkpoint!.identity == (auth?.name ?? '')
+            ? () => crawl(resume: true) : null, child: const LText('Resume saved crawl')),
+        ],
+        if (checkpoint != null || checkpointError != null)
+          OutlinedButton(onPressed: busy || loadingCheckpoint ? null : discardCheckpoint, child: const LText('Discard saved crawl')),
+        FilledButton.tonalIcon(onPressed: authorized && !busy && !loadingAuth && !loadingPolicy && !loadingCheckpoint && checkpoint == null &&
+          checkpointError == null && policyError == null && policy.permits(target) ? crawl : null, icon: const Icon(Icons.account_tree_outlined), label: Text('${tr(context, 'Assess linked pages')} (${uiNumber(context, policy.maxPages)})')),
         if (busy) const LinearProgressIndicator(),
         if (busy && cancellation != null) ...[
           LText(cancellation!.cancelled ? 'Stopping after current request' : cancellation!.paused ? 'Paused between requests' : 'Scan running'),

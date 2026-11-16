@@ -5,6 +5,7 @@ import 'discovery.dart';
 import 'passive_scan.dart';
 import 'project.dart';
 import 'scan_policy.dart';
+import 'crawl_checkpoint.dart';
 
 /// Cooperative job control. Pause/cancel take effect between HTTP calls.
 /// Cancelling a paused job also wakes its pending wait.
@@ -60,17 +61,28 @@ class SiteCrawler {
     ScanPolicy? policy,
     CancellationFlag? cancellation,
     void Function(int count)? onProgress,
+    CrawlCheckpoint? resumeFrom,
+    Future<void> Function(CrawlCheckpoint?)? onCheckpoint,
   }) async {
     if (!authorized || !project.contains(start) || !LinkDiscovery.eligible(start, start) || start.hasFragment) throw StateError('Unauthorized target.');
     final settings = policy ?? ScanPolicy(maxPages: maxPages);
     maxPages = settings.maxPages;
     if (!settings.permits(start)) throw StateError('The start URL is excluded by scan policy.');
     if (auth != null && !SecurityProject.sameOrigin(auth.target, start)) throw StateError('Credential origin mismatch.');
+    final identity = auth?.name ?? '';
+    resumeFrom?.validate(project, settings, start, identity);
     await cancellation?.waitIfPaused();
     if (cancellation?.cancelled == true) return const CrawlResult([], 0, true, 'cancelled');
     final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized, permits: settings.permits);
-    final queue = Queue<Uri>()..add(start);
-    final seen = <Uri>{start};
+    final queue = Queue<Uri>.of(resumeFrom?.pending ?? [start]);
+    final seen = <Uri>{...(resumeFrom?.seen ?? [start])};
+    var attempted = resumeFrom?.attempted ?? 0;
+    Future<void> checkpoint() async {
+      if (onCheckpoint != null) {
+        await onCheckpoint(queue.isEmpty || attempted >= maxPages ? null : CrawlCheckpoint(start, identity, seen, queue, attempted));
+      }
+    }
+    await checkpoint();
     final pages = <PassiveScanResult>[];
     var failed = 0;
     var serverErrors = 0;
@@ -83,22 +95,24 @@ class SiteCrawler {
       await cancellation!.waitIfPaused();
       elapsed.start();
     }
-    while (queue.isNotEmpty && pages.length + failed < maxPages &&
+    while (queue.isNotEmpty && attempted < maxPages &&
         cancellation?.cancelled != true && elapsed.elapsed < timeBudget) {
       await waitForResume();
       if (cancellation?.cancelled == true || elapsed.elapsed >= timeBudget) break;
-      if (pages.isNotEmpty || failed > 0) await wait(Duration(milliseconds: settings.delayMs));
+      if (attempted > 0) await wait(Duration(milliseconds: settings.delayMs));
       await waitForResume();
       if (cancellation?.cancelled == true || elapsed.elapsed >= timeBudget) break;
       final next = queue.removeFirst();
       if (session != null && session.expectsCredentials && session.headersFor(next).isEmpty) {
+        queue.addFirst(next);
         stopReason = 'authentication_rejected';
         break;
       }
+      attempted++;
       try {
         final page = await scanner.scanWithSession(project, next, authorized: authorized, session: session);
         pages.add(page);
-        onProgress?.call(pages.length + failed);
+        onProgress?.call(attempted);
         if (page.statusCode == 429) {
           stopReason = 'rate_limited';
           break;
@@ -113,17 +127,19 @@ class SiteCrawler {
         } else if (page.statusCode >= 200 && page.statusCode < 300) {
           for (final link in page.links) {
             if (seen.length >= maxPages) break;
-            if (LinkDiscovery.eligible(start, link) && project.contains(link) && settings.permits(link) && seen.add(link)) queue.add(link);
+            if (!link.hasFragment && LinkDiscovery.eligible(start, link) && project.contains(link) && settings.permits(link) && seen.add(link)) queue.add(link);
           }
         }
       } catch (_) {
         failed++;
-        onProgress?.call(pages.length + failed);
+        onProgress?.call(attempted);
+      } finally {
+        await checkpoint();
       }
     }
     if (cancellation?.cancelled == true) stopReason = 'cancelled';
     else if (elapsed.elapsed >= timeBudget && stopReason == 'completed') stopReason = 'time_budget';
-    else if (pages.length + failed >= maxPages && stopReason == 'completed') stopReason = 'page_budget';
+    else if (attempted >= maxPages && stopReason == 'completed') stopReason = 'page_budget';
     return CrawlResult(List.unmodifiable(pages), failed, cancellation?.cancelled == true, stopReason);
   }
 }

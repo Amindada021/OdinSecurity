@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.50.0+50
+- Persist bounded queryless crawl checkpoints; resume with fresh approval and matching scope, identity and policy, with cumulative page caps.
+- Add resume/discard controls and offline recovery fixtures.
+
 ## 0.49.0+49
 - Extend Swagger/OpenAPI inventory with inherited/overridden security declarations, anonymous/unknown classification, HTTP server and authentication response documentation signals, counts and filters.
 - Added offline fixtures for both specification formats. No endpoint calls or verdicts about actual runtime access.

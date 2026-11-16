@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.49.0+49; pubspec.yaml is the version source of truth.
+Current version is 0.50.0+50; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.49.0+49`.
-- Git tag `v0.49.0` when released.
-- `OdinSecurity-v0.49.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.50.0+50`.
+- Git tag `v0.50.0` when released.
+- `OdinSecurity-v0.50.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -144,3 +144,7 @@ From a selected saved identity, explicitly authorize Check session. Login and ve
 ## OpenAPI contract review
 
 Import existing Swagger 2.x/OpenAPI JSON offline. Classifies operations by inherited or overridden security declarations, detects anonymous options, undeclared or unknown schemes, HTTP server/scheme declarations and missing documented 401/403 for security-required operations. Filters by protection declaration. Contract metadata cannot prove actual access control. No endpoint invocation or remote reference resolution.
+
+## Crawl checkpoint recovery
+
+The crawl saves its bounded observed and pending queryless route queue after each finished attempt. Resume requires fresh approval, the same selected target/profile name and current valid policy. It skips completed routes and preserves the cumulative page budget. An interruption during an in-flight read may repeat that read. History records completed batches separately; an abrupt process death before batch reporting can lose findings collected in that batch, even if its route progress is recovered. No response or credential persistence in checkpoints. Explicitly discard a checkpoint before starting a different crawl.

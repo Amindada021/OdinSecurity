@@ -19,6 +19,12 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Could not load saved crawl checkpoint.': 'بارگذاری وضعیت ذخیره‌شده پیمایش ناموفق بود.',
+  'Could not save crawl checkpoint.': 'ذخیره وضعیت پیمایش ناموفق بود.',
+  'Discard saved crawl?': 'وضعیت ذخیره‌شده پیمایش حذف شود؟',
+  'Discard saved crawl': 'حذف وضعیت ذخیره‌شده',
+  'Saved crawl checkpoint. Resume with the same target and identity; previously saved findings remain in scan history.': 'وضعیت پیمایش ذخیره شده است. با همان مقصد و حساب ادامه دهید؛ نتایج قبلاً ذخیره‌شده در تاریخچه باقی می‌مانند.',
+  'Resume saved crawl': 'ادامه پیمایش ذخیره‌شده',
   'Operations': 'عملیات',
   'Security not declared': 'امنیت تعریف نشده',
   'Anonymous allowed by specification': 'دسترسی ناشناس طبق مستندات مجاز است',
