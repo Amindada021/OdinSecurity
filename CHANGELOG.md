@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.60.0+61
+- Add conservative public version evidence to identified technologies, scan result/history/report, with ambiguous versions omitted; tests and queue template dropdown correction.
+
 ## 0.59.0+60
 - Persist validated queue templates without credentials or authorization. Add explicit per-target static identities, fail-closed origin validation and stop on credential rejection; unit fixtures.
 

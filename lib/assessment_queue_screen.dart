@@ -137,7 +137,7 @@ class _AssessmentQueueScreenState extends State<AssessmentQueueScreen> with Widg
       ],
       CheckboxListTile(value: parallel, title: const LText('Allow two different origins in parallel'),
         onChanged: locked ? null : (v) => setState(() { parallel = v ?? false; authorized = false; })),
-      DropdownButtonFormField<int>(initialValue: minutes, decoration: const InputDecoration(label: LText('Start after (minutes)')),
+      DropdownButtonFormField<int>(key: ValueKey(minutes), initialValue: minutes, decoration: const InputDecoration(label: LText('Start after (minutes)')),
         items: [for (final n in [0, 1, 5, 15]) DropdownMenuItem(value: n, child: Text(uiNumber(context, n)))],
         onChanged: locked ? null : (v) => setState(() { minutes = v ?? 0; authorized = false; })),
       OutlinedButton(onPressed: locked || targets.isEmpty ? null : saveTemplate, child: const LText('Save queue template')),
@@ -146,7 +146,7 @@ class _AssessmentQueueScreenState extends State<AssessmentQueueScreen> with Widg
       CheckboxListTile(value: authorized, title: const LText('I authorize these exact assessments.'),
         onChanged: locked ? null : (v) => setState(() => authorized = v ?? false)),
       FilledButton(onPressed: locked || !authorized || targets.isEmpty ? null : schedule, child: const LText('Start or schedule queue')),
-      if (locked) ...[
+      if (running || timer != null) ...[
         const LinearProgressIndicator(),
         if (timer != null) const LText('Waiting in foreground'),
         OutlinedButton(onPressed: cancelled ? null : stop, child: const LText('Stop')),

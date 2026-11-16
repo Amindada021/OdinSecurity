@@ -91,7 +91,8 @@ class _ReportScreenState extends State<ReportScreen> {
               if (page['bodyTruncated'] == true) const ListTile(title: LText('Response truncated')),
               if (page['redirectNotFollowed'] == true) const ListTile(title: LText('Redirect not followed')),
               for (final tech in (page['technologies'] as List? ?? []))
-                ListTile(title: Text(tech['name'] as String), subtitle: Text("${tech['layer']} / ${tech['confidence']}\n${tech['evidence']}")),
+                ListTile(title: Text(tech['name'] as String), subtitle: Text("${tech['layer']} / ${tech['confidence']}\n${tech['evidence']}"),
+                  trailing: tech['observedVersion'] is String ? Text('${tr(context, 'Declared version')}: ${tech['observedVersion']}') : null),
             ]),
         const Divider(),
         const LText('Security observations'),

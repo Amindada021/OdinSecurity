@@ -1,3 +1,5 @@
+import 'version_evidence.dart';
+
 enum TechnologyLayer { cms, frontend, backend, server, api }
 enum Confidence { low, medium, high }
 
@@ -17,7 +19,8 @@ class TechnologyFinding {
   final TechnologyLayer layer;
   final Confidence confidence;
   final String evidence;
-  const TechnologyFinding(this.name, this.layer, this.confidence, this.evidence);
+  final String? observedVersion;
+  const TechnologyFinding(this.name, this.layer, this.confidence, this.evidence, {this.observedVersion});
 }
 
 class TechnologyDetector {
@@ -156,6 +159,7 @@ class TechnologyDetector {
       add('OpenAPI / Swagger (possible)', TechnologyLayer.api, Confidence.medium, 'API documentation marker');
     }
 
-    return List.unmodifiable(results);
+    return List.unmodifiable(results.map((item) => TechnologyFinding(item.name, item.layer, item.confidence, item.evidence,
+      observedVersion: VersionEvidence.forTechnology(item.name, observation.headers, observation.body))));
   }
 }

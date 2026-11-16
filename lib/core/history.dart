@@ -19,6 +19,7 @@ class ScanRecord {
       'redirectNotFollowed': page.redirectNotFollowed,
       'technologies': page.technologies.map((tech) => {
         'name': tech.name, 'layer': tech.layer.name, 'confidence': tech.confidence.name, 'evidence': tech.evidence,
+        if (tech.observedVersion != null) 'observedVersion': tech.observedVersion,
       }).toList(),
       'observations': page.findings.map((finding) => {
         'id': finding.id, 'title': finding.title, 'severity': finding.severity.name,

@@ -19,6 +19,7 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Declared version': 'نسخه اعلام‌شده',
   'Choose up to three registered HTTPS targets and optionally a matching saved static identity per target. No automatic login. Leaving the screen or backgrounding cancels pending work.': 'تا سه مقصد HTTPS ثبت‌شده و حساب ثابت سازگار هر مقصد را انتخاب کنید. ورود خودکار انجام نمی‌شود؛ خروج از صفحه یا پس‌زمینه کارهای در انتظار را لغو می‌کند.',
   'Template or identity loading failed. Review settings before use.': 'بارگذاری قالب یا حساب ناموفق بود؛ تنظیمات را بررسی کنید.',
   'Identity for this target': 'حساب این مقصد',
