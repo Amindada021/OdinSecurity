@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'localized.dart';
 import 'core/auth.dart';
 import 'core/manual_request.dart';
 import 'core/project.dart';
@@ -67,40 +68,40 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
     final records = history.records;
     final previous = records.length >= 2 && records[0].comparableTo(records[1]) ? records[1] : null;
     return Scaffold(
-      appBar: AppBar(title: const Text('Request inspector')),
+      appBar: AppBar(title: const LText('Request inspector')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        const Text('Manually send authorized GET or HEAD requests. Each send requires consent. Response content is visible only for the latest request and is not stored.'),
+        const LText('Manually send authorized GET or HEAD requests. Each send requires consent. Response content is visible only for the latest request and is not stored.'),
         DropdownButtonFormField<String>(initialValue: method, items: ['GET', 'HEAD'].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(), onChanged: busy ? null : (v) => setState(() { method = v!; authorized = false; })),
-        TextField(controller: url, enabled: !busy, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Request URL'), onChanged: (_) => setState(() => authorized = false)),
-        DropdownButtonFormField<ManualAccept>(initialValue: accept, decoration: const InputDecoration(labelText: 'Accept'), items: ManualAccept.values.map((value) => DropdownMenuItem(value: value, child: Text(value.value))).toList(),
+        TextField(controller: url, enabled: !busy, keyboardType: TextInputType.url, decoration: const InputDecoration(label: LText('Request URL')), onChanged: (_) => setState(() => authorized = false)),
+        DropdownButtonFormField<ManualAccept>(initialValue: accept, decoration: const InputDecoration(label: LText('Accept')), items: ManualAccept.values.map((value) => DropdownMenuItem(value: value, child: Text(value.value))).toList(),
           onChanged: busy ? null : (value) => setState(() { accept = value!; authorized = false; })),
-        if (widget.auth != null) CheckboxListTile(value: useAuth, title: const Text('Use saved credentials for their exact origin'), onChanged: busy ? null : (v) => setState(() { useAuth = v ?? false; authorized = false; })),
-        CheckboxListTile(value: authorized, title: const Text('I authorize this exact request.'), onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
-        FilledButton(onPressed: busy || !authorized ? null : send, child: Text(records.isEmpty ? 'Send request' : 'Send / repeat request')),
+        if (widget.auth != null) CheckboxListTile(value: useAuth, title: const LText('Use saved credentials for their exact origin'), onChanged: busy ? null : (v) => setState(() { useAuth = v ?? false; authorized = false; })),
+        CheckboxListTile(value: authorized, title: const LText('I authorize this exact request.'), onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
+        FilledButton(onPressed: busy || !authorized ? null : send, child: LText(records.isEmpty ? 'Send request' : 'Send / repeat request')),
         if (busy) const LinearProgressIndicator(),
-        if (error != null) Text(error!),
+        if (error != null) LText(error!),
         if (data != null) ...[
           Text('HTTP ${data.status}', style: Theme.of(context).textTheme.titleLarge),
           Text('${data.elapsedMs} ms | ${data.bodyBytes} captured bytes'),
           if (previous != null) ...[
-            const Text('Previous comparable request (same route, method, Accept and auth setting)'),
+            const LText('Previous comparable request (same route, method, Accept and auth setting)'),
             Text('Status: ${previous.status} → ${data.status} | Time: ${previous.elapsedMs} → ${data.elapsedMs} ms'),
             if (!previous.truncated && !data.truncated) Text('Captured bytes: ${previous.bodyBytes} → ${data.bodyBytes}'),
-            const Text('Differences are diagnostic observations, not proof of a vulnerability.'),
+            const LText('Differences are diagnostic observations, not proof of a vulnerability.'),
           ],
-          const Text('Response headers (unrecognized values redacted)'),
+          const LText('Response headers (unrecognized values redacted)'),
           SelectableText(data.headers.entries.map((e) => '${e.key}: ${e.value.join(', ')}').join('\n')),
           const Divider(),
-          if (data.truncated) const Text('Response truncated to 64 KiB.'),
-          const Text('Response body'),
+          if (data.truncated) const LText('Response truncated to 64 KiB.'),
+          const LText('Response body'),
           SelectableText(data.body),
         ],
         const Divider(),
         Row(children: [
-          Expanded(child: Text('Session history (${records.length})')),
-          TextButton(onPressed: records.isEmpty || busy ? null : () => setState(() { history.clear(); response = null; }), child: const Text('Clear')),
+          Expanded(child: Text('${tr(context, 'Session history')} (${uiNumber(context, records.length)})')),
+          TextButton(onPressed: records.isEmpty || busy ? null : () => setState(() { history.clear(); response = null; }), child: const LText('Clear')),
         ]),
-        const Text('Only route, method, status, timing and captured size are retained in memory. Query values are omitted; paths can still be sensitive.'),
+        const LText('Only route, method, status, timing and captured size are retained in memory. Query values are omitted; paths can still be sensitive.'),
         for (final record in records) ListTile(
           title: Text('${record.method} ${record.route}'),
           subtitle: Text('${record.status} | ${record.elapsedMs} ms | ${record.bodyBytes} bytes${record.truncated ? "+" : ""}${record.hadQuery ? " | query omitted" : ""}'),

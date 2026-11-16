@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'localized.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'core/browser_login_policy.dart';
 
@@ -81,19 +82,19 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text('Login: ${widget.target.host}')),
     body: Column(children: [
-      if (error != null) Padding(padding: const EdgeInsets.all(8), child: Text(error!)),
+      if (error != null) Padding(padding: const EdgeInsets.all(8), child: LText(error!)),
       if (controller == null) Expanded(child: Center(child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Sign in manually to your authorized site, including any OTP. Start resets this app’s own embedded browser cookies and local storage.'),
+          LText('Sign in manually to your authorized site, including any OTP. Start resets this app’s own embedded browser cookies and local storage.'),
           const SizedBox(height: 16),
-          FilledButton(onPressed: busy ? null : start, child: const Text('Start private login')),
+          FilledButton(onPressed: busy ? null : start, child: const LText('Start private login')),
         ]),
       ))) else ...[
         if (progress < 100) LinearProgressIndicator(value: progress / 100),
         Expanded(child: WebViewWidget(controller: controller!)),
         SafeArea(top: false, child: Padding(padding: const EdgeInsets.all(8), child: FilledButton(
-          onPressed: loaded && !busy ? capture : null, child: const Text('Use this authenticated session'),
+          onPressed: loaded && !busy ? capture : null, child: const LText('Use this authenticated session'),
         ))),
       ],
     ]),

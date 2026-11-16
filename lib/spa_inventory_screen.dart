@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'localized.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'core/project.dart';
@@ -101,20 +102,20 @@ class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
     canPop: false,
     onPopInvokedWithResult: (didPop, _) { if (!didPop) close(); },
     child: Scaffold(
-      appBar: AppBar(title: const Text('SPA explorer'), leading: IconButton(
+      appBar: AppBar(title: const LText('SPA explorer'), leading: IconButton(
         onPressed: busy || closing ? null : close, icon: const Icon(Icons.arrow_back)),
         actions: [if (browser != null) IconButton(
-          tooltip: 'Browser / captured routes', onPressed: busy || closing ? null : () => setState(() => showRoutes = !showRoutes),
+          tooltip: tr(context, 'Browser / captured routes'), onPressed: busy || closing ? null : () => setState(() => showRoutes = !showRoutes),
           icon: Icon(showRoutes ? Icons.language : Icons.list_alt))]),
       body: Column(children: [
-        if (error != null) Padding(padding: const EdgeInsets.all(8), child: Text(error!)),
+        if (error != null) Padding(padding: const EdgeInsets.all(8), child: LText(error!)),
         if (busy || closing) const LinearProgressIndicator(),
         if (browser == null)
           Expanded(child: ListView(padding: const EdgeInsets.all(16), children: [
             Text('Open ${widget.target.host} and sign in manually, including OTP if required.'),
-            const Text('You control browsing. Normal site scripts and subresources may contact other origins; only in-scope metadata is collected. Avoid actions that modify data. No automatic clicks, credential extraction, or request replay.'),
-            CheckboxListTile(value: authorized, title: const Text('I am authorized to browse this target.'), onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
-            FilledButton(onPressed: busy || !authorized || !permits(widget.target) ? null : start, child: const Text('Open browser')),
+            const LText('You control browsing. Normal site scripts and subresources may contact other origins; only in-scope metadata is collected. Avoid actions that modify data. No automatic clicks, credential extraction, or request replay.'),
+            CheckboxListTile(value: authorized, title: const LText('I am authorized to browse this target.'), onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
+            FilledButton(onPressed: busy || !authorized || !permits(widget.target) ? null : start, child: const LText('Open browser')),
           ]))
         else ...[
           Expanded(child: IndexedStack(index: showRoutes ? 1 : 0, children: [
@@ -122,9 +123,9 @@ class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
             RouteList(routes: routes),
           ])),
           SafeArea(top: false, child: Wrap(spacing: 8, children: [
-            FilledButton.icon(onPressed: loaded && !busy && !closing ? capture : null, icon: const Icon(Icons.search), label: const Text('Capture routes')),
+            FilledButton.icon(onPressed: loaded && !busy && !closing ? capture : null, icon: const Icon(Icons.search), label: const LText('Capture routes')),
             OutlinedButton(onPressed: busy || closing ? null : () => setState(() => showRoutes = !showRoutes),
-              child: Text(showRoutes ? 'Back to browser' : 'Routes (${routes.length})')),
+              child: Text(showRoutes ? tr(context, 'Back to browser') : '${tr(context, 'Routes')} (${uiNumber(context, routes.length)})')),
           ])),
         ],
       ]),
@@ -138,10 +139,10 @@ class RouteList extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(12), children: [
     Text('${routes.length} observed routes (cap ${RouteInventory.maxEntries})'),
-    const Text('Query strings and fragments omitted. Route paths may be sensitive. Resource timing does not establish an HTTP method or security finding.'),
+    const LText('Query strings and fragments omitted. Route paths may be sensitive. Resource timing does not establish an HTTP method or security finding.'),
     for (final route in routes) ListTile(
       title: SelectableText(route.url.toString()), subtitle: Text(route.source),
-      trailing: IconButton(tooltip: 'Copy route', icon: const Icon(Icons.copy),
+      trailing: IconButton(tooltip: tr(context, 'Copy route'), icon: const Icon(Icons.copy),
         onPressed: () => Clipboard.setData(ClipboardData(text: route.url.toString()))),
     ),
   ]);
@@ -175,14 +176,14 @@ class _HarInventoryScreenState extends State<HarInventoryScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Offline HAR inventory')),
+    appBar: AppBar(title: const LText('Offline HAR inventory')),
     body: Column(children: [
       Padding(padding: const EdgeInsets.all(12), child: Column(children: [
-        const Text('Paste HAR JSON from an authorized test session. Import is offline. Use a sanitized HAR; only scoped URL paths and HTTP methods are retained.'),
+        const LText('Paste HAR JSON from an authorized test session. Import is offline. Use a sanitized HAR; only scoped URL paths and HTTP methods are retained.'),
         TextField(controller: source, maxLines: 4, autocorrect: false, enableSuggestions: false,
-          decoration: const InputDecoration(labelText: 'HAR JSON (max 1 MiB)')),
-        FilledButton(onPressed: parse, child: const Text('Import routes')),
-        if (error != null) Text(error!),
+          decoration: const InputDecoration(label: LText('HAR JSON (max 1 MiB)'))),
+        FilledButton(onPressed: parse, child: const LText('Import routes')),
+        if (error != null) LText(error!),
       ])),
       Expanded(child: RouteList(routes: routes)),
     ]),

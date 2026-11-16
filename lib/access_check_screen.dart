@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'localized.dart';
 import 'core/access_assessment.dart';
 import 'core/auth.dart';
 import 'core/project.dart';
@@ -45,36 +46,36 @@ class _AccessCheckScreenState extends State<AccessCheckScreen> {
   }
 
   Widget identityDropdown(String label, String value, ValueChanged<String> update) => DropdownButtonFormField<String>(
-    initialValue: value, decoration: InputDecoration(labelText: label),
-    items: [const DropdownMenuItem(value: '', child: Text('Select test identity')), ...identities.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name)))],
+    initialValue: value, decoration: InputDecoration(label: LText(label)),
+    items: [const DropdownMenuItem(value: '', child: LText('Select test identity')), ...identities.map((p) => DropdownMenuItem(value: p.name, child: Text(p.name)))],
     onChanged: busy ? null : (v) => setState(() { update(v ?? ''); authorized = false; result = null; }),
   );
 
   @override
   Widget build(BuildContext context) {
     final data = result;
-    return Scaffold(appBar: AppBar(title: const Text('Access control comparison')),
+    return Scaffold(appBar: AppBar(title: const LText('Access control comparison')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        const Text('Choose an explicitly allowed, read-only endpoint and two test accounts. Configure a protected verification endpoint and response marker for both accounts first.'),
-        if (identities.length < 2) const Text('At least two validated test identities are required.'),
-        TextField(controller: url, enabled: !busy, decoration: const InputDecoration(labelText: 'Exact HTTPS endpoint'), onChanged: (_) => setState(() { authorized = false; result = null; })),
+        const LText('Choose an explicitly allowed, read-only endpoint and two test accounts. Configure a protected verification endpoint and response marker for both accounts first.'),
+        if (identities.length < 2) const LText('At least two validated test identities are required.'),
+        TextField(controller: url, enabled: !busy, decoration: const InputDecoration(label: LText('Exact HTTPS endpoint')), onChanged: (_) => setState(() { authorized = false; result = null; })),
         identityDropdown('Expected allowed identity', allowed, (v) => allowed = v),
         identityDropdown('Expected denied identity', denied, (v) => denied = v),
-        CheckboxListTile(value: authorized, title: const Text('I authorize this read-only comparison using my test accounts.'),
+        CheckboxListTile(value: authorized, title: const LText('I authorize this read-only comparison using my test accounts.'),
           onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
-        FilledButton(onPressed: !busy && authorized && allowed.isNotEmpty && denied.isNotEmpty && allowed != denied ? run : null, child: const Text('Compare access')),
+        FilledButton(onPressed: !busy && authorized && allowed.isNotEmpty && denied.isNotEmpty && allowed != denied ? run : null, child: const LText('Compare access')),
         if (busy) const LinearProgressIndicator(),
-        if (error != null) Text(error!),
+        if (error != null) LText(error!),
         if (data != null) ...[
           Text('Expected allowed: HTTP ${data.expectedAllowedStatus}'),
           Text(data.expectedDeniedStatus == 0 ? 'Expected denied: not tested' : 'Expected denied: HTTP ${data.expectedDeniedStatus}'),
           const Divider(),
-          Text(switch (data.outcome) {
+          LText(switch (data.outcome) {
             AccessOutcome.expected => 'Observed expected response statuses.',
             AccessOutcome.unexpectedSuccess => 'Review: denied identity also returned a successful status. This alone does not prove unauthorized data access.',
             AccessOutcome.inconclusive => 'Inconclusive. Verify the expected allowed endpoint and identities.',
           }),
-          const Text('Only response status codes are shown; no response body or credentials are saved.'),
+          const LText('Only response status codes are shown; no response body or credentials are saved.'),
         ],
       ]),
     );

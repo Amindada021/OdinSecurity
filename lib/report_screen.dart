@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'localized.dart';
 import 'core/history.dart';
 import 'core/report.dart';
 
@@ -29,10 +30,10 @@ class _ReportScreenState extends State<ReportScreen> {
         bytes: bytes, type: FileType.custom, allowedExtensions: [extension],
       );
       if (mounted && path != null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report saved.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: LText('Report saved.')));
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save report. Choose another format or location.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: LText('Could not save report. Choose another format or location.')));
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -45,7 +46,7 @@ class _ReportScreenState extends State<ReportScreen> {
     final comparison = previous == null ? null : report.compare(ReportSummary(previous));
     final visible = report.findings.where((f) => filter == 'all' || f.severity == filter);
     return Scaffold(
-      appBar: AppBar(title: const Text('Security report')),
+      appBar: AppBar(title: const LText('Security report')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text(widget.record.finishedAt.toLocal().toString()),
         Text(report.overview),
@@ -71,22 +72,22 @@ class _ReportScreenState extends State<ReportScreen> {
           for (final f in comparison.notObserved) ListTile(title: Text('Not observed again: ${f.title}'), subtitle: Text(f.url)),
         ],
         const Divider(),
-        const Text('Pages and technology observations'),
+        const LText('Pages and technology observations'),
         for (final page in widget.record.pages)
           ExpansionTile(title: Text(page['url'] as String), subtitle: Text("HTTP ${page['statusCode']}"),
             children: [
-              if (page['bodyTruncated'] == true) const ListTile(title: Text('Response truncated')),
-              if (page['redirectNotFollowed'] == true) const ListTile(title: Text('Redirect not followed')),
+              if (page['bodyTruncated'] == true) const ListTile(title: LText('Response truncated')),
+              if (page['redirectNotFollowed'] == true) const ListTile(title: LText('Redirect not followed')),
               for (final tech in (page['technologies'] as List? ?? []))
                 ListTile(title: Text(tech['name'] as String), subtitle: Text("${tech['layer']} / ${tech['confidence']}\n${tech['evidence']}")),
             ]),
         const Divider(),
-        const Text('Security observations'),
-        if (visible.isEmpty) const Text('No matching observations. This does not establish security.'),
+        const LText('Security observations'),
+        if (visible.isEmpty) const LText('No matching observations. This does not establish security.'),
         for (final f in visible)
           ExpansionTile(title: Text(f.title), subtitle: Text('${f.severity} | ${f.url}'),
-            children: [ListTile(title: const Text('Evidence'), subtitle: SelectableText(f.evidence)),
-              ListTile(title: const Text('Remediation'), subtitle: SelectableText(f.remediation))]),
+            children: [ListTile(title: const LText('Evidence'), subtitle: SelectableText(f.evidence)),
+              ListTile(title: const LText('Remediation'), subtitle: SelectableText(f.remediation))]),
       ]),
     );
   }

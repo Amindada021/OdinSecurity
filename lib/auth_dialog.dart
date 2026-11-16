@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'localized.dart';
 import 'core/auth.dart';
 import 'core/project.dart';
 import 'browser_login_screen.dart';
@@ -75,25 +76,25 @@ class _AuthDialogState extends State<AuthDialog> {
 
   Widget field(TextEditingController controller, String label, {bool obscure = false}) => TextField(
     controller: controller, obscureText: obscure, autocorrect: false,
-    enableSuggestions: false, decoration: InputDecoration(labelText: label));
+    enableSuggestions: false, decoration: InputDecoration(label: LText(label)));
 
   @override
   Widget build(BuildContext context) {
     final isLogin = mode == AuthMode.jsonLogin || mode == AuthMode.formLogin;
     return AlertDialog(
-      title: const Text('Authentication'),
+      title: const LText('Authentication'),
       content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         field(name, 'Profile name (e.g. accountant)'),
         DropdownButtonFormField<AuthMode>(
           initialValue: mode,
-          decoration: const InputDecoration(labelText: 'Method'),
+          decoration: const InputDecoration(label: LText('Method')),
           items: AuthMode.values.where((m) => m != AuthMode.none).map((m) => DropdownMenuItem(value: m, child: Text(m.name))).toList(),
           onChanged: (v) => setState(() { if (mode != v) { secret.clear(); cookiePath = '/'; } mode = v!; error = null; }),
         ),
         DropdownButtonFormField<Uri>(
           initialValue: target,
           isExpanded: true,
-          decoration: const InputDecoration(labelText: 'Credential origin'),
+          decoration: const InputDecoration(label: LText('Credential origin')),
           items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.host, overflow: TextOverflow.ellipsis))).toList(),
           onChanged: (v) => setState(() { if (target != v) { secret.clear(); cookiePath = '/'; } target = v!; }),
         ),
@@ -102,7 +103,7 @@ class _AuthDialogState extends State<AuthDialog> {
         if (mode == AuthMode.apiKey) field(header, 'API key header'),
         if (mode == AuthMode.cookie) ...[
           field(login, 'Browser sign-in URL (optional)'),
-          OutlinedButton(onPressed: importing ? null : browserLogin, child: const Text('Sign in using browser and OTP')),
+          OutlinedButton(onPressed: importing ? null : browserLogin, child: const LText('Sign in using browser and OTP')),
           Text('Cookie path scope: $cookiePath'),
         ],
         if (isLogin) ...[
@@ -113,13 +114,13 @@ class _AuthDialogState extends State<AuthDialog> {
         ],
         field(validationUrl, 'Protected HTTPS URL (optional)'),
         field(validationMarker, 'Expected response marker (optional)', obscure: true),
-        const Text('If a protected URL is configured, the marker must appear in its 2xx response before scanning.'),
-        const Padding(padding: EdgeInsets.only(top: 12), child: Text('Credentials are saved separately in encrypted storage. Only the selected HTTPS origin receives them.')),
-        if (error != null) Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        const LText('If a protected URL is configured, the marker must appear in its 2xx response before scanning.'),
+        const Padding(padding: EdgeInsets.only(top: 12), child: LText('Credentials are saved separately in encrypted storage. Only the selected HTTPS origin receives them.')),
+        if (error != null) LText(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
       ])),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        FilledButton(onPressed: submit, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.pop(context), child: const LText('Cancel')),
+        FilledButton(onPressed: submit, child: const LText('Save')),
       ],
     );
   }

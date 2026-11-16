@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.0+20
+- Persian and English navigation, form labels and guidance; Persian RTL via Flutter localization delegates.
+- Light, dark and system theme; persistent UI preferences with defaults and fallback.
+- Technical values, findings and report data retain their original English formatting; localization and widget fixtures.
+
 ## 0.19.0+19
 - Request inspector with explicit repeat, Accept selection, captured byte count and measured HTTP response time.
 - Bounded session-only metadata history and comparable request summary; query values, credential headers and response content not retained in history.

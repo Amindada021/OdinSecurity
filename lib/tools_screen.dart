@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'localized.dart';
 import 'core/openapi_inventory.dart';
 import 'core/offline_tools.dart';
 
@@ -25,14 +26,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('OpenAPI inventory')),
+    appBar: AppBar(title: const LText('OpenAPI inventory')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
-      const Text('Paste Swagger 2.0 or OpenAPI 3.x JSON. Import is offline and does not call endpoints.'),
+      const LText('Paste Swagger 2.0 or OpenAPI 3.x JSON. Import is offline and does not call endpoints.'),
       const SizedBox(height: 8),
       TextField(controller: source, maxLines: 6, decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'OpenAPI JSON')),
       const SizedBox(height: 8),
-      FilledButton(onPressed: parse, child: const Text('Import')),
-      if (error != null) Text(error!),
+      FilledButton(onPressed: parse, child: const LText('Import')),
+      if (error != null) LText(error!),
       Text('${operations.length} operations'),
       for (final operation in operations) ListTile(
         leading: Text(operation.method), title: Text(operation.path), subtitle: operation.title.isEmpty ? null : Text(operation.title)),
@@ -58,11 +59,11 @@ class _OfflineToolsScreenState extends State<OfflineToolsScreen> {
   void dispose() { source.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Offline utilities')),
+    appBar: AppBar(title: const LText('Offline utilities')),
     body: ListView(padding: const EdgeInsets.all(16), children: [
-      DropdownButtonFormField<String>(initialValue: mode, items: operations.keys.map((op) => DropdownMenuItem(value: op, child: Text(op))).toList(),
+      DropdownButtonFormField<String>(initialValue: mode, items: operations.keys.map((op) => DropdownMenuItem(value: op, child: LText(op))).toList(),
         onChanged: (value) => setState(() { mode = value!; output = ''; })),
-      TextField(controller: source, maxLines: 5, autocorrect: false, enableSuggestions: false, decoration: const InputDecoration(labelText: 'Input (local only)')),
+      TextField(controller: source, maxLines: 5, autocorrect: false, enableSuggestions: false, decoration: const InputDecoration(label: LText('Input (local only)'))),
       FilledButton(onPressed: () {
         try {
           if (source.text.length > 1024 * 1024) throw const FormatException();
@@ -71,8 +72,8 @@ class _OfflineToolsScreenState extends State<OfflineToolsScreen> {
         } catch (_) {
           setState(() => output = 'Invalid input.');
         }
-      }, child: const Text('Convert')),
-      if (mode.startsWith('Inspect JWT')) const Text('Decoded JWT claims are not verified and must not be trusted.'),
+      }, child: const LText('Convert')),
+      if (mode.startsWith('Inspect JWT')) const LText('Decoded JWT claims are not verified and must not be trusted.'),
       const SizedBox(height: 16),
       SelectableText(output),
     ]),

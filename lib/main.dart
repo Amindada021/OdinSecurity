@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'localized.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'core/ui_preferences.dart';
 import 'package:flutter/services.dart';
 import 'brand.dart';
 import 'tools_screen.dart';
@@ -30,20 +33,73 @@ Future<void> main() async {
   runApp(OdinSecurityApp(repository: repository));
 }
 
-class OdinSecurityApp extends StatelessWidget {
+class OdinSecurityApp extends StatefulWidget {
   final ProjectRepository repository;
   const OdinSecurityApp({super.key, required this.repository});
   @override
+  State<OdinSecurityApp> createState() => _OdinSecurityAppState();
+}
+
+class _OdinSecurityAppState extends State<OdinSecurityApp> {
+  UiPreferences preferences = const UiPreferences();
+  bool saving = false, ready = false;
+  late final UiPreferencesRepository storage = UiPreferencesRepository(widget.repository.storage);
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    try {
+      final value = await storage.load();
+      if (mounted) setState(() => preferences = value);
+    } catch (_) {
+      // Corrupt or unavailable preferences do not prevent opening the app.
+    } finally {
+      if (mounted) setState(() => ready = true);
+    }
+  }
+
+  Future<bool> select(String choice) async {
+    if (!ready || saving) return false;
+    final next = ['en', 'fa'].contains(choice)
+      ? preferences.copyWith(language: choice) : preferences.copyWith(theme: choice);
+    setState(() => saving = true);
+    try {
+      await storage.save(next);
+      if (mounted) setState(() => preferences = next);
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  ThemeData theme(Brightness brightness) => ThemeData(
+    colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff22c5a0), brightness: brightness), useMaterial3: true);
+  @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'Odin Security',
-        theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff22c5a0), brightness: Brightness.dark), useMaterial3: true),
-        home: ProjectScreen(repository: repository),
-      );
+    title: 'Odin Security',
+    locale: Locale(preferences.language),
+    supportedLocales: const [Locale('en'), Locale('fa')],
+    localizationsDelegates: GlobalMaterialLocalizations.delegates,
+    theme: theme(Brightness.light), darkTheme: theme(Brightness.dark),
+    themeMode: switch (preferences.theme) {
+      'light' => ThemeMode.light, 'system' => ThemeMode.system, _ => ThemeMode.dark,
+    },
+    home: ProjectScreen(repository: widget.repository, preferences: preferences, settingsEnabled: ready && !saving, onPreference: select),
+  );
 }
 
 class ProjectScreen extends StatefulWidget {
   final ProjectRepository repository;
-  const ProjectScreen({super.key, required this.repository});
+  final UiPreferences preferences;
+  final bool settingsEnabled;
+  final Future<bool> Function(String choice) onPreference;
+  const ProjectScreen({super.key, required this.repository, required this.preferences, required this.settingsEnabled, required this.onPreference});
   @override
   State<ProjectScreen> createState() => _ProjectScreenState();
 }
@@ -84,7 +140,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
       await widget.repository.save([...projects, project]);
       if (mounted) setState(() => projects.add(project));
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save project.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: LText('Could not save project.')));
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -102,7 +158,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
       await widget.repository.save(next);
       if (mounted) setState(() { projects.clear(); projects.addAll(next); });
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save project changes.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: LText('Could not save project changes.')));
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -117,17 +173,31 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Row(children: [OdinLogo(size: 34), SizedBox(width: 10), Text('Odin Security')]), actions: [IconButton(tooltip: 'About Odin Security', icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.19.0+19', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: 'Offline utilities', icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
-        floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const Text('New project')),
-        body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: Text(loadError!))) : projects.isEmpty
-            ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('Create a project to assess an authorized website.')))
+        appBar: AppBar(title: const Row(children: [OdinLogo(size: 34), SizedBox(width: 10), Text('Odin Security')]), actions: [PopupMenuButton<String>(
+          tooltip: tr(context, 'Settings'), enabled: widget.settingsEnabled,
+          onSelected: (choice) async {
+            final saved = await widget.onPreference(choice);
+            if (!saved && context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: LText('Preferences could not be saved.')));
+          },
+          itemBuilder: (_) => [
+            CheckedPopupMenuItem(value: 'en', checked: widget.preferences.language == 'en', child: const LText('English')),
+            CheckedPopupMenuItem(value: 'fa', checked: widget.preferences.language == 'fa', child: const LText('Persian')),
+            const PopupMenuDivider(),
+            CheckedPopupMenuItem(value: 'light', checked: widget.preferences.theme == 'light', child: const LText('Light theme')),
+            CheckedPopupMenuItem(value: 'dark', checked: widget.preferences.theme == 'dark', child: const LText('Dark theme')),
+            CheckedPopupMenuItem(value: 'system', checked: widget.preferences.theme == 'system', child: const LText('System theme')),
+          ],
+        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.20.0+20', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const LText('New project')),
+        body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: LText(loadError!))) : projects.isEmpty
+            ? const Center(child: Padding(padding: EdgeInsets.all(24), child: LText('Create a project to assess an authorized website.')))
             : Column(children: [
                 Padding(padding: const EdgeInsets.all(12), child: TextField(
                   onChanged: (value) => setState(() => search = value),
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search), labelText: 'Search projects or origins'),
+                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search), label: LText('Search projects or origins')),
                 )),
                 Expanded(child: filteredProjects.isEmpty
-                  ? const Center(child: Text('No matching projects.'))
+                  ? const Center(child: LText('No matching projects.'))
                   : ListView.builder(
                     itemCount: filteredProjects.length,
                     itemBuilder: (context, index) {
@@ -135,8 +205,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                       return ListTile(
                         leading: const Icon(Icons.shield_outlined),
                         title: Text(p.name),
-                        subtitle: Text('${p.startUrl}\n${p.targets.length} targets'),
-                        trailing: IconButton(tooltip: 'Edit project', icon: const Icon(Icons.edit_outlined), onPressed: saving ? null : () => editProject(p)),
+                        subtitle: Text('${p.startUrl}\n${uiNumber(context, p.targets.length)} ${tr(context, 'targets')}'),
+                        trailing: IconButton(tooltip: tr(context, 'Edit project'), icon: const Icon(Icons.edit_outlined), onPressed: saving ? null : () => editProject(p)),
                         onTap: saving ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScanScreen(project: p))),
                       );
                     },
@@ -185,17 +255,17 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: Text(widget.existing == null ? 'New security project' : 'Edit security project'),
+        title: LText(widget.existing == null ? 'New security project' : 'Edit security project'),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Project name')),
-          TextField(controller: url, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Website URL', hintText: 'https://example.test')),
-          TextField(controller: api, keyboardType: TextInputType.multiline, maxLines: 4, decoration: const InputDecoration(labelText: 'Additional website / API URLs', hintText: 'One URL per line')),
-          if (widget.existing != null) const Text('History and saved identities stay with this project. Only explicitly listed origins may be selected for new scans.'),
-          if (error != null) Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          TextField(controller: name, decoration: const InputDecoration(label: LText('Project name'))),
+          TextField(controller: url, keyboardType: TextInputType.url, decoration: const InputDecoration(label: LText('Website URL'), hintText: 'https://example.test')),
+          TextField(controller: api, keyboardType: TextInputType.multiline, maxLines: 4, decoration: const InputDecoration(label: LText('Additional website / API URLs'), hintText: 'One URL per line')),
+          if (widget.existing != null) const LText('History and saved identities stay with this project. Only explicitly listed origins may be selected for new scans.'),
+          if (error != null) LText(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
         ])),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: submit, child: Text(widget.existing == null ? 'Create' : 'Save')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const LText('Cancel')),
+          FilledButton(onPressed: submit, child: LText(widget.existing == null ? 'Create' : 'Save')),
         ],
       );
 }
@@ -361,9 +431,9 @@ class _ScanScreenState extends State<ScanScreen> {
     final current = auth;
     if (current == null) return;
     final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
-      title: const Text('Delete authentication profile?'),
+      title: const LText('Delete authentication profile?'),
       content: Text(current.name),
-      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const LText('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const LText('Delete'))],
     ));
     if (confirmed != true || !mounted) return;
     setState(() => loadingAuth = true);
@@ -434,75 +504,75 @@ class _ScanScreenState extends State<ScanScreen> {
       appBar: AppBar(title: Text(widget.project.name)),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text(widget.project.startUrl.toString(), style: Theme.of(context).textTheme.titleMedium),
-        const Text('Technology fingerprint · Scoped request · No redirects'),
+        const LText('Technology fingerprint · Scoped request · No redirects'),
         OutlinedButton.icon(onPressed: busy || loadingPolicy ? null : editPolicy, icon: const Icon(Icons.tune), label: Text('Scan limits: ${policy.maxPages} pages / ${policy.delayMs} ms')),
-        if (policyError != null) Text(policyError!),
-        if (!policy.permits(target)) const Text('The selected URL is excluded from scanning.'),
-        OutlinedButton.icon(onPressed: busy || loadingAuth || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AccessCheckScreen(project: widget.project, target: target, profiles: profiles, policy: policy))), icon: const Icon(Icons.people_outline), label: const Text('Compare test account access')),
-        OutlinedButton.icon(onPressed: busy || loadingAuth || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ManualRequestScreen(project: widget.project, target: target, auth: auth, policy: policy))), icon: const Icon(Icons.http), label: const Text('Request inspector')),
-        OutlinedButton.icon(onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InventoryScreen())), icon: const Icon(Icons.description_outlined), label: const Text('Import Swagger / OpenAPI')),
-        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CorsAuditScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.security), label: const Text('CORS configuration audit')),
-        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' || !policy.permits(target) ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TlsAuditScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.lock_outline), label: const Text('TLS certificate audit')),
-        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' || !policy.permits(target) ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SpaInventoryScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.language), label: const Text('Explore rendered SPA')),
-        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HarInventoryScreen(project: widget.project, policy: policy))), icon: const Icon(Icons.file_open), label: const Text('Import HAR traffic inventory')),
-        DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(labelText: 'Target'), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; selectedProfile = ''; authorized = false; result = null; crawlResult = null; })),
+        if (policyError != null) LText(policyError!),
+        if (!policy.permits(target)) const LText('The selected URL is excluded from scanning.'),
+        OutlinedButton.icon(onPressed: busy || loadingAuth || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AccessCheckScreen(project: widget.project, target: target, profiles: profiles, policy: policy))), icon: const Icon(Icons.people_outline), label: const LText('Compare test account access')),
+        OutlinedButton.icon(onPressed: busy || loadingAuth || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ManualRequestScreen(project: widget.project, target: target, auth: auth, policy: policy))), icon: const Icon(Icons.http), label: const LText('Request inspector')),
+        OutlinedButton.icon(onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InventoryScreen())), icon: const Icon(Icons.description_outlined), label: const LText('Import Swagger / OpenAPI')),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CorsAuditScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.security), label: const LText('CORS configuration audit')),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' || !policy.permits(target) ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TlsAuditScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.lock_outline), label: const LText('TLS certificate audit')),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' || !policy.permits(target) ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SpaInventoryScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.language), label: const LText('Explore rendered SPA')),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => HarInventoryScreen(project: widget.project, policy: policy))), icon: const Icon(Icons.file_open), label: const LText('Import HAR traffic inventory')),
+        DropdownButtonFormField<Uri>(initialValue: target, isExpanded: true, decoration: const InputDecoration(label: LText('Target')), items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))).toList(), onChanged: busy ? null : (value) => setState(() { target = value!; selectedProfile = ''; authorized = false; result = null; crawlResult = null; })),
         DropdownButtonFormField<String>(
           key: ValueKey('auth.${target.origin}.$selectedProfile'),
           initialValue: selectedProfile,
-          decoration: const InputDecoration(labelText: 'Test identity'),
-          items: [const DropdownMenuItem(value: '', child: Text('No authentication')), ...profiles.where((p) => SecurityProject.sameOrigin(p.target, target)).map((p) => DropdownMenuItem(value: p.name, child: Text(p.name)))],
+          decoration: const InputDecoration(label: LText('Test identity')),
+          items: [const DropdownMenuItem(value: '', child: LText('No authentication')), ...profiles.where((p) => SecurityProject.sameOrigin(p.target, target)).map((p) => DropdownMenuItem(value: p.name, child: Text(p.name)))],
           onChanged: busy || loadingAuth ? null : (value) => setState(() { selectedProfile = value ?? ''; authorized = false; result = null; crawlResult = null; }),
         ),
         Wrap(spacing: 8, children: [
-          OutlinedButton.icon(onPressed: busy || loadingAuth ? null : () => editAuth(add: true), icon: const Icon(Icons.person_add), label: const Text('Add identity')),
-          OutlinedButton.icon(onPressed: busy || loadingAuth || target.scheme != 'https' ? null : addOAuth, icon: const Icon(Icons.login), label: const Text('Add OAuth identity')),
-          if (auth != null && auth!.oauth == null) OutlinedButton(onPressed: busy || loadingAuth ? null : () => editAuth(), child: const Text('Edit')),
-          if (auth?.oauth != null) OutlinedButton(onPressed: busy || loadingAuth || auth!.oauth!.refreshToken.isEmpty ? null : refreshOAuth, child: const Text('Refresh OAuth token')),
-          if (auth != null) OutlinedButton(onPressed: busy || loadingAuth ? null : removeAuth, child: const Text('Delete')),
+          OutlinedButton.icon(onPressed: busy || loadingAuth ? null : () => editAuth(add: true), icon: const Icon(Icons.person_add), label: const LText('Add identity')),
+          OutlinedButton.icon(onPressed: busy || loadingAuth || target.scheme != 'https' ? null : addOAuth, icon: const Icon(Icons.login), label: const LText('Add OAuth identity')),
+          if (auth != null && auth!.oauth == null) OutlinedButton(onPressed: busy || loadingAuth ? null : () => editAuth(), child: const LText('Edit')),
+          if (auth?.oauth != null) OutlinedButton(onPressed: busy || loadingAuth || auth!.oauth!.refreshToken.isEmpty ? null : refreshOAuth, child: const LText('Refresh OAuth token')),
+          if (auth != null) OutlinedButton(onPressed: busy || loadingAuth ? null : removeAuth, child: const LText('Delete')),
         ]),
-        if (auth != null && auth!.validationUrl.isEmpty) const Text('Session not independently verified. Configure a protected validation URL for reliable authenticated scanning.'),
+        if (auth != null && auth!.validationUrl.isEmpty) const LText('Session not independently verified. Configure a protected validation URL for reliable authenticated scanning.'),
         CheckboxListTile(
-          title: const Text('I own this target or have permission to assess it.'),
+          title: const LText('I own this target or have permission to assess it.'),
           value: authorized,
           onChanged: busy ? null : (value) => setState(() => authorized = value ?? false),
         ),
-        FilledButton.icon(onPressed: authorized && !busy && !loadingAuth && !loadingHistory && !loadingPolicy && policyError == null && policy.permits(target) ? scan : null, icon: const Icon(Icons.search), label: const Text('Identify technologies')),
-        FilledButton.tonalIcon(onPressed: authorized && !busy && !loadingAuth && !loadingPolicy && policyError == null && policy.permits(target) ? crawl : null, icon: const Icon(Icons.account_tree_outlined), label: Text('Assess linked pages (up to ${policy.maxPages})')),
+        FilledButton.icon(onPressed: authorized && !busy && !loadingAuth && !loadingHistory && !loadingPolicy && policyError == null && policy.permits(target) ? scan : null, icon: const Icon(Icons.search), label: const LText('Identify technologies')),
+        FilledButton.tonalIcon(onPressed: authorized && !busy && !loadingAuth && !loadingPolicy && policyError == null && policy.permits(target) ? crawl : null, icon: const Icon(Icons.account_tree_outlined), label: Text('${tr(context, 'Assess linked pages')} (${uiNumber(context, policy.maxPages)})')),
         if (busy) const LinearProgressIndicator(),
-        if (busy && cancellation != null) OutlinedButton(onPressed: cancellation!.cancel, child: Text('Stop ($visited visited)')),
+        if (busy && cancellation != null) OutlinedButton(onPressed: cancellation!.cancel, child: Text('${tr(context, 'Stop')} (${uiNumber(context, visited)})')),
         if (crawlResult != null) ...[
           Text('Pages: ${crawlResult!.pages.length} · Failed: ${crawlResult!.failedCount} · ${crawlResult!.stopReason}'),
           for (final page in crawlResult!.pages) ExpansionTile(title: Text(page.url.toString()), subtitle: Text('HTTP ${page.statusCode} · ${page.findings.length} observations'), children: [
-            for (final finding in page.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: Text(finding.severity.name)),
+            for (final finding in page.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: LText(finding.severity.name)),
           ]),
         ],
-        if (error != null) Text(error!),
+        if (error != null) LText(error!),
         const Divider(),
-        const Text('Scan history'),
+        const LText('Scan history'),
         if (loadingHistory) const LinearProgressIndicator(),
-        if (historyError != null) Text(historyError!),
+        if (historyError != null) LText(historyError!),
         for (final (index, item) in history.indexed) ListTile(
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReportScreen(record: item, previous: index + 1 < history.length ? history[index + 1] : null))),
           title: Text(item.finishedAt.toLocal().toString().split('.').first),
           subtitle: Text('${item.pages.length} pages · ${item.observationCount} observations'),
-          trailing: IconButton(tooltip: 'Copy sanitized JSON report', icon: const Icon(Icons.copy), onPressed: () async {
+          trailing: IconButton(tooltip: tr(context, 'Copy sanitized JSON report'), icon: const Icon(Icons.copy), onPressed: () async {
             await Clipboard.setData(ClipboardData(text: item.exportJson()));
-            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report copied.')));
+            if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: LText('Report copied.')));
           }),
         ),
         if (data != null) ...[
           const SizedBox(height: 16),
           Text('HTTP ${data.statusCode}'),
-          if (data.statusCode == 401 || data.statusCode == 403) const Text('Access was not validated. Check authentication and permissions.'),
-          if (data.redirectNotFollowed) const Text('Redirect not followed. Review the destination before adding it to scope.'),
-          if (data.bodyTruncated) const Text('Response body was truncated; coverage is limited.'),
+          if (data.statusCode == 401 || data.statusCode == 403) const LText('Access was not validated. Check authentication and permissions.'),
+          if (data.redirectNotFollowed) const LText('Redirect not followed. Review the destination before adding it to scope.'),
+          if (data.bodyTruncated) const LText('Response body was truncated; coverage is limited.'),
           const Divider(),
           Text('Security observations (${data.findings.length})'),
-          for (final finding in data.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: Text(finding.severity.name)),
+          for (final finding in data.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: LText(finding.severity.name)),
           for (final layer in TechnologyLayer.values) ...[
             const Divider(),
             Text(layer.name.toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
-            if (!data.technologies.any((f) => f.layer == layer)) const Text('Unknown — insufficient evidence'),
+            if (!data.technologies.any((f) => f.layer == layer)) const LText('Unknown — insufficient evidence'),
             for (final finding in data.technologies.where((f) => f.layer == layer))
               ListTile(title: Text(finding.name), subtitle: Text(finding.evidence), trailing: Text(finding.confidence.name)),
           ],

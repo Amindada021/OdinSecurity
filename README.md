@@ -19,7 +19,7 @@ The technology detector reports multiple independent layers with evidence and co
 | 05 | Passive evidence-based security checks, technology-specific adapters and confidence | Partial: expanded framework-specific passive diagnostics, fingerprints and TLS certificate expiry; active adapters pending |
 | 06 | Explicitly authorized bounded active checks with non-destructive defaults, request caps, exclusions, cancellation and test fixtures | Partial: configurable read-only scan policy and explicit trusted TLS handshake and single-endpoint CORS preflight review; broader active checks pending |
 | 07 | Proxy/history, request editor and repeater, controlled differential testing with test accounts | Partial: GET/HEAD inspector with explicit repeat, bounded session-local request metadata and comparison; local utilities and two-account status comparison; live interception pending |
-| 08 | Reports, severity/evidence/remediation, trends, export, Farsi/English, and Android APK validation | Partial: report viewer, severity filters, cautious historical comparison, JSON/HTML/PDF export source, vector branding, build preparation; localization and Android validation pending |
+| 08 | Reports, severity/evidence/remediation, trends, export, Farsi/English, and Android APK validation | Partial: report viewer, severity filters, cautious historical comparison, JSON/HTML/PDF export source, vector branding, build preparation; Persian/English navigation and static labels with persistent language/theme; technical details remain English; Android validation pending |
 
 ## Technology coverage goals
 
@@ -36,4 +36,4 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.19.0+19**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.20.0+20**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'localized.dart';
 import 'package:flutter/services.dart';
 import 'core/auth.dart';
 import 'core/oauth_grant.dart';
@@ -52,7 +53,7 @@ class _OAuthDialogState extends State<OAuthDialog> {
 
   Widget field(TextEditingController controller, String label, {bool obscure = false}) => TextField(
     controller: controller, enabled: !busy, obscureText: obscure,
-    autocorrect: false, enableSuggestions: false, decoration: InputDecoration(labelText: label),
+    autocorrect: false, enableSuggestions: false, decoration: InputDecoration(label: LText(label)),
     onChanged: (_) => setState(() { permitted = false; error = null; }));
 
   @override
@@ -60,9 +61,9 @@ class _OAuthDialogState extends State<OAuthDialog> {
     title: const Text('OAuth 2.0 / OIDC'),
     content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Text('API origin: ${widget.target.origin}'),
-      const Text('Register a public native client with Authorization Code + PKCE and the exact redirect URI below. Do not use a client secret. Request only authorized, preferably read-only scopes.'),
+      const LText('Register a public native client with Authorization Code + PKCE and the exact redirect URI below. Do not use a client secret. Request only authorized, preferably read-only scopes.'),
       SelectableText(OAuthGrant.redirectUri),
-      TextButton.icon(onPressed: () => Clipboard.setData(const ClipboardData(text: OAuthGrant.redirectUri)), icon: const Icon(Icons.copy), label: const Text('Copy redirect URI')),
+      TextButton.icon(onPressed: () => Clipboard.setData(const ClipboardData(text: OAuthGrant.redirectUri)), icon: const Icon(Icons.copy), label: const LText('Copy redirect URI')),
       field(name, 'Identity name'),
       field(client, 'Registered client ID'),
       field(authorization, 'HTTPS authorization endpoint'),
@@ -70,13 +71,13 @@ class _OAuthDialogState extends State<OAuthDialog> {
       field(scopes, 'Scopes (space separated)'),
       field(verification, 'Protected validation URL'),
       field(marker, 'Expected response marker', obscure: true),
-      CheckboxListTile(value: permitted, title: const Text('I authorize these provider endpoints and this registered application.'), onChanged: busy ? null : (v) => setState(() => permitted = v ?? false)),
+      CheckboxListTile(value: permitted, title: const LText('I authorize these provider endpoints and this registered application.'), onChanged: busy ? null : (v) => setState(() => permitted = v ?? false)),
       if (busy) const LinearProgressIndicator(),
-      if (error != null) Text(error!),
+      if (error != null) LText(error!),
     ])),
     actions: [
-      TextButton(onPressed: busy ? null : () => Navigator.pop(context), child: const Text('Cancel')),
-      FilledButton(onPressed: permitted && !busy ? signIn : null, child: const Text('Sign in with browser')),
+      TextButton(onPressed: busy ? null : () => Navigator.pop(context), child: const LText('Cancel')),
+      FilledButton(onPressed: permitted && !busy ? signIn : null, child: const LText('Sign in with browser')),
     ],
   );
 }

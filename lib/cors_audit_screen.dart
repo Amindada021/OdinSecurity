@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'localized.dart';
 import 'core/cors_audit.dart';
 import 'core/project.dart';
 import 'core/scan_policy.dart';
@@ -54,22 +55,22 @@ class _CorsAuditScreenState extends State<CorsAuditScreen> {
       CorsOutcome.inconclusive => 'Inconclusive response. Check server behavior and configuration.',
       null => '',
     };
-    return Scaffold(appBar: AppBar(title: const Text('CORS configuration audit')),
+    return Scaffold(appBar: AppBar(title: const LText('CORS configuration audit')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        const Text('One unauthenticated OPTIONS preflight to the selected read-only HTTPS endpoint. No credentials, redirect, or actual cross-origin GET.'),
+        const LText('One unauthenticated OPTIONS preflight to the selected read-only HTTPS endpoint. No credentials, redirect, or actual cross-origin GET.'),
         const Text('Test origin: https://odin-security.invalid'),
         TextField(controller: endpoint, enabled: !busy, keyboardType: TextInputType.url,
-          decoration: const InputDecoration(labelText: 'Endpoint URL (no query)'),
+          decoration: const InputDecoration(label: LText('Endpoint URL (no query)')),
           onChanged: (_) => setState(() { authorized = false; result = null; })),
-        CheckboxListTile(value: authorized, title: const Text('I authorize this exact preflight.'), onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
-        FilledButton(onPressed: busy || !authorized ? null : run, child: const Text('Check CORS')),
+        CheckboxListTile(value: authorized, title: const LText('I authorize this exact preflight.'), onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
+        FilledButton(onPressed: busy || !authorized ? null : run, child: const LText('Check CORS')),
         if (busy) const LinearProgressIndicator(),
-        if (error != null) Text(error!),
+        if (error != null) LText(error!),
         if (data != null) ...[
           Text('HTTP ${data.status}', style: Theme.of(context).textTheme.titleLarge),
-          Text(message),
+          LText(message),
           Text('GET explicitly advertised: ${data.getAdvertised ? "yes" : "no"}'),
-          const Text('A preflight is a configuration observation, not proof that a browser can read private data. Confirm the expected policy on the server.'),
+          const LText('A preflight is a configuration observation, not proof that a browser can read private data. Confirm the expected policy on the server.'),
         ],
       ]));
   }
