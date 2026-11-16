@@ -297,6 +297,7 @@ const persianText = <String, String>{
   'Received frames': 'فریم‌های دریافتی',
   'Unknown direction': 'جهت نامشخص',
   'Frame metadata unavailable in this capture.': 'فراداده فریم‌ها در این فایل موجود نیست.',
+  'Form action and script destinations are observations only. Forms are never automatically submitted.': 'مقصد فرم‌ها و اسکریپت‌ها صرفاً مشاهده شده است. فرم‌ها هرگز خودکار ارسال نمی‌شوند.',
   'Settings': 'تنظیمات',
   'English': 'انگلیسی',
   'Persian': 'فارسی',

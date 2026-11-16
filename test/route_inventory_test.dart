@@ -24,6 +24,20 @@ void main() {
     ]);
     expect(found.last.source, 'fetch');
   });
+  test('captures only scoped form actions and script destinations', () {
+    final snapshot = jsonEncode({'page': 'https://panel.example.test/dashboard', 'routes': [
+      {'source': 'form-post', 'url': 'https://api.example.test/v1/save?token=secret', 'input': 'secret'},
+      {'source': 'form-get', 'url': 'https://panel.example.test/search?q=private'},
+      {'source': 'script', 'url': 'https://panel.example.test/static/app.js?v=123'},
+      {'source': 'form-post', 'url': 'https://outside.test/action'},
+      {'source': 'script', 'url': 'https://api.example.test/private/a.js'},
+    ]});
+    final found = RouteInventory.fromBrowser(project, policy, Uri.parse('https://panel.example.test/dashboard'), snapshot);
+    expect(found.map((r) => r.source), ['document', 'form-post', 'form-get', 'script']);
+    expect(found[1].url.toString(), 'https://api.example.test/v1/save');
+    expect(found[2].url.toString(), 'https://panel.example.test/search');
+    expect(found[3].url.toString(), 'https://panel.example.test/static/app.js');
+  });
   test('reject snapshot from different page', () {
     expect(() => RouteInventory.fromBrowser(project, policy, Uri.parse('https://panel.example.test/dashboard'),
       jsonEncode({'page': 'https://panel.example.test/reports', 'routes': []})), throwsFormatException);

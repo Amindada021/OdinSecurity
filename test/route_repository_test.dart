@@ -25,7 +25,7 @@ void main() {
     expect(await repository.load(edited, ScanPolicy(excludedPaths: ['/private'])), isEmpty);
   });
   test('only known read-only routes open inspector', () {
-    for (final source in ['POST','DELETE','fetch','xmlhttprequest']) {
+    for (final source in ['POST','DELETE','fetch','xmlhttprequest','form-get','form-post','script']) {
       expect(RouteRepository.canOpenInspector(RouteObservation(Uri.parse('https://example.test/report'), source)), isFalse);
     }
     expect(RouteRepository.canOpenInspector(RouteObservation(Uri.parse('https://example.test/report'), 'GET')), isTrue);

@@ -14,7 +14,7 @@ class RouteObservation {
 class RouteInventory {
   static const maxEntries = 300;
   static const maxInput = 1024 * 1024;
-  static const sources = {'document', 'link', 'fetch', 'xmlhttprequest'};
+  static const sources = {'document', 'link', 'fetch', 'xmlhttprequest', 'form-get', 'form-post', 'script'};
   static const methods = {'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE', 'TRACE', 'CONNECT'};
 
   static Uri? scopedUrl(SecurityProject project, ScanPolicy policy, Object? raw) {
@@ -85,7 +85,7 @@ class RouteInventory {
     return List.unmodifiable(records.values);
   }
 
-  /// Read only rendered anchors and Fetch/XHR resource timing metadata.
+  /// Read only rendered anchors, form destinations, script URLs and Fetch/XHR resource timing metadata.
   /// Do not read storage, form fields, cookies, headers or response data.
   static const browserSnapshot = r'''
 (() => {
@@ -104,10 +104,18 @@ class RouteInventory {
     const value = clean(url);
     if (value && routes.length < 299) routes.push({url: value, source});
   };
-  for (const anchor of Array.from(document.querySelectorAll('a[href]')).slice(0, 120)) {
+  for (const anchor of Array.from(document.querySelectorAll('a[href]')).slice(0, 100)) {
     add(anchor.href, 'link');
   }
-  for (const entry of performance.getEntriesByType('resource').slice(-179)) {
+  for (const form of Array.from(document.querySelectorAll('form')).slice(0, 60)) {
+    const method = form.method.toLowerCase();
+    if (method === 'get' || method === 'post') add(form.action, 'form-' + method);
+  }
+  for (const script of Array.from(document.querySelectorAll('script[src]')).slice(0, 20)) {
+    add(script.src, 'script');
+  }
+  for (const entry of performance.getEntriesByType('resource').filter(
+      entry => entry.initiatorType === 'fetch' || entry.initiatorType === 'xmlhttprequest').slice(-119)) {
     if (entry.initiatorType === 'fetch' || entry.initiatorType === 'xmlhttprequest') {
       add(entry.name, entry.initiatorType);
     }

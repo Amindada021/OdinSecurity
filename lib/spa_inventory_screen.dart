@@ -150,6 +150,7 @@ class RouteList extends StatelessWidget {
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(12), children: [
     Text('${routes.length} observed routes (cap ${RouteInventory.maxEntries})'),
     const LText('Query strings and fragments omitted. Route paths may be sensitive. Resource timing does not establish an HTTP method or security finding.'),
+    const LText('Form action and script destinations are observations only. Forms are never automatically submitted.'),
     for (final route in routes) ListTile(
       title: SelectableText(route.url.toString()), subtitle: Text(route.source),
       trailing: IconButton(tooltip: tr(context, 'Copy route'), icon: const Icon(Icons.copy),
