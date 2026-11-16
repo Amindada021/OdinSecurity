@@ -27,8 +27,9 @@ class ExternalFindings {
       if (raw.length > 2048 || !_identifier.hasMatch(source) || !_identifier.hasMatch(code)) {
         throw const FormatException('Invalid finding identifier.');
       }
-      final severity = Severity.values.where((s) => s.name == row['severity']).firstOrNull;
-      if (severity == null) throw const FormatException('Invalid severity.');
+      final validSeverities = Severity.values.where((s) => s.name == row['severity']).toList();
+      if (validSeverities.length != 1) throw const FormatException('Invalid severity.');
+      final severity = validSeverities.single;
       final full = Uri.tryParse(raw), route = Uri.tryParse(raw.split(RegExp(r'[?#]')).first);
       if (full == null || route == null || full.userInfo.isNotEmpty || route.scheme != 'https' ||
           !project.contains(route) || !policy.permits(route)) continue;

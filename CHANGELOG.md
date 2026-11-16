@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.70.0+72
+- Add optional expected HTTP status per fixed representation test, validation and mismatch comparison fixtures; simplify external severity matching.
+
 ## 0.69.0+71
 - Add normalized external assessment findings import with scope, deduplication and reported-severity filter; allow compatible declarative pack evaluation on imported HAR responses; fixtures.
 

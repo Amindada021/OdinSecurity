@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.69.0+71; pubspec.yaml is the version source of truth.
+Current version is 0.70.0+72; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.69.0+71`.
-- Git tag `v0.69.0` when released.
-- `OdinSecurity-v0.69.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.70.0+72`.
+- Git tag `v0.70.0` when released.
+- `OdinSecurity-v0.70.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -212,3 +212,5 @@ Register your own authorized collector's dedicated sanitized JSON export URL in 
 Import a normalized array of `{url,source,code,severity}` records from an authorized external scanner after sanitization. Up to 500 rows / 256 KiB, short identifiers and known severity values. Filter exact scoped origin/exclusions, strip query/fragment and deduplicate. Results are unverified external severity labels, session-only, no evidence text or requests imported. This is not a native adapter for all scanner file formats.
 
 Compatible declarative header packs can additionally be supplied to offline HAR review; all rules are constrained to its public header allowlist and run only on successful captured responses. No arbitrary code execution or network access.
+
+Each fixed Accept matrix case can now specify an expected status. Actual/expected comparisons remain session-local and diagnostic only; input is validated before any sends and assertions cannot alter the scope or request budget.

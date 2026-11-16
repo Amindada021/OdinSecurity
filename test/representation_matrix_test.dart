@@ -12,6 +12,14 @@ void main() {
     expect(() => RepresentationMatrix.validate(project, policy, project.startUrl.resolve('/other'), [ManualAccept.json], true), throwsStateError);
     expect(() => RepresentationMatrix.validate(project, policy, project.startUrl, [ManualAccept.json, ManualAccept.json], true), throwsStateError);
   });
+  test('expectation validation and metadata-only assertion', () async {
+    final matrix = RepresentationMatrix(send: (_) async => const ManualResponse(200, {}, '', false), wait: (_) async {});
+    final result = await matrix.run(project, policy, project.startUrl, [ManualAccept.json], authorized:true,
+      cancelled:()=>false, expected:{ManualAccept.json:204});
+    expect(result.single.matchesExpectation,isFalse);
+    await expectLater(matrix.run(project, policy, project.startUrl,[ManualAccept.json],authorized:true,
+      cancelled:()=>false,expected:{ManualAccept.html:200}),throwsFormatException);
+  });
   test('stop after rate limit, results retain only metadata', () async {
     final called = <ManualAccept>[];
     final matrix = RepresentationMatrix(send: (accept) async {

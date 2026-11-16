@@ -19,6 +19,10 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Expected status (optional)': 'وضعیت مورد انتظار (اختیاری)',
+  'No expectation': 'بدون انتظار تعیین‌شده',
+  'Matches expectation': 'مطابق انتظار',
+  'Differs from expectation': 'متفاوت با انتظار',
   'External assessment findings': 'یافته‌های بررسی خارجی',
   'Import normalized sanitized findings from an authorized external assessment. Only scoped routes, tool/rule identifiers and reported severity are retained. These findings are not independently confirmed.': 'یافته‌های پاک‌سازی‌شده بررسی خارجی مجاز را وارد کنید؛ فقط مسیر، شناسه ابزار و قانون و شدت گزارش‌شده نگه‌داری می‌شود. یافته‌ها مستقل تأیید نشده‌اند.',
   'Normalized findings JSON': 'یافته‌های استانداردشده (JSON)',
