@@ -19,6 +19,12 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Import rule pack': 'ورود بسته قوانین',
+  'Export rule pack': 'خروجی بسته قوانین',
+  'Rule pack JSON': 'بسته قوانین (JSON)',
+  'Replace draft': 'جایگزینی پیش‌نویس',
+  'Merge into draft': 'ادغام با پیش‌نویس',
+  'Imported rules are drafts until saved. Duplicate rules are rejected.': 'قوانین واردشده تا زمان ذخیره پیش‌نویس هستند. قوانین تکراری پذیرفته نمی‌شوند.',
   'Connect to an authorized WSS test endpoint. Receive-only by default; manual staging sends are optional.': 'به مقصد آزمایشی مجاز WSS وصل شوید. حالت پیش‌فرض فقط دریافت است؛ ارسال دستی اختیاری است.',
   'Isolated staging endpoint: enable manual text sends': 'محیط آزمایشی ایزوله: فعال‌سازی ارسال دستی متن',
   'Confirm one staging message': 'تأیید یک پیام آزمایشی',

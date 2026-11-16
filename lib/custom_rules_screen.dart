@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/custom_rules.dart';
 import 'core/project_storage.dart';
@@ -46,6 +47,41 @@ class _CustomRulesScreenState extends State<CustomRulesScreen> {
     }
   }
 
+  Future<void> importPack() async {
+    var pack = '';
+    final mode = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(
+      title: const LText('Import rule pack'),
+      content: SingleChildScrollView(child: TextField(maxLines: 6, autocorrect: false, enableSuggestions: false,
+        onChanged: (value) => pack = value, decoration: const InputDecoration(label: LText('Rule pack JSON')))),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const LText('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(ctx, 'replace'), child: const LText('Replace draft')),
+        TextButton(onPressed: () => Navigator.pop(ctx, 'merge'), child: const LText('Merge into draft')),
+      ],
+    ));
+    if (!mounted || mode == null || busy) return;
+    try {
+      final draft = mode == 'replace' ? HeaderRulePack.import(pack) : HeaderRulePack.merge(source.text, pack);
+      setState(() { source.text = draft; failed = false; });
+    } catch (_) { setState(() => failed = true); }
+  }
+
+  Future<void> exportPack() async {
+    try {
+      final data = HeaderRulePack.export(source.text);
+      if (!mounted) return;
+      await showDialog<void>(context: context, builder: (ctx) => AlertDialog(
+        title: const LText('Export rule pack'),
+        content: SingleChildScrollView(child: SelectableText(data, textDirection: TextDirection.ltr)),
+        actions: [
+          TextButton(onPressed: () async { await Clipboard.setData(ClipboardData(text: data)); if (ctx.mounted) Navigator.pop(ctx); },
+            child: const LText('Copy')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const LText('Cancel')),
+        ],
+      ));
+    } catch (_) { if (mounted) setState(() => failed = true); }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const LText('Custom scan rules')),
@@ -54,6 +90,9 @@ class _CustomRulesScreenState extends State<CustomRulesScreen> {
       const SelectableText('x-content-type-options|contains|nosniff\nstrict-transport-security|present', textDirection: TextDirection.ltr),
       TextField(controller: source, enabled: !busy && repository != null, maxLines: 8, autocorrect: false, enableSuggestions: false,
         decoration: const InputDecoration(label: LText('Header rules'))),
+      OutlinedButton(onPressed: busy || repository == null ? null : importPack, child: const LText('Import rule pack')),
+      OutlinedButton(onPressed: busy || repository == null ? null : exportPack, child: const LText('Export rule pack')),
+      const LText('Imported rules are drafts until saved. Duplicate rules are rejected.'),
       const LText('Supported headers'),
       SelectableText(CustomHeaderRules.allowedHeaders.join('\n'), textDirection: TextDirection.ltr),
       if (busy) const LinearProgressIndicator(),

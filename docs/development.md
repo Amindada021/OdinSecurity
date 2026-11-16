@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.53.0+53; pubspec.yaml is the version source of truth.
+Current version is 0.54.0+54; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.53.0+53`.
-- Git tag `v0.53.0` when released.
-- `OdinSecurity-v0.53.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.54.0+54`.
+- Git tag `v0.54.0` when released.
+- `OdinSecurity-v0.54.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -156,3 +156,7 @@ Token samples now show per-position empirical Shannon/min-entropy, adjacent dupl
 ## Offline advisory review
 
 Paste a JSON array of up to 500 advisory entries: `id`, `product`, `source` (HTTPS), `affectedVersions` (explicit numeric version strings). Enter the independently confirmed product/version; exact literal matches are unverified leads only. No feed, version inference, network or automatic vulnerability verdict. Verify ecosystem packages and vendor backports manually.
+
+## Declarative rule packs
+
+Custom scan rules provide import/export of `odin.security.headers.v1` JSON packs. Import can replace or merge only the current editor draft, with duplicate/unsupported rules rejected. Save applies the validated draft to the current project. Packs perform passive header checks only, without executable code or network probes.

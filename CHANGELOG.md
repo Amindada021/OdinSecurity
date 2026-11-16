@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.54.0+54
+- Versioned declarative header rule packs with validated import, export, merge and explicit save; offline fixtures.
+
 ## 0.53.0+53
 - Add individually confirmed manual WebSocket text messages for explicitly opted-in staging connections; enforce session and outgoing byte/count limits. No automatic replay.
 

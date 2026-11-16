@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'fingerprint.dart';
 import 'project_storage.dart';
 import 'security_checks.dart';
@@ -75,5 +76,37 @@ class CustomRuleRepository {
   Future<void> save(String projectId, String source) async {
     final checked = CustomHeaderRules.parse(source);
     await storage.write(_key(projectId), checked.map((r) => r.line).join('\n'));
+  }
+}
+
+/// Versioned, declarative and non-executable interchange format.
+class HeaderRulePack {
+  static String export(String source) {
+    final checked = CustomHeaderRules.parse(source);
+    return const JsonEncoder.withIndent('  ').convert({
+      'schema': 'odin.security.headers.v1',
+      'rules': checked.map((r) => r.line).toList(),
+    });
+  }
+
+  static String import(String source) {
+    if (source.length > 16000) throw const FormatException('Pack exceeds limit.');
+    final decoded = jsonDecode(source);
+    if (decoded is! Map<String, dynamic> || decoded['schema'] != 'odin.security.headers.v1' ||
+        decoded.length != 2 || decoded['rules'] is! List) {
+      throw const FormatException('Unsupported rule pack.');
+    }
+    final values = decoded['rules'] as List;
+    if (values.length > CustomHeaderRules.limit || values.any((v) =>
+        v is! String || v.trim().isEmpty || v.contains('\n') || v.contains('\r'))) {
+      throw const FormatException('Invalid rules.');
+    }
+    return CustomHeaderRules.parse(values.cast<String>().join('\n')).map((r) => r.line).join('\n');
+  }
+
+  static String merge(String current, String pack) {
+    final incoming = import(pack);
+    return CustomHeaderRules.parse([current, incoming].where((part) => part.trim().isNotEmpty).join('\n'))
+        .map((r) => r.line).join('\n');
   }
 }
