@@ -19,6 +19,13 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Remote lab metadata review': 'بررسی رویدادهای آزمایشگاه راه دور',
+  'Select your own registered HTTPS collector’s sanitized JSON export endpoint. One anonymous GET retrieves metadata; label matching runs locally. No callback hosting or automated probes.': 'نشانی خروجی JSON پاک‌سازی‌شده جمع‌آورنده HTTPS خود را انتخاب کنید. یک GET بدون حساب انجام می‌شود و تطبیق شناسه محلی است.',
+  'Collector export endpoint': 'مقصد خروجی جمع‌آورنده',
+  'Correlation label': 'شناسه تطبیق',
+  'Fetch sanitized events once': 'دریافت یک‌باره رویدادهای پاک‌سازی‌شده',
+  'Collector response invalid or unavailable.': 'پاسخ جمع‌آورنده نامعتبر یا در دسترس نیست.',
+  'Matches are correlation only, not proof of vulnerability or source attribution.': 'تطبیق صرفاً نشانه ارتباط است، نه اثبات آسیب‌پذیری یا منبع ارسال.',
   'Offline HTTPS response review': 'بررسی آفلاین پاسخ HTTPS',
   'Paste an authorized sanitized HAR containing response headers. Remove tokens, cookies, personal data and unnecessary contents before import. Missing headers in the export can cause false observations.': 'فایل HAR پاک‌سازی‌شده و مجاز شامل هدرهای پاسخ وارد کنید. توکن‌ها، کوکی‌ها و داده شخصی را حذف کنید؛ هدرهای حذف‌شده ممکن است نتیجه اشتباه ایجاد کنند.',
   'Sanitized HAR JSON': 'HAR پاک‌سازی‌شده (JSON)',

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.68.0+70
+- Add explicit one-shot HTTPS retrieval of sanitized events from registered operator-managed collector and local correlation; scope and response validation fixtures.
+
 ## 0.67.0+69
 - Add scoped offline security analysis of sanitized HAR HTTPS responses, allowlisted headers, optional text-body review, and scope/privacy fixtures.
 
