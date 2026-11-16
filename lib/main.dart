@@ -1,43 +1,81 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'core/project_storage.dart';
 
 import 'core/project.dart';
 import 'core/passive_scan.dart';
 import 'core/fingerprint.dart';
 
-void main() => runApp(const OdinSecurityApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final repository = ProjectRepository(PreferencesStorage(await SharedPreferences.getInstance()));
+  runApp(OdinSecurityApp(repository: repository));
+}
 
 class OdinSecurityApp extends StatelessWidget {
-  const OdinSecurityApp({super.key});
+  final ProjectRepository repository;
+  const OdinSecurityApp({super.key, required this.repository});
   @override
   Widget build(BuildContext context) => MaterialApp(
         title: 'Odin Security',
         theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff22c5a0), brightness: Brightness.dark), useMaterial3: true),
-        home: const ProjectScreen(),
+        home: ProjectScreen(repository: repository),
       );
 }
 
 class ProjectScreen extends StatefulWidget {
-  const ProjectScreen({super.key});
+  final ProjectRepository repository;
+  const ProjectScreen({super.key, required this.repository});
   @override
   State<ProjectScreen> createState() => _ProjectScreenState();
 }
 
 class _ProjectScreenState extends State<ProjectScreen> {
   final projects = <SecurityProject>[];
+  bool loading = true;
+  bool saving = false;
+  String? loadError;
+
+  @override
+  void initState() {
+    super.initState();
+    loadProjects();
+  }
+
+  Future<void> loadProjects() async {
+    setState(() { loading = true; loadError = null; });
+    try {
+      final existing = await widget.repository.load();
+      if (mounted) setState(() { projects.clear(); projects.addAll(existing); });
+    } catch (_) {
+      if (mounted) setState(() => loadError = 'Could not read stored projects. Existing data was not overwritten.');
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
 
   Future<void> addProject() async {
     final project = await showDialog<SecurityProject>(
       context: context,
       builder: (_) => const CreateProjectDialog(),
     );
-    if (project != null && mounted) setState(() => projects.add(project));
+    if (project == null || !mounted) return;
+    setState(() => saving = true);
+    try {
+      await widget.repository.save([...projects, project]);
+      if (mounted) setState(() => projects.add(project));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save project.')));
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Odin Security')),
-        floatingActionButton: FloatingActionButton.extended(onPressed: addProject, icon: const Icon(Icons.add), label: const Text('New project')),
-        body: projects.isEmpty
+        floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const Text('New project')),
+        body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: Text(loadError!))) : projects.isEmpty
             ? const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('Create a project to assess an authorized website.')))
             : ListView.builder(
                 itemCount: projects.length,
@@ -64,17 +102,19 @@ class CreateProjectDialog extends StatefulWidget {
 class _CreateProjectDialogState extends State<CreateProjectDialog> {
   final name = TextEditingController();
   final url = TextEditingController();
+  final api = TextEditingController();
   String? error;
   @override
   void dispose() {
     name.dispose();
     url.dispose();
+    api.dispose();
     super.dispose();
   }
 
   void submit() {
     try {
-      Navigator.of(context).pop(SecurityProject(name: name.text, url: url.text));
+      Navigator.of(context).pop(SecurityProject(name: name.text, url: url.text, additionalUrls: api.text.trim().isEmpty ? [] : [api.text]));
     } on FormatException catch (e) {
       setState(() => error = e.message);
     }
@@ -86,6 +126,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(controller: name, decoration: const InputDecoration(labelText: 'Project name')),
           TextField(controller: url, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Website URL', hintText: 'https://example.test')),
+          TextField(controller: api, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'API URL (optional)')),
           if (error != null) Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
         ])),
         actions: [
