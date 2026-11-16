@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.0+22
+- Offline HAR traffic summary: scoped request counts, 4xx/5xx, slow requests, recorded duration and response bytes.
+- Filter captured traffic by error or latency; preserve a bounded route inventory and omit request/response payloads, headers and query values.
+- Offline HAR traffic fixture; browser metadata is distinguished from live measurements.
+
 ## 0.21.0+21
 - Import bounded sanitized HAR files using Android's document picker (or paste JSON).
 - Explicitly save scoped SPA/HAR route metadata per project, search/filter saved routes, reapply current scope and exclusions on load.

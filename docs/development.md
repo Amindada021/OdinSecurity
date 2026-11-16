@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.21.0+21; pubspec.yaml is the version source of truth.
+Current version is 0.22.0+22; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.21.0+21`.
-- Git tag `v0.21.0` when released.
-- `OdinSecurity-v0.21.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.22.0+22`.
+- Git tag `v0.22.0` when released.
+- `OdinSecurity-v0.22.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -58,3 +58,7 @@ Explicit GET/HEAD sends and repeat with fresh consent, configurable Accept, scop
 ## Language and appearance
 
 The project list settings menu switches Persian/English and light/dark/system theme. Persian uses Flutter's RTL layout. Most static navigation, labels and guidance are localized; technical details, dynamic values and exported reports preserve the original English/HTTP formatting. UI preference changes persist locally. Verify RTL layout and long labels on a real device.
+
+## Offline traffic summary
+
+The HAR import also displays up to 1000 scoped HTTP metadata entries with response status, browser-recorded total duration and body size when available. Filtering errors or requests with recorded time of at least one second is purely diagnostic. No headers, bodies, cookies or query values are retained; traffic data stays in memory, apart from explicitly saved route metadata. No live proxy or replay is implied.

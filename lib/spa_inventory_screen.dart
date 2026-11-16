@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'core/project.dart';
 import 'core/route_inventory.dart';
+import 'core/har_traffic.dart';
 import 'core/scan_policy.dart';
 
 class SpaInventoryScreen extends StatefulWidget {
@@ -167,7 +168,10 @@ class HarInventoryScreen extends StatefulWidget {
 
 class _HarInventoryScreenState extends State<HarInventoryScreen> {
   final source = TextEditingController();
+  HarTrafficReport? traffic;
   List<RouteObservation> routes = [];
+  String filter = 'all';
+  bool showTraffic = true;
   String? error;
   bool busy = false;
   @override
@@ -175,12 +179,12 @@ class _HarInventoryScreenState extends State<HarInventoryScreen> {
 
   void parse() {
     try {
-      final found = RouteInventory.fromHar(widget.project, widget.policy, source.text);
+      final found = HarTrafficAnalyzer.parse(widget.project, widget.policy, source.text);
       source.clear();
-      setState(() { routes = found; error = null; });
+      setState(() { traffic = found; routes = found.routes; filter = 'all'; error = null; });
     } catch (_) {
       source.clear();
-      setState(() { routes = []; error = 'Invalid or oversized HAR JSON.'; });
+      setState(() { traffic = null; routes = []; error = 'Invalid or oversized HAR JSON.'; });
     }
   }
 
@@ -200,10 +204,10 @@ class _HarInventoryScreenState extends State<HarInventoryScreen> {
         if (bytes.length + chunk.length > RouteInventory.maxInput) throw const FormatException();
         bytes.addAll(chunk);
       }
-      final found = RouteInventory.fromHar(widget.project, widget.policy, utf8.decode(bytes));
-      if (mounted) setState(() { routes = found; source.clear(); });
+      final found = HarTrafficAnalyzer.parse(widget.project, widget.policy, utf8.decode(bytes));
+      if (mounted) setState(() { traffic = found; routes = found.routes; filter = 'all'; source.clear(); });
     } catch (_) {
-      if (mounted) setState(() => error = 'Invalid or oversized HAR JSON.');
+      if (mounted) setState(() { traffic = null; routes = []; error = 'Invalid or oversized HAR JSON.'; });
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -214,7 +218,7 @@ class _HarInventoryScreenState extends State<HarInventoryScreen> {
     appBar: AppBar(title: const LText('Offline HAR inventory')),
     body: Column(children: [
       Padding(padding: const EdgeInsets.all(12), child: Column(children: [
-        const LText('Paste HAR JSON from an authorized test session. Import is offline. Use a sanitized HAR; only scoped URL paths and HTTP methods are retained.'),
+        const LText('Import sanitized HAR from an authorized test session. Analysis is offline; only scoped paths, methods, status, timing and sizes are retained in memory.'),
         TextField(controller: source, maxLines: 4, autocorrect: false, enableSuggestions: false,
           decoration: const InputDecoration(label: LText('HAR JSON (max 1 MiB)'))),
         Wrap(spacing: 8, children: [
@@ -229,7 +233,59 @@ class _HarInventoryScreenState extends State<HarInventoryScreen> {
         if (busy) const LinearProgressIndicator(),
         if (error != null) LText(error!),
       ])),
-      Expanded(child: RouteList(routes: routes)),
+      if (traffic != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Wrap(spacing: 8, children: [
+        ChoiceChip(label: const LText('Traffic summary'), selected: showTraffic, onSelected: (_) => setState(() => showTraffic = true)),
+        ChoiceChip(label: const LText('Routes'), selected: !showTraffic, onSelected: (_) => setState(() => showTraffic = false)),
+      ])),
+      Expanded(child: traffic != null && showTraffic ? HarTrafficView(
+        report: traffic!, filter: filter, onFilter: (value) => setState(() => filter = value),
+      ) : RouteList(routes: routes)),
     ]),
   );
+}
+
+class HarTrafficView extends StatelessWidget {
+  final HarTrafficReport report;
+  final String filter;
+  final ValueChanged<String> onFilter;
+  const HarTrafficView({super.key, required this.report, required this.filter, required this.onFilter});
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = report.entries.where((e) => switch (filter) {
+      'errors' => (e.status ?? 0) >= 400,
+      'slow' => (e.elapsedMs ?? 0) >= 1000,
+      _ => true,
+    }).toList();
+    return ListView.builder(
+      padding: const EdgeInsets.all(12), itemCount: shown.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Wrap(spacing: 8, runSpacing: 4, children: [
+            Chip(label: Text('${tr(context, 'Requests')}: ${uiNumber(context, report.entries.length)}')),
+            Chip(label: Text('4xx: ${uiNumber(context, report.clientErrors)}')),
+            Chip(label: Text('5xx: ${uiNumber(context, report.serverErrors)}')),
+            Chip(label: Text('${tr(context, 'Slow requests')}: ${uiNumber(context, report.slow)}')),
+          ]),
+          if (report.capped) const LText('Traffic summary capped at 1000 scoped entries.'),
+          const LText('Timing and sizes are recorded by the source browser, not measured by Odin Security. Errors or slow requests are not evidence of a vulnerability.'),
+          DropdownButtonFormField<String>(key: ValueKey(filter), initialValue: filter,
+            items: const [
+              DropdownMenuItem(value: 'all', child: LText('All requests')),
+              DropdownMenuItem(value: 'errors', child: LText('HTTP errors')),
+              DropdownMenuItem(value: 'slow', child: LText('Slow requests')),
+            ],
+            onChanged: (value) => onFilter(value ?? 'all'),
+          ),
+        ]);
+        final item = shown[index - 1];
+        final details = [
+          if (item.status != null) 'HTTP ${item.status}' else 'HTTP ?',
+          if (item.elapsedMs != null) '${item.elapsedMs!.toStringAsFixed(1)} ms',
+          if (item.responseBytes != null) '${item.responseBytes} bytes',
+        ].join(' | ');
+        return ListTile(title: Text('${item.route.source} ${item.route.url}'), subtitle: Text(details));
+      },
+    );
+  }
 }
