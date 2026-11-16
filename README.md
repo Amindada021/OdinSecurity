@@ -13,7 +13,7 @@ The technology detector reports multiple independent layers with evidence and co
 | Phase | Scope | Status |
 | --- | --- | --- |
 | 01 | Flutter Android foundation, project model, exact-origin scope, technology fingerprints and fixtures | Source implemented; Android verification pending |
-| 02 | Local persistent projects, Android secure credential storage, scan history and job lifecycle | Partial: persistence/history, searchable editable projects and multiple scoped targets implemented; resumable jobs pending |
+| 02 | Local persistent projects, Android secure credential storage, scan history and job lifecycle | Partial: persistence/history, searchable editable projects and multiple scoped targets implemented; in-session pause/resume/stop for HTML crawl; persisted checkpoints pending |
 | 03 | Authentication profiles: none, Basic, bearer/JWT, API key, cookie, form/JSON login, browser-assisted login, OAuth/OIDC, MFA and token refresh | Partial: secure named identities, manual/form/JSON modes and optional session verification; same-origin browser/OTP source; OAuth public-client/PKCE and refresh source implemented; Android/provider verification pending |
 | 04 | Same-scope discovery, HTML/SPA exploration, OpenAPI import and authenticated endpoint inventory | Partial: bounded static HTML, offline OpenAPI/HAR and GraphQL introspection inventory, user-led rendered SPA route, form-action and script destination capture and explicit saved project inventory; Android validation and automated SPA crawl pending |
 | 05 | Passive evidence-based security checks, technology-specific adapters and confidence | Partial: expanded framework-specific passive diagnostics, fingerprints and TLS certificate expiry; active adapters pending |
@@ -36,4 +36,4 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.33.0+33**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.34.0+34**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 import 'auth.dart';
 import 'discovery.dart';
@@ -5,9 +6,34 @@ import 'passive_scan.dart';
 import 'project.dart';
 import 'scan_policy.dart';
 
+/// Cooperative job control. Pause/cancel take effect between HTTP calls.
+/// Cancelling a paused job also wakes its pending wait.
 class CancellationFlag {
-  bool cancelled = false;
-  void cancel() => cancelled = true;
+  bool _cancelled = false;
+  Completer<void>? _pause;
+  bool get cancelled => _cancelled;
+  bool get paused => _pause != null;
+
+  void pause() {
+    if (!_cancelled) _pause ??= Completer<void>();
+  }
+
+  void resume() {
+    final pending = _pause;
+    _pause = null;
+    pending?.complete();
+  }
+
+  void cancel() {
+    _cancelled = true;
+    resume();
+  }
+
+  Future<void> waitIfPaused() async {
+    while (!_cancelled && _pause != null) {
+      await _pause!.future;
+    }
+  }
 }
 
 class CrawlResult {
@@ -22,7 +48,10 @@ class CrawlResult {
 /// active exploit payloads, forms, query URLs, or automatic redirects.
 class SiteCrawler {
   final PassiveScanner scanner;
-  SiteCrawler({PassiveScanner? scanner}) : scanner = scanner ?? PassiveScanner();
+  final Future<void> Function(Duration) wait;
+  SiteCrawler({PassiveScanner? scanner, Future<void> Function(Duration)? wait})
+    : scanner = scanner ?? PassiveScanner(),
+      wait = wait ?? ((duration) => Future<void>.delayed(duration));
 
   Future<CrawlResult> run(SecurityProject project, Uri start, {
     required bool authorized,
@@ -32,11 +61,12 @@ class SiteCrawler {
     CancellationFlag? cancellation,
     void Function(int count)? onProgress,
   }) async {
-    if (!authorized || !project.contains(start)) throw StateError('Unauthorized target.');
+    if (!authorized || !project.contains(start) || !LinkDiscovery.eligible(start, start) || start.hasFragment) throw StateError('Unauthorized target.');
     final settings = policy ?? ScanPolicy(maxPages: maxPages);
     maxPages = settings.maxPages;
     if (!settings.permits(start)) throw StateError('The start URL is excluded by scan policy.');
     if (auth != null && !SecurityProject.sameOrigin(auth.target, start)) throw StateError('Credential origin mismatch.');
+    await cancellation?.waitIfPaused();
     if (cancellation?.cancelled == true) return const CrawlResult([], 0, true, 'cancelled');
     final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized);
     final queue = Queue<Uri>()..add(start);
@@ -45,12 +75,22 @@ class SiteCrawler {
     var failed = 0;
     var serverErrors = 0;
     var stopReason = 'completed';
-    final deadline = DateTime.now().add(const Duration(minutes: 3));
+    final elapsed = Stopwatch()..start();
+    const timeBudget = Duration(minutes: 3);
+    Future<void> waitForResume() async {
+      if (cancellation?.paused != true) return;
+      elapsed.stop();
+      await cancellation!.waitIfPaused();
+      elapsed.start();
+    }
     while (queue.isNotEmpty && pages.length + failed < maxPages &&
-        cancellation?.cancelled != true && DateTime.now().isBefore(deadline)) {
+        cancellation?.cancelled != true && elapsed.elapsed < timeBudget) {
+      await waitForResume();
+      if (cancellation?.cancelled == true || elapsed.elapsed >= timeBudget) break;
+      if (pages.isNotEmpty || failed > 0) await wait(Duration(milliseconds: settings.delayMs));
+      await waitForResume();
+      if (cancellation?.cancelled == true || elapsed.elapsed >= timeBudget) break;
       final next = queue.removeFirst();
-      if (pages.isNotEmpty || failed > 0) await Future<void>.delayed(Duration(milliseconds: settings.delayMs));
-      if (cancellation?.cancelled == true || !DateTime.now().isBefore(deadline)) break;
       try {
         final page = await scanner.scanWithSession(project, next, authorized: authorized, session: session);
         pages.add(page);
@@ -78,7 +118,7 @@ class SiteCrawler {
       }
     }
     if (cancellation?.cancelled == true) stopReason = 'cancelled';
-    else if (!DateTime.now().isBefore(deadline) && stopReason == 'completed') stopReason = 'time_budget';
+    else if (elapsed.elapsed >= timeBudget && stopReason == 'completed') stopReason = 'time_budget';
     else if (pages.length + failed >= maxPages && stopReason == 'completed') stopReason = 'page_budget';
     return CrawlResult(List.unmodifiable(pages), failed, cancellation?.cancelled == true, stopReason);
   }

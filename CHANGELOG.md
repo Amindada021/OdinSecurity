@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.34.0+34
+- Added cooperative pause/resume/stop for the bounded crawler, with pause-aware active time budget and progress controls.
+- Added offline fixtures for pause, resume and cancellation; guarded explicit start routes.
+
 ## 0.33.0+33
 - Added project-scoped manual review organizer with persistent notes, status filters, editing and deletion.
 - Added storage and scope validation fixtures; no raw traffic retention.
