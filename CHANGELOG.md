@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0+9
+- Same-origin, user-driven WebView sign-in for session-cookie websites, including manual OTP.
+- Explicit session import into secure identity profile; cookie path constraint and header validation.
+- Browser policy and cookie scope test fixtures. Android integration validation pending.
+
 ## 0.8.0+8
 - Named, isolated authentication identities per project, with legacy vault compatibility.
 - Optional protected endpoint and expected content marker; failed verification stops authenticated assessment.

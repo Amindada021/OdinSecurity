@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/auth.dart';
 import 'core/project.dart';
+import 'browser_login_screen.dart';
 
 class AuthDialog extends StatefulWidget {
   final SecurityProject project;
@@ -15,12 +16,15 @@ class _AuthDialogState extends State<AuthDialog> {
   late Uri target;
   late final TextEditingController name, username, secret, header, login, usernameField, passwordField, tokenPath, validationUrl, validationMarker;
   String? error;
+  String cookiePath = '/';
+  bool importing = false;
 
   @override
   void initState() {
     super.initState();
     final a = widget.existing;
     mode = a?.mode ?? AuthMode.bearer;
+    cookiePath = a?.cookiePath ?? '/';
     target = a != null && widget.project.targets.contains(a.target) ? a.target : widget.project.startUrl;
     name = TextEditingController(text: a?.name ?? '');
     validationUrl = TextEditingController(text: a?.validationUrl);
@@ -40,9 +44,28 @@ class _AuthDialogState extends State<AuthDialog> {
     super.dispose();
   }
 
+  Future<void> browserLogin() async {
+    if (importing) return;
+    try {
+      final loginUri = SecurityProject.parseTarget(login.text.trim());
+      if (target.scheme != 'https' || !SecurityProject.sameOrigin(target, loginUri)) {
+        throw const FormatException('Browser sign-in must use the selected HTTPS origin.');
+      }
+      setState(() { importing = true; error = null; });
+      final captured = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => BrowserLoginScreen(target: target, login: loginUri)));
+      if (captured != null && mounted) {
+        setState(() { secret.text = captured; cookiePath = target.path.isEmpty ? '/' : target.path; });
+      }
+    } on FormatException catch (e) {
+      if (mounted) setState(() => error = e.message);
+    } finally {
+      if (mounted) setState(() => importing = false);
+    }
+  }
+
   void submit() {
     try {
-      Navigator.pop(context, AuthProfile(mode: mode, target: target, name: name.text.trim(), validationUrl: validationUrl.text.trim(), validationMarker: validationMarker.text, username: username.text,
+      Navigator.pop(context, AuthProfile(mode: mode, target: target, name: name.text.trim(), cookiePath: cookiePath, validationUrl: validationUrl.text.trim(), validationMarker: validationMarker.text, username: username.text,
         secret: secret.text, headerName: header.text, loginUrl: login.text,
         usernameField: usernameField.text, passwordField: passwordField.text, tokenPath: tokenPath.text.trim()));
     } on FormatException catch (e) {
@@ -65,18 +88,23 @@ class _AuthDialogState extends State<AuthDialog> {
           initialValue: mode,
           decoration: const InputDecoration(labelText: 'Method'),
           items: AuthMode.values.where((m) => m != AuthMode.none).map((m) => DropdownMenuItem(value: m, child: Text(m.name))).toList(),
-          onChanged: (v) => setState(() { mode = v!; error = null; }),
+          onChanged: (v) => setState(() { if (mode != v) { secret.clear(); cookiePath = '/'; } mode = v!; error = null; }),
         ),
         DropdownButtonFormField<Uri>(
           initialValue: target,
           isExpanded: true,
           decoration: const InputDecoration(labelText: 'Credential origin'),
           items: widget.project.targets.toSet().map((u) => DropdownMenuItem(value: u, child: Text(u.host, overflow: TextOverflow.ellipsis))).toList(),
-          onChanged: (v) => setState(() => target = v!),
+          onChanged: (v) => setState(() { if (target != v) { secret.clear(); cookiePath = '/'; } target = v!; }),
         ),
         if (isLogin || mode == AuthMode.basic) field(username, 'Username / email / mobile'),
         if (mode != AuthMode.none) field(secret, isLogin || mode == AuthMode.basic ? 'Password' : 'Token / cookie / key', obscure: true),
         if (mode == AuthMode.apiKey) field(header, 'API key header'),
+        if (mode == AuthMode.cookie) ...[
+          field(login, 'Browser sign-in URL (optional)'),
+          OutlinedButton(onPressed: importing ? null : browserLogin, child: const Text('Sign in using browser and OTP')),
+          Text('Cookie path scope: $cookiePath'),
+        ],
         if (isLogin) ...[
           field(login, 'Exact HTTPS login endpoint'),
           field(usernameField, 'Username field'),

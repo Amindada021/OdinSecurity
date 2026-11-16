@@ -9,9 +9,9 @@ enum AuthMode { none, basic, bearer, cookie, apiKey, jsonLogin, formLogin }
 class AuthProfile {
   final AuthMode mode;
   final Uri target;
-  final String name, username, secret, headerName, loginUrl, usernameField, passwordField, tokenPath, validationUrl, validationMarker;
+  final String name, username, secret, headerName, loginUrl, usernameField, passwordField, tokenPath, validationUrl, validationMarker, cookiePath;
   AuthProfile({
-    required this.mode, required this.target, this.name = 'Default', this.validationUrl = '', this.validationMarker = '', this.username = '', this.secret = '',
+    required this.mode, required this.target, this.name = 'Default', this.validationUrl = '', this.validationMarker = '', this.cookiePath = '/', this.username = '', this.secret = '',
     this.headerName = 'X-API-Key', this.loginUrl = '', this.usernameField = 'username',
     this.passwordField = 'password', this.tokenPath = '',
   }) {
@@ -24,6 +24,12 @@ class AuthProfile {
       if (!SecurityProject.sameOrigin(target, verification) || verification.scheme != 'https') {
         throw const FormatException('Validation URL must be on the credential HTTPS origin.');
       }
+    }
+    if (mode == AuthMode.cookie && (!cookiePath.startsWith('/') || cookiePath.contains(RegExp(r'[\r\n?#]')))) {
+      throw const FormatException('Invalid cookie path.');
+    }
+    if (mode == AuthMode.cookie && validationUrl.isNotEmpty && !AuthSession.matchesPath(cookiePath, Uri.parse(validationUrl).path)) {
+      throw const FormatException('Validation path must be within the cookie scope.');
     }
     if (mode != AuthMode.none && (target.scheme != 'https' || target.userInfo.isNotEmpty)) {
       throw const FormatException('Authentication requires an HTTPS target.');
@@ -50,14 +56,14 @@ class AuthProfile {
   bool get isLogin => mode == AuthMode.jsonLogin || mode == AuthMode.formLogin;
 
   Map<String, dynamic> toJson() => {
-    'mode': mode.name, 'target': target.toString(), 'name': name, 'validationUrl': validationUrl, 'validationMarker': validationMarker, 'username': username, 'secret': secret,
+    'mode': mode.name, 'target': target.toString(), 'name': name, 'validationUrl': validationUrl, 'validationMarker': validationMarker, 'cookiePath': cookiePath, 'username': username, 'secret': secret,
     'headerName': headerName, 'loginUrl': loginUrl, 'usernameField': usernameField,
     'passwordField': passwordField, 'tokenPath': tokenPath,
   };
 
   factory AuthProfile.fromJson(Map<String, dynamic> data) => AuthProfile(
     mode: AuthMode.values.byName(data['mode'] as String),
-    name: data['name'] as String? ?? 'Default', validationUrl: data['validationUrl'] as String? ?? '', validationMarker: data['validationMarker'] as String? ?? '',
+    name: data['name'] as String? ?? 'Default', validationUrl: data['validationUrl'] as String? ?? '', validationMarker: data['validationMarker'] as String? ?? '', cookiePath: data['cookiePath'] as String? ?? '/',
     target: SecurityProject.parseTarget(data['target'] as String),
     username: data['username'] as String? ?? '', secret: data['secret'] as String? ?? '',
     headerName: data['headerName'] as String? ?? 'X-API-Key',
@@ -72,12 +78,19 @@ class AuthSession {
   final Uri origin;
   final Map<String, String> _headers;
   final List<Cookie> _cookies;
-  AuthSession(this.origin, Map<String, String> headers, [List<Cookie> cookies = const []])
+  final String rawCookiePath;
+  AuthSession(this.origin, Map<String, String> headers, [List<Cookie> cookies = const [], this.rawCookiePath = '/'])
       : _headers = Map.unmodifiable(headers), _cookies = List.unmodifiable(cookies);
+
+  static bool matchesPath(String path, String candidate) {
+    final targetPath = candidate.isEmpty ? '/' : candidate;
+    return targetPath == path || targetPath.startsWith(path.endsWith('/') ? path : '$path/');
+  }
 
   Map<String, String> headersFor(Uri url) {
     if (!SecurityProject.sameOrigin(origin, url) || url.scheme != 'https') return {};
     final headers = Map<String, String>.of(_headers);
+    if (!matchesPath(rawCookiePath, url.path)) headers.remove('Cookie');
     final now = DateTime.now();
     final cookies = _cookies.where((c) {
       final domain = c.domain?.replaceFirst(RegExp(r'^\.'), '').toLowerCase();
@@ -107,7 +120,7 @@ class Authenticator {
       case AuthMode.jsonLogin:
       case AuthMode.formLogin: throw StateError('Login requires a network session.');
     }
-    return AuthSession(profile.target, headers);
+    return AuthSession(profile.target, headers, const [], profile.cookiePath);
   }
 
   static String extractToken(String jsonBody, String path) {
