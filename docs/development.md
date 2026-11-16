@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.26.0+26; pubspec.yaml is the version source of truth.
+Current version is 0.27.0+27; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.26.0+26`.
-- Git tag `v0.26.0` when released.
-- `OdinSecurity-v0.26.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.27.0+27`.
+- Git tag `v0.27.0` when released.
+- `OdinSecurity-v0.27.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -78,3 +78,7 @@ Import sanitized introspection JSON via Offline utilities. The parser lists root
 ## Manual request review
 
 The in-app GET/HEAD inspector holds a single explicit request for review, with exact destination, Accept and identity-use indicator. Forward sends the approved request; Drop sends nothing. It is not a system proxy and cannot intercept other apps or browser TLS traffic. Verify on device before real use.
+
+## Automated validation
+
+Android CI runs on main pushes and manual dispatch. It installs Flutter stable, generates the Android scaffold, applies the preparation script, resolves dependencies, analyzes, runs tests and builds a debug APK. If every step passes, download the short-lived `OdinSecurity-debug` artifact from the workflow run. This is not a signed release. Device behavior still requires manual verification.

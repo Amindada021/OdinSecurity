@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.27.0+27
+- Added Android CI for static analysis, tests and debug APK artifacts. Device validation remains separate.
+
 ## 0.26.0+26
 - In-app manual request hold/review with explicit forward/drop and immutable destination/method/Accept.
 - Scope and credential-origin validation before review and before send; offline fixtures for approval and scope.
