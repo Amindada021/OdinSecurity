@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.56.0+57
+- Add bounded local test-text variant preview and offline lab interaction label correlation with strict metadata schema; fixture tests.
+
 ## 0.55.1+56
 - Correct token-analysis source insertion, use unambiguous rule-pack method names, and avoid reporting queue history saved when persistence failed. Static review only; build deferred.
 

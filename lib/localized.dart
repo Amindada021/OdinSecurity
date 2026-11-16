@@ -19,6 +19,18 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Offline test fixtures': 'نمونه‌های تست آفلاین',
+  'Generate synthetic text variants locally. No automatic requests are sent. Use non-secret sample values.': 'نمونه‌های متنی آزمایشی را به‌صورت محلی تولید کنید؛ هیچ درخواست خودکاری ارسال نمی‌شود.',
+  'Template with one [VALUE] marker': 'الگو با یک نشانگر [VALUE]',
+  'Sample values, one per line': 'مقادیر نمونه، هر خط یک مورد',
+  'Preview variants': 'پیش‌نمایش نمونه‌ها',
+  'Invalid fixture input.': 'ورودی نمونه نامعتبر است.',
+  'Offline lab interaction review': 'بررسی آفلاین تعاملات آزمایشگاهی',
+  'Generate a local correlation label and paste sanitized event metadata from your own test collector. This is not a callback server or proof of origin.': 'شناسه محلی بسازید و متادیتای پاک‌سازی‌شده رویدادها را از جمع‌آورنده آزمایشگاهی خود وارد کنید؛ این ابزار سرور دریافت یا اثبات مبدا نیست.',
+  'New correlation label': 'شناسه تطبیق جدید',
+  'Lab events JSON': 'رویدادهای آزمایشگاه (JSON)',
+  'Match event labels': 'تطبیق شناسه‌های رویداد',
+  'Invalid event metadata.': 'متادیتای رویداد نامعتبر است.',
   'Foreground assessment queue': 'صف اسکن در برنامه',
   'Choose up to three registered HTTPS targets. Anonymous single-page assessments only. Leaving the screen or backgrounding cancels pending work; running requests may finish.': 'تا سه مقصد HTTPS ثبت‌شده را انتخاب کنید. فقط بررسی تک‌صفحه‌ای بدون ورود؛ خروج از صفحه یا پس‌زمینه کارهای در انتظار را لغو می‌کند.',
   'Allow two different origins in parallel': 'اجرای هم‌زمان دو مبدا متفاوت',

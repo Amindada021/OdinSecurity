@@ -36,10 +36,12 @@ WordPress, Drupal, Joomla, ASP.NET Core / legacy ASP.NET, PHP / Laravel / Symfon
 
 ## Development
 
-Current development version: **0.55.1+56**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
+Current development version: **0.56.0+57**. See [changelog](CHANGELOG.md) and [build and validation instructions](docs/development.md). The committed source is a limited assessment foundation, not a Burp Suite parity claim. Unit/widget fixtures are written; Flutter/Android compilation and test execution remain pending. Do not use on production until validated in a controlled lab.
 
 Offline CVE review accepts a user-supplied, exact-version advisory catalog; it does not retrieve advisories or confirm exploitability.
 
 Share declarative custom header-check packs as versioned JSON, import/merge into a project's draft rules, and save explicitly. Arbitrary executable extensions are not supported.
 
 Foreground queue supports one-shot delayed, anonymous HTTPS single-page assessments for up to three explicitly registered targets and up to two distinct origins in parallel. No background or recurring scheduling.
+
+Offline test fixtures: bounded literal text variants and exact correlation of sanitized interaction events from an externally managed test collector. No automated Intruder requests or live Collaborator service.
