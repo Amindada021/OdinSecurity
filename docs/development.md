@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.54.0+54; pubspec.yaml is the version source of truth.
+Current version is 0.55.0+55; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.54.0+54`.
-- Git tag `v0.54.0` when released.
-- `OdinSecurity-v0.54.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.55.0+55`.
+- Git tag `v0.55.0` when released.
+- `OdinSecurity-v0.55.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -160,3 +160,7 @@ Paste a JSON array of up to 500 advisory entries: `id`, `product`, `source` (HTT
 ## Declarative rule packs
 
 Custom scan rules provide import/export of `odin.security.headers.v1` JSON packs. Import can replace or merge only the current editor draft, with duplicate/unsupported rules rejected. Save applies the validated draft to the current project. Packs perform passive header checks only, without executable code or network probes.
+
+## Foreground assessment queue
+
+Select up to three exact registered HTTPS URLs, subject to current exclusions and page cap. Each is assessed once without saved credentials; optional parallel mode runs at most two different origins at once. Starts now or after 1/5/15 minutes with explicit consent while screen is current and app foregrounded. Backgrounding/navigation cancels pending work; an in-flight GET may finish. Stop after rate limits, server errors or failed requests before the next batch. Persist completed responses in scan history if the screen remains open. No recurring jobs, background services or authenticated queue.

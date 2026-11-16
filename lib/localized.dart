@@ -19,6 +19,15 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Foreground assessment queue': 'صف اسکن در برنامه',
+  'Choose up to three registered HTTPS targets. Anonymous single-page assessments only. Leaving the screen or backgrounding cancels pending work; running requests may finish.': 'تا سه مقصد HTTPS ثبت‌شده را انتخاب کنید. فقط بررسی تک‌صفحه‌ای بدون ورود؛ خروج از صفحه یا پس‌زمینه کارهای در انتظار را لغو می‌کند.',
+  'Allow two different origins in parallel': 'اجرای هم‌زمان دو مبدا متفاوت',
+  'Start after (minutes)': 'شروع پس از (دقیقه)',
+  'I authorize these exact assessments.': 'این بررسی‌های مشخص را مجاز می‌دانم.',
+  'Start or schedule queue': 'شروع یا زمان‌بندی صف',
+  'Waiting in foreground': 'انتظار در برنامه فعال',
+  'Queue could not complete.': 'تکمیل صف ناموفق بود.',
+  'Completed responses saved to scan history; unstarted targets are not assessed.': 'پاسخ‌های تکمیل‌شده در تاریخچه ثبت می‌شوند؛ مقاصد شروع‌نشده بررسی نشده‌اند.',
   'Import rule pack': 'ورود بسته قوانین',
   'Export rule pack': 'خروجی بسته قوانین',
   'Rule pack JSON': 'بسته قوانین (JSON)',

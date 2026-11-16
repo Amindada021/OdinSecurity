@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.55.0+55
+- Add foreground one-shot assessment queue, explicit target selection, delayed start, optional parallel distinct-origin single-page checks, cancellation and history; offline queue fixtures.
+
 ## 0.54.0+54
 - Versioned declarative header rule packs with validated import, export, merge and explicit save; offline fixtures.
 
