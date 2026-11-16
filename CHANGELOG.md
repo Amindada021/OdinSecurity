@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.30.0+30
+- Explicit scoped HEAD security regression checks against expected statuses, with review, cancellation, request cap and safe-stop conditions.
+- Added offline tests for scope, approval, timing and stopping behavior.
+
 ## 0.29.0+29
 - Commit analyzer configuration to avoid generated missing lint include; report informational SDK deprecations without blocking errors/warnings.
 

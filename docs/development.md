@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.29.0+29; pubspec.yaml is the version source of truth.
+Current version is 0.30.0+30; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.29.0+29`.
-- Git tag `v0.29.0` when released.
-- `OdinSecurity-v0.29.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.30.0+30`.
+- Git tag `v0.30.0` when released.
+- `OdinSecurity-v0.30.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -84,3 +84,7 @@ The in-app GET/HEAD inspector holds a single explicit request for review, with e
 Android CI runs on main pushes and manual dispatch. It installs Flutter stable, generates the Android scaffold, applies the preparation script, resolves dependencies, analyzes, runs tests and builds a debug APK. If every step passes, download the short-lived `OdinSecurity-debug` artifact from the workflow run. This is not a signed release. Device behavior still requires manual verification.
 
 CI keeps analyzer errors and warnings fatal. Informational SDK deprecations are reported but do not block validation; the Material API migration is tracked separately. The committed analyzer options avoid a missing generated flutter_lints include.
+
+## Security regression audit
+
+Review explicitly provided HTTPS URLs paired with expected status codes. Performs at most ten unauthenticated HEAD requests sequentially, obeys project scope, exclusions and configured delay, and stops on cancellation, throttling, server error or transport failure. It never generates URLs, follows redirects, or submits data. HEAD and GET can differ; discrepancies require manual confirmation.
