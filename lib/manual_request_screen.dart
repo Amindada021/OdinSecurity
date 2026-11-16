@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'core/auth.dart';
 import 'core/manual_request.dart';
 import 'core/project.dart';
+import 'core/request_history.dart';
+import 'core/scan_policy.dart';
 
 class ManualRequestScreen extends StatefulWidget {
   final SecurityProject project;
   final Uri target;
   final AuthProfile? auth;
-  const ManualRequestScreen({super.key, required this.project, required this.target, this.auth});
+  final ScanPolicy policy;
+  const ManualRequestScreen({super.key, required this.project, required this.target, this.auth, required this.policy});
   @override
   State<ManualRequestScreen> createState() => _ManualRequestScreenState();
 }
@@ -15,8 +18,11 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
   late final TextEditingController url;
   bool authorized = false, busy = false, useAuth = false;
   String method = 'GET';
+  ManualAccept accept = ManualAccept.any;
   ManualResponse? response;
   String? error;
+  final history = RequestHistory();
+  final sinceLast = Stopwatch();
   @override
   void initState() {
     super.initState();
@@ -28,14 +34,29 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
 
   Future<void> send() async {
     if (!authorized || busy) return;
-    setState(() { busy = true; error = null; response = null; });
+    final raw = url.text.trim();
+    final chosenMethod = method;
+    final chosenAccept = accept;
+    final chosenAuth = useAuth ? widget.auth : null;
+    setState(() { busy = true; authorized = false; error = null; response = null; });
     try {
-      final result = await ManualRequestClient().send(widget.project, Uri.parse(url.text.trim()), method,
-        authorized: authorized, auth: useAuth ? widget.auth : null);
-      if (mounted) setState(() => response = result);
+      final endpoint = Uri.parse(raw);
+      ManualRequestClient.validate(widget.project, endpoint, chosenMethod, true, policy: widget.policy);
+      if (sinceLast.isRunning) {
+        final remaining = widget.policy.delayMs - sinceLast.elapsedMilliseconds;
+        if (remaining > 0) await Future<void>.delayed(Duration(milliseconds: remaining));
+      }
+      if (!mounted) return;
+      final result = await ManualRequestClient().send(widget.project, endpoint, chosenMethod,
+        authorized: true, auth: chosenAuth, policy: widget.policy, accept: chosenAccept);
+      if (mounted) setState(() {
+        response = result;
+        history.add(RequestRecord.fromResponse(endpoint, chosenMethod, chosenAccept, chosenAuth != null, result));
+      });
     } catch (_) {
-      if (mounted) setState(() => error = 'Request failed. Check scope, credential origin and connectivity.');
+      if (mounted) setState(() => error = 'Request failed. Check scope, exclusions, credential origin and connectivity.');
     } finally {
+      sinceLast..reset()..start();
       if (mounted) setState(() => busy = false);
     }
   }
@@ -43,26 +64,47 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
   @override
   Widget build(BuildContext context) {
     final data = response;
+    final records = history.records;
+    final previous = records.length >= 2 && records[0].comparableTo(records[1]) ? records[1] : null;
     return Scaffold(
       appBar: AppBar(title: const Text('Request inspector')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        const Text('Manually send an authorized GET or HEAD. Responses may contain sensitive data; they are not saved to history.'),
+        const Text('Manually send authorized GET or HEAD requests. Each send requires consent. Response content is visible only for the latest request and is not stored.'),
         DropdownButtonFormField<String>(initialValue: method, items: ['GET', 'HEAD'].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(), onChanged: busy ? null : (v) => setState(() { method = v!; authorized = false; })),
         TextField(controller: url, enabled: !busy, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Request URL'), onChanged: (_) => setState(() => authorized = false)),
+        DropdownButtonFormField<ManualAccept>(initialValue: accept, decoration: const InputDecoration(labelText: 'Accept'), items: ManualAccept.values.map((value) => DropdownMenuItem(value: value, child: Text(value.value))).toList(),
+          onChanged: busy ? null : (value) => setState(() { accept = value!; authorized = false; })),
         if (widget.auth != null) CheckboxListTile(value: useAuth, title: const Text('Use saved credentials for their exact origin'), onChanged: busy ? null : (v) => setState(() { useAuth = v ?? false; authorized = false; })),
         CheckboxListTile(value: authorized, title: const Text('I authorize this exact request.'), onChanged: busy ? null : (v) => setState(() => authorized = v ?? false)),
-        FilledButton(onPressed: busy || !authorized ? null : send, child: const Text('Send request')),
+        FilledButton(onPressed: busy || !authorized ? null : send, child: Text(records.isEmpty ? 'Send request' : 'Send / repeat request')),
         if (busy) const LinearProgressIndicator(),
         if (error != null) Text(error!),
         if (data != null) ...[
           Text('HTTP ${data.status}', style: Theme.of(context).textTheme.titleLarge),
-          const Text('Response headers'),
+          Text('${data.elapsedMs} ms | ${data.bodyBytes} captured bytes'),
+          if (previous != null) ...[
+            const Text('Previous comparable request (same route, method, Accept and auth setting)'),
+            Text('Status: ${previous.status} → ${data.status} | Time: ${previous.elapsedMs} → ${data.elapsedMs} ms'),
+            if (!previous.truncated && !data.truncated) Text('Captured bytes: ${previous.bodyBytes} → ${data.bodyBytes}'),
+            const Text('Differences are diagnostic observations, not proof of a vulnerability.'),
+          ],
+          const Text('Response headers (unrecognized values redacted)'),
           SelectableText(data.headers.entries.map((e) => '${e.key}: ${e.value.join(', ')}').join('\n')),
           const Divider(),
           if (data.truncated) const Text('Response truncated to 64 KiB.'),
           const Text('Response body'),
           SelectableText(data.body),
         ],
+        const Divider(),
+        Row(children: [
+          Expanded(child: Text('Session history (${records.length})')),
+          TextButton(onPressed: records.isEmpty || busy ? null : () => setState(() { history.clear(); response = null; }), child: const Text('Clear')),
+        ]),
+        const Text('Only route, method, status, timing and captured size are retained in memory. Query values are omitted; paths can still be sensitive.'),
+        for (final record in records) ListTile(
+          title: Text('${record.method} ${record.route}'),
+          subtitle: Text('${record.status} | ${record.elapsedMs} ms | ${record.bodyBytes} bytes${record.truncated ? "+" : ""}${record.hadQuery ? " | query omitted" : ""}'),
+        ),
       ]),
     );
   }

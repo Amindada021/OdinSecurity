@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.0+19
+- Request inspector with explicit repeat, Accept selection, captured byte count and measured HTTP response time.
+- Bounded session-only metadata history and comparable request summary; query values, credential headers and response content not retained in history.
+- Enforce scan exclusions and delay; require fresh consent on each send. Unrecognized header values redacted.
+- Offline request history, comparison and policy fixtures.
+
 ## 0.18.0+18
 - Explicit CORS configuration audit for one scoped read-only HTTPS endpoint using a fixed synthetic origin and one unauthenticated OPTIONS preflight.
 - Classify advertised policy without replaying requests, accessing data or claiming a confirmed vulnerability.

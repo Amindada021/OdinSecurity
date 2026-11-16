@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.18.0+18; pubspec.yaml is the version source of truth.
+Current version is 0.19.0+19; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.18.0+18`.
-- Git tag `v0.18.0` when released.
-- `OdinSecurity-v0.18.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.19.0+19`.
+- Git tag `v0.19.0` when released.
+- `OdinSecurity-v0.19.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -50,3 +50,7 @@ One explicit, trusted TLS handshake to the chosen HTTPS host/port. No credential
 ## CORS configuration review
 
 Choose a known read-only HTTPS endpoint within scope and authorize one OPTIONS preflight. The fixed test origin is a reserved invalid domain; only response policy metadata is classified. No credentials or actual cross-origin GET are sent. Wildcard policies may be legitimate and reflection alone is not proof of private data exposure. Verify expected policy and run only on authorized test environments.
+
+## Request inspector
+
+Explicit GET/HEAD sends and repeat with fresh consent, configurable Accept, scope/exclusions and policy delay. Captured size is capped, timing excludes login and includes HTTP response reading. Session-only history is capped at 20 and omits query values, headers and body; no history is saved on disk. Comparison requires identical route, method, Accept and authentication selection, and excludes query-bearing requests. This is not a system-wide proxy or automated replay engine.
