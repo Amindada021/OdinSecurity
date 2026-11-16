@@ -8,6 +8,7 @@ import 'discovery.dart';
 import 'security_checks.dart';
 import 'custom_rules.dart';
 import 'header_policy_checks.dart';
+import 'html_security_checks.dart';
 import 'tls_audit.dart';
 import 'traffic_journal.dart';
 
@@ -102,6 +103,7 @@ class PassiveScanner {
       findings: List.unmodifiable([
         ...PassiveSecurityChecks().inspect(url, observation),
         ...HeaderPolicyChecks.inspect(url, observation, status: response.statusCode, identityHeadersSent: identityHeaders.isNotEmpty),
+        if (isHtml && !truncated && response.statusCode >= 200 && response.statusCode < 300) ...HtmlSecurityChecks.inspect(url, observation.body),
         if (response.statusCode >= 200 && response.statusCode < 300) ...CustomHeaderRules.inspect(customRules, observation),
         if (certificate != null) ...CertificateChecks.inspect(certificate.startValidity, certificate.endValidity, DateTime.now()),
       ]),

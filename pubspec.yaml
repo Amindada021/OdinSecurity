@@ -1,10 +1,11 @@
 name: odin_security
 description: Android-first project-based web security assessment.
 publish_to: none
-version: 0.43.0+43
+version: 0.44.0+44
 environment:
   sdk: ">=3.10.0 <4.0.0"
 dependencies:
+  html: ^0.15.7
   flutter:
     sdk: flutter
   flutter_localizations:

@@ -12,6 +12,17 @@ void main() {
 ''');
     expect(urls.map((u) => u.path), ['/about', '/docs']);
   });
+  test('DOM parsing respects base and ignores comments and script text', () {
+    final root = Uri.parse('https://example.test/');
+    final urls = LinkDiscovery.extract(root, '''
+      <base href="/docs/">
+      <!-- <a href="/hidden">Hidden</a> -->
+      <script>const sample = '<a href="/fake">Fake</a>';</script>
+      <a href=guide>Guide</a>
+    ''');
+    expect(urls.map((u) => u.path), ['/docs/guide']);
+    expect(LinkDiscovery.extract(root, '<base href="https://other.test/"><a href="guide">Guide</a>'), isEmpty);
+  });
   test('cross-port and cross-protocol links are rejected', () {
     final origin = Uri.parse('https://example.test/');
     expect(LinkDiscovery.eligible(origin, Uri.parse('https://example.test:444/a')), isFalse);

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.0+44
+- Parse HTML with an HTML5 DOM parser rather than anchor regex; honor same-origin document base and ignore comments/script text.
+- Add passive mixed-resource, insecure form, GET password form, cross-origin password form and external script integrity observations without submitting forms or fetching resources. Added offline fixtures.
+
 ## 0.43.0+43
 - Repeater workspace with up to five independent request editor tabs, latest responses and per-tab metadata histories. Switching tabs resets approval; tabs are ephemeral and never replay automatically.
 - Added workspace isolation, removal and capacity tests.
