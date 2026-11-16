@@ -19,6 +19,20 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Adjacent duplicates': 'نمونه‌های تکراری متوالی',
+  'Adjacent character difference': 'اختلاف نویسه‌های متوالی',
+  'Hex one-bit proportion': 'نسبت بیت یک در نمونه هگز',
+  'Per-position entropy': 'آنتروپی هر موقعیت',
+  'HTTP method': 'متد HTTP',
+  'All methods': 'همه متدها',
+  'Status class': 'دسته وضعیت',
+  'All statuses': 'همه وضعیت‌ها',
+  'Minimum duration (ms)': 'حداقل زمان (میلی‌ثانیه)',
+  'Truncated responses only': 'فقط پاسخ‌های ناقص',
+  'Order by': 'مرتب‌سازی',
+  'newest': 'جدیدترین',
+  'slowest': 'کندترین',
+  'largest': 'بزرگترین',
   'Could not load saved crawl checkpoint.': 'بارگذاری وضعیت ذخیره‌شده پیمایش ناموفق بود.',
   'Could not save crawl checkpoint.': 'ذخیره وضعیت پیمایش ناموفق بود.',
   'Discard saved crawl?': 'وضعیت ذخیره‌شده پیمایش حذف شود؟',

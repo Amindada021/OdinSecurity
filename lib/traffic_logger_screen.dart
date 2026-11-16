@@ -5,6 +5,7 @@ import 'core/auth.dart';
 import 'manual_request_screen.dart';
 import 'core/scan_policy.dart';
 import 'core/traffic_journal.dart';
+import 'core/traffic_filter.dart';
 
 class TrafficLoggerScreen extends StatefulWidget {
   final SecurityProject project;
@@ -16,7 +17,11 @@ class TrafficLoggerScreen extends StatefulWidget {
 }
 
 class _TrafficLoggerScreenState extends State<TrafficLoggerScreen> {
-  String filter = 'all', search = '';
+  String filter = 'all', search = '', method = 'all';
+  int? statusClass;
+  int minElapsedMs = 0;
+  bool truncatedOnly = false;
+  TrafficSort sort = TrafficSort.newest;
   final journal = TrafficJournal.shared;
 
   @override
@@ -27,10 +32,9 @@ class _TrafficLoggerScreenState extends State<TrafficLoggerScreen> {
     ]),
     body: StreamBuilder<void>(stream: journal.changes, builder: (context, _) {
       final entries = journal.forProject(widget.project, widget.policy);
-      final shown = entries.where((entry) =>
-        (filter == 'all' || filter == entry.source ||
-          (filter == 'errors' && (entry.status == null || entry.status! >= 400))) &&
-        entry.route.toString().toLowerCase().contains(search.trim().toLowerCase())).toList();
+      final shown = TrafficFilter(search: search, source: filter == 'errors' ? 'all' : filter,
+        errorsOnly: filter == 'errors', method: method, statusClass: statusClass,
+        minElapsedMs: minElapsedMs, truncatedOnly: truncatedOnly, sort: sort).apply(entries);
       return ListView.builder(padding: const EdgeInsets.all(12), itemCount: shown.length + 1,
         itemBuilder: (context, index) {
           if (index == 0) return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -41,6 +45,19 @@ class _TrafficLoggerScreenState extends State<TrafficLoggerScreen> {
               for (final value in ['all', 'manual', 'passive', 'cors', 'errors'])
                 DropdownMenuItem(value: value, child: LText(value == 'all' ? 'All requests' : value)),
             ], onChanged: (v) => setState(() => filter = v ?? 'all')),
+            DropdownButtonFormField<String>(initialValue: method, decoration: const InputDecoration(label: LText('HTTP method')),
+              items: [for (final value in ['all','GET','HEAD','OPTIONS','POST','PUT','PATCH','DELETE'])
+                DropdownMenuItem(value: value, child: LText(value == 'all' ? 'All methods' : value))],
+              onChanged: (value) => setState(() => method = value ?? 'all')),
+            DropdownButtonFormField<int>(initialValue: statusClass ?? 0, decoration: const InputDecoration(label: LText('Status class')),
+              items: [for (final value in [0,2,3,4,5]) DropdownMenuItem(value: value, child: LText(value == 0 ? 'All statuses' : '${value}xx'))],
+              onChanged: (value) => setState(() => statusClass = value == 0 ? null : value)),
+            TextField(keyboardType: TextInputType.number, decoration: const InputDecoration(label: LText('Minimum duration (ms)')),
+              onChanged: (value) => setState(() => minElapsedMs = (int.tryParse(value) ?? 0).clamp(0, 60000).toInt())),
+            CheckboxListTile(value: truncatedOnly, title: const LText('Truncated responses only'), onChanged: (value) => setState(() => truncatedOnly = value ?? false)),
+            DropdownButtonFormField<TrafficSort>(initialValue: sort, decoration: const InputDecoration(label: LText('Order by')),
+              items: [for (final value in TrafficSort.values) DropdownMenuItem(value: value, child: LText(value.name))],
+              onChanged: (value) => setState(() => sort = value ?? TrafficSort.newest)),
           ]);
           final entry = shown[index - 1];
           final details = [

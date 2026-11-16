@@ -96,8 +96,16 @@ class _TokenSamplesScreenState extends State<TokenSamplesScreen> {
             'Maximum length': uiNumber(context, data.maxLength), 'Distinct characters': uiNumber(context, data.distinctCharacters),
             'Observed character entropy': '${data.observedCharacterEntropy.toStringAsFixed(3)} bits',
             'Varying positions': data.varyingPositions.join(', '),
+            'Adjacent duplicates': uiNumber(context, data.adjacentDuplicates),
+            if (data.adjacentDifferenceRatio != null) 'Adjacent character difference': (data.adjacentDifferenceRatio! * 100).toStringAsFixed(2) + '%',
+            if (data.hexOneBitRatio != null) 'Hex one-bit proportion': (data.hexOneBitRatio! * 100).toStringAsFixed(2) + '%',
           }.entries)
             ListTile(title: LText(row.key), subtitle: Text(row.value)),
+          ExpansionTile(title: const LText('Per-position entropy'), children: [
+            for (final position in data.positions)
+              ListTile(dense: true, title: Text('#${position.position} · ${position.distinct}'),
+                subtitle: Text('Shannon ${position.shannonEntropy.toStringAsFixed(3)} | Min ${position.empiricalMinEntropy.toStringAsFixed(3)} bits')),
+          ]),
           const LText('These are descriptive sample statistics, not proof of cryptographic randomness or token security.'),
         ],
       ]));

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.51.0+51
+- Expand offline Sequencer sample statistics with positional Shannon/min-entropy, adjacent repetition/change and hexadecimal bit balance.
+- Advanced traffic metadata filters and timing/size ordering; offline fixtures.
+
 ## 0.50.0+50
 - Persist bounded queryless crawl checkpoints; resume with fresh approval and matching scope, identity and policy, with cumulative page caps.
 - Add resume/discard controls and offline recovery fixtures.
