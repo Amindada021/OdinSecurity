@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.29.0+29
+- Commit analyzer configuration to avoid generated missing lint include; report informational SDK deprecations without blocking errors/warnings.
+
 ## 0.28.0+28
 - Corrected malformed hex decoder source; retained invalid-input validation and UTF-8 roundtrip fixtures.
 

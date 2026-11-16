@@ -1,0 +1,4 @@
+# Keep analyzer errors and warnings enabled without a generated lint-package dependency.
+analyzer:
+  exclude:
+    - build/**
