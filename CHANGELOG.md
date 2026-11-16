@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.49.0+49
+- Extend Swagger/OpenAPI inventory with inherited/overridden security declarations, anonymous/unknown classification, HTTP server and authentication response documentation signals, counts and filters.
+- Added offline fixtures for both specification formats. No endpoint calls or verdicts about actual runtime access.
+
 ## 0.48.0+48
 - Add explicit saved-session health screen and enforce project exclusions on configured login/verification endpoints.
 - Enforce cookie lifetime and OAuth expiry across requests; refuse accidental unauthenticated sends when saved credentials are not applicable. Added offline scope/expiry fixtures.

@@ -19,6 +19,16 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Operations': 'عملیات',
+  'Security not declared': 'امنیت تعریف نشده',
+  'Anonymous allowed by specification': 'دسترسی ناشناس طبق مستندات مجاز است',
+  'Security required by specification': 'احراز هویت طبق مستندات الزامی است',
+  'Invalid or unknown security declaration': 'تعریف امنیت نامعتبر یا ناشناخته',
+  'Security declarations describe the API contract only. They do not establish the actual runtime authorization.': 'تعریف امنیت فقط قرارداد API را توصیف می‌کند و مجوز واقعی در زمان اجرا را اثبات نمی‌کند.',
+  'HTTP server declared': 'سرور HTTP تعریف شده',
+  'Filter by security declaration': 'فیلتر براساس تعریف امنیت',
+  'All operations': 'همه عملیات',
+  'No 401/403 response documented': 'پاسخ ۴۰۱ یا ۴۰۳ مستند نشده است',
   'Session check': 'بررسی نشست',
   'Check the saved identity against its configured HTTPS login and protected verification endpoint. No credential values or response bodies are displayed.': 'حساب ذخیره‌شده را با مسیر ورود HTTPS و مسیر اعتبارسنجی محافظت‌شده بررسی کنید. مقادیر محرمانه و بدنه پاسخ نمایش داده نمی‌شوند.',
   'No protected verification endpoint configured. Session validity cannot be confirmed.': 'مسیر اعتبارسنجی محافظت‌شده تنظیم نشده است؛ اعتبار نشست قابل تأیید نیست.',

@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.48.0+48; pubspec.yaml is the version source of truth.
+Current version is 0.49.0+49; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.48.0+48`.
-- Git tag `v0.48.0` when released.
-- `OdinSecurity-v0.48.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.49.0+49`.
+- Git tag `v0.49.0` when released.
+- `OdinSecurity-v0.49.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -140,3 +140,7 @@ Complete bounded JSON responses are inspected locally for populated internal-sec
 ## Session health checks
 
 From a selected saved identity, explicitly authorize Check session. Login and verification requests are rejected before transport if excluded by project policy. Cookie Max-Age is enforced relative to session creation and OAuth expiry is respected on later requests. Authenticated reads no longer silently send without applicable credentials. The dedicated screen reports verification outcome without displaying credentials or response content. Without a configured protected verification marker, it cannot establish session validity.
+
+## OpenAPI contract review
+
+Import existing Swagger 2.x/OpenAPI JSON offline. Classifies operations by inherited or overridden security declarations, detects anonymous options, undeclared or unknown schemes, HTTP server/scheme declarations and missing documented 401/403 for security-required operations. Filters by protection declaration. Contract metadata cannot prove actual access control. No endpoint invocation or remote reference resolution.

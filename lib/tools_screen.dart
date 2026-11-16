@@ -14,6 +14,7 @@ class InventoryScreen extends StatefulWidget {
 class _InventoryScreenState extends State<InventoryScreen> {
   final source = TextEditingController();
   List<ApiOperation> operations = [];
+  ApiSecurityDeclaration? filter;
   String? error;
   @override
   void dispose() { source.dispose(); super.dispose(); }
@@ -21,11 +22,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void parse() {
     try {
       final result = OpenApiInventory().parse(source.text);
-      setState(() { operations = result; error = null; });
+      source.clear();
+      setState(() { operations = result; filter = null; error = null; });
     } catch (_) {
-      setState(() { operations = []; error = 'Invalid or unsupported OpenAPI JSON.'; });
+      setState(() { operations = []; filter = null; error = 'Invalid or unsupported OpenAPI JSON.'; });
     }
   }
+  String securityLabel(ApiSecurityDeclaration security) => switch (security) {
+    ApiSecurityDeclaration.unspecified => 'Security not declared',
+    ApiSecurityDeclaration.anonymousAllowed => 'Anonymous allowed by specification',
+    ApiSecurityDeclaration.authRequired => 'Security required by specification',
+    ApiSecurityDeclaration.invalid => 'Invalid or unknown security declaration',
+  };
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const LText('OpenAPI inventory')),
@@ -36,9 +45,28 @@ class _InventoryScreenState extends State<InventoryScreen> {
       const SizedBox(height: 8),
       FilledButton(onPressed: parse, child: const LText('Import')),
       if (error != null) LText(error!),
-      Text('${operations.length} operations'),
-      for (final operation in operations) ListTile(
-        leading: Text(operation.method), title: Text(operation.path), subtitle: operation.title.isEmpty ? null : Text(operation.title)),
+      Text('${uiNumber(context, operations.length)} ${tr(context, 'Operations')}'),
+      if (operations.isNotEmpty) ...[
+        const LText('Security declarations describe the API contract only. They do not establish the actual runtime authorization.'),
+        for (final kind in ApiSecurityDeclaration.values)
+          Text('${tr(context, securityLabel(kind))}: ${uiNumber(context, operations.where((op) => op.security == kind).length)}'),
+        Text('${tr(context, 'HTTP server declared')}: ${uiNumber(context, operations.where((op) => op.httpDeclared).length)}'),
+        DropdownButtonFormField<ApiSecurityDeclaration>(key: ValueKey(filter), initialValue: filter,
+          hint: const LText('All operations'),
+          decoration: const InputDecoration(label: LText('Filter by security declaration')),
+          items: [
+            const DropdownMenuItem<ApiSecurityDeclaration>(value: null, child: LText('All operations')),
+            for (final kind in ApiSecurityDeclaration.values) DropdownMenuItem(value: kind, child: LText(securityLabel(kind))),
+          ], onChanged: (value) => setState(() => filter = value)),
+      ],
+      for (final operation in operations.where((op) => filter == null || op.security == filter)) ListTile(
+        leading: Text(operation.method), title: Text(operation.path), subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (operation.title.isNotEmpty) Text(operation.title),
+          LText(securityLabel(operation.security)),
+          if (operation.httpDeclared) const LText('HTTP server declared'),
+          if (operation.security == ApiSecurityDeclaration.authRequired && !operation.authErrorDocumented)
+            const LText('No 401/403 response documented'),
+        ])),
     ]),
   );
 }
