@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.37.0+37; pubspec.yaml is the version source of truth.
+Current version is 0.38.0+38; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.37.0+37`.
-- Git tag `v0.37.0` when released.
-- `OdinSecurity-v0.37.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.38.0+38`.
+- Git tag `v0.38.0` when released.
+- `OdinSecurity-v0.38.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -112,3 +112,7 @@ After manual browser sign-in and capture, choose up to five known, read-only que
 ## Additional header policy diagnostics
 
 The normal passive scan and crawler evaluate HSTS validity/lifetime (RFC 6797), explicit shared caching directives on successful requests that actually carry a selected identity (RFC 9111), HTTPS downgrade redirects without following them, and incompatible cookie attributes/prefixes. These are configuration observations only; no header/cookie values or redirect destinations are included in evidence. Shared caching may be intentional for public content.
+
+## Tool handoff and report baselines
+
+Open eligible GET/HEAD metadata routes from Logger in the Inspector; no request is sent automatically, and records with discarded query values cannot be handed off. In a report, select any older project scan as a baseline. The UI shows unique-route status transitions and coverage differences separately from finding comparisons. Different credentials, scope, and scan coverage may explain changes; not proof that a vulnerability was fixed or introduced.

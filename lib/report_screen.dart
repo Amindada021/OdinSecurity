@@ -9,7 +9,8 @@ import 'core/report.dart';
 class ReportScreen extends StatefulWidget {
   final ScanRecord record;
   final ScanRecord? previous;
-  const ReportScreen({super.key, required this.record, this.previous});
+  final List<ScanRecord> baselines;
+  const ReportScreen({super.key, required this.record, this.previous, this.baselines = const []});
   @override
   State<ReportScreen> createState() => _ReportScreenState();
 }
@@ -17,6 +18,7 @@ class ReportScreen extends StatefulWidget {
 class _ReportScreenState extends State<ReportScreen> {
   bool saving = false;
   String filter = 'all';
+  int baselineIndex = 0;
   Future<void> export(String extension, ReportSummary report) async {
     setState(() => saving = true);
     try {
@@ -42,7 +44,8 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   Widget build(BuildContext context) {
     final report = ReportSummary(widget.record);
-    final previous = widget.previous;
+    final baselines = widget.baselines.isNotEmpty ? widget.baselines : [if (widget.previous != null) widget.previous!];
+    final previous = baselineIndex >= 0 && baselineIndex < baselines.length ? baselines[baselineIndex] : null;
     final comparison = previous == null ? null : report.compare(ReportSummary(previous));
     final visible = report.findings.where((f) => filter == 'all' || f.severity == filter);
     return Scaffold(
@@ -64,9 +67,18 @@ class _ReportScreenState extends State<ReportScreen> {
           for (final entry in report.counts.entries)
             ChoiceChip(label: Text('${entry.key}: ${entry.value}'), selected: filter == entry.key, onSelected: (_) => setState(() => filter = entry.key)),
         ]),
+        if (baselines.isNotEmpty) DropdownButtonFormField<int>(initialValue: baselineIndex,
+          decoration: const InputDecoration(label: LText('Comparison baseline')),
+          items: [const DropdownMenuItem(value: -1, child: LText('No comparison')),
+            for (var i = 0; i < baselines.length; i++) DropdownMenuItem(value: i,
+              child: Text(baselines[i].finishedAt.toLocal().toString()))],
+          onChanged: (value) => setState(() => baselineIndex = value ?? -1)),
         if (comparison != null) ...[
           const Divider(),
-          Text('Compared with previous scan: ${comparison.comparablePages} comparable pages'),
+          Text('${tr(context, "Comparable pages")}: ${uiNumber(context, comparison.comparablePages)}'),
+          Text('${tr(context, "Baseline-only routes")}: ${uiNumber(context, comparison.baselineOnly)} | ${tr(context, "Current-only routes")}: ${uiNumber(context, comparison.currentOnly)}'),
+          const LText('Status code changes are diagnostic only; differing sessions or coverage may explain them.'),
+          for (final row in comparison.statusChanges) ListTile(title: Text(row.url), subtitle: Text('HTTP ${row.before} → ${row.after}')),
           Text('Newly observed: ${comparison.added.length} | Not observed again: ${comparison.notObserved.length}'),
           for (final f in comparison.added) ListTile(title: Text('New: ${f.title}'), subtitle: Text(f.url)),
           for (final f in comparison.notObserved) ListTile(title: Text('Not observed again: ${f.title}'), subtitle: Text(f.url)),

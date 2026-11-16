@@ -37,6 +37,19 @@ void main() {
     final current = ReportSummary(record([page(a, [], truncated: true), page(b, []), page(b, [])]));
     expect(current.compare(old).comparablePages, 0);
   });
+  test('compares status transitions and unique route coverage independently of findings', () {
+    final old = ReportSummary(record([page('https://example.test/a', [], status: 200), page('https://example.test/b', []),
+      page('https://example.test/duplicate', []), page('https://example.test/duplicate', [])]));
+    final current = ReportSummary(record([page('https://example.test/a', [], status: 403), page('https://example.test/c', []),
+      page('https://example.test/duplicate', [])]));
+    final diff = current.compare(old);
+    expect(diff.statusChanges.single.before, 200);
+    expect(diff.statusChanges.single.after, 403);
+    expect(diff.statusChanges.single.url, 'https://example.test/a');
+    expect(diff.baselineOnly, 1);
+    expect(diff.currentOnly, 1);
+    expect(diff.comparablePages, 0);
+  });
   test('PDF encodes a document without network access', () async {
     final bytes = await ReportSummary(record([page('https://example.test', ['a'])])).exportPdf();
     expect(String.fromCharCodes(bytes.take(5)), '%PDF-');

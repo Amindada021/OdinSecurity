@@ -4,6 +4,19 @@ import 'package:odin_security/core/scan_policy.dart';
 import 'package:odin_security/core/traffic_journal.dart';
 
 void main() {
+  test('handoff is restricted to exact read-only routes without discarded query values', () {
+    final project = SecurityProject(name: 'Fixture', url: 'https://example.test');
+    final journal = TrafficJournal();
+    final policy = ScanPolicy(excludedPaths: ['/excluded']);
+    for (final row in [
+      ('GET', '/report'), ('GET', '/report?q=x'), ('OPTIONS', '/report'),
+      ('GET', '/delete'), ('HEAD', '/excluded'),
+    ]) {
+      journal.record(project, project.startUrl.resolve(row.$2), source: 'manual', method: row.$1, elapsedMs: 1);
+    }
+    final entries = journal.forProject(project, ScanPolicy());
+    expect(entries.where((e) => TrafficJournal.canInspect(e, project, policy)).map((e) => e.route.path), ['/report']);
+  });
   test('log excludes query values and other projects, reapplies current exclusions', () {
     final journal = TrafficJournal();
     final project = SecurityProject(name: 'Fixture', url: 'https://example.test');

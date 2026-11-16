@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.38.0+38
+- Scoped Logger-to-Inspector handoff for known read-only routes without omitted query values.
+- Selectable prior scan baseline, unique route coverage differences and status transitions, with independent evidence comparison and fixtures.
+
 ## 0.37.0+37
 - Expanded passive header-policy checks for malformed/disabled HSTS, credentialed shared-cache directives, HTTPS downgrade redirects, and cookie attribute/prefix compatibility.
 - Added context-aware, redacted evidence and offline parser tests; no extra requests.

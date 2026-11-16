@@ -47,13 +47,33 @@ class ReportSummary {
     };
   }
 
+  Map<String, int> get uniquePageStatuses {
+    final counts = <String, int>{};
+    final statuses = <String, int>{};
+    for (final page in record.pages) {
+      final url = page['url'] as String;
+      counts.update(url, (n) => n + 1, ifAbsent: () => 1);
+      statuses[url] = page['statusCode'] as int;
+    }
+    return {for (final entry in statuses.entries) if (counts[entry.key] == 1) entry.key: entry.value};
+  }
+
   ReportComparison compare(ReportSummary previous) {
     final shared = comparableUrls.intersection(previous.comparableUrls);
     final current = {for (final f in findings) if (shared.contains(f.url)) f.key: f};
     final old = {for (final f in previous.findings) if (shared.contains(f.url)) f.key: f};
+    final before = previous.uniquePageStatuses;
+    final after = uniquePageStatuses;
+    final beforeRoutes = previous.record.pages.map((p) => p['url'] as String).toSet();
+    final afterRoutes = record.pages.map((p) => p['url'] as String).toSet();
+    final statusChanges = [for (final entry in after.entries)
+      if (before.containsKey(entry.key) && before[entry.key] != entry.value)
+        PageStatusChange(entry.key, before[entry.key]!, entry.value)];
     return ReportComparison(shared.length,
       current.values.where((f) => !old.containsKey(f.key)).toList(),
-      old.values.where((f) => !current.containsKey(f.key)).toList());
+      old.values.where((f) => !current.containsKey(f.key)).toList(), statusChanges: statusChanges,
+      baselineOnly: beforeRoutes.difference(afterRoutes).length,
+      currentOnly: afterRoutes.difference(beforeRoutes).length);
   }
 
   String exportHtml() {
@@ -125,8 +145,17 @@ class ReportSummary {
   }
 }
 
+class PageStatusChange {
+  final String url;
+  final int before, after;
+  const PageStatusChange(this.url, this.before, this.after);
+}
+
 class ReportComparison {
   final int comparablePages;
   final List<ReportFinding> added, notObserved;
-  const ReportComparison(this.comparablePages, this.added, this.notObserved);
+  final List<PageStatusChange> statusChanges;
+  final int baselineOnly, currentOnly;
+  const ReportComparison(this.comparablePages, this.added, this.notObserved,
+    {this.statusChanges = const [], this.baselineOnly = 0, this.currentOnly = 0});
 }

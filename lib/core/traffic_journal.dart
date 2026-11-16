@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'project.dart';
+import 'discovery.dart';
 import 'scan_policy.dart';
 
 class TrafficEntry {
@@ -41,6 +42,13 @@ class TrafficJournal {
 
   List<TrafficEntry> forProject(SecurityProject project, ScanPolicy policy) => List.unmodifiable(
     _items.where((e) => e.projectId == project.id && project.contains(e.route) && policy.permits(e.route)));
+
+  /// Handoff only, never a replay. Query values were discarded, so those
+  /// entries cannot safely be reopened as equivalent requests.
+  static bool canInspect(TrafficEntry entry, SecurityProject project, ScanPolicy policy) =>
+    entry.projectId == project.id && !entry.hadQuery &&
+    ['GET', 'HEAD'].contains(entry.method) && project.contains(entry.route) &&
+    policy.permits(entry.route) && LinkDiscovery.eligible(entry.route, entry.route) && !entry.route.hasFragment;
 
   void clear(String projectId) {
     _items.removeWhere((e) => e.projectId == projectId);

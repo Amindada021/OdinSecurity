@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'localized.dart';
 import 'core/project.dart';
+import 'core/auth.dart';
+import 'manual_request_screen.dart';
 import 'core/scan_policy.dart';
 import 'core/traffic_journal.dart';
 
 class TrafficLoggerScreen extends StatefulWidget {
   final SecurityProject project;
   final ScanPolicy policy;
-  const TrafficLoggerScreen({super.key, required this.project, required this.policy});
+  final AuthProfile? auth;
+  const TrafficLoggerScreen({super.key, required this.project, required this.policy, this.auth});
   @override
   State<TrafficLoggerScreen> createState() => _TrafficLoggerScreenState();
 }
@@ -46,7 +49,19 @@ class _TrafficLoggerScreenState extends State<TrafficLoggerScreen> {
             if (entry.capturedBytes != null) '${entry.capturedBytes} bytes${entry.truncated ? "+" : ""}',
             if (entry.hadQuery) 'query omitted',
           ].join(' | ');
-          return ListTile(title: Text('${entry.method} ${entry.route}'), subtitle: Text(details));
+          return ListTile(title: Text('${entry.method} ${entry.route}'), subtitle: Text(details),
+            trailing: TrafficJournal.canInspect(entry, widget.project, widget.policy) ? IconButton(
+              tooltip: tr(context, 'Open request inspector'), icon: const Icon(Icons.http),
+              onPressed: () {
+                final auth = widget.auth;
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => ManualRequestScreen(
+                  project: widget.project, target: entry.route, policy: widget.policy,
+                  initialMethod: entry.method,
+                  auth: auth != null && SecurityProject.sameOrigin(auth.target, entry.route) ? auth : null,
+                )));
+              },
+            ) : null,
+          );
         });
     }),
   );
