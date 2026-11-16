@@ -51,6 +51,6 @@ class RouteRepository {
     save(project, policy, [...await load(project, policy), ...routes]);
 
   static bool canOpenInspector(RouteObservation route) =>
-    ['GET', 'HEAD', 'document', 'link'].contains(route.source) &&
+    ['GET', 'HEAD', 'document', 'link', 'navigation'].contains(route.source) &&
     !route.url.hasFragment && LinkDiscovery.eligible(route.url, route.url);
 }

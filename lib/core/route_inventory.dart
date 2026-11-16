@@ -14,7 +14,7 @@ class RouteObservation {
 class RouteInventory {
   static const maxEntries = 300;
   static const maxInput = 1024 * 1024;
-  static const sources = {'document', 'link', 'fetch', 'xmlhttprequest', 'form-get', 'form-post', 'script'};
+  static const sources = {'document', 'link', 'fetch', 'xmlhttprequest', 'form-get', 'form-post', 'script', 'navigation'};
   static const methods = {'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE', 'TRACE', 'CONNECT'};
 
   static Uri? scopedUrl(SecurityProject project, ScanPolicy policy, Object? raw) {
@@ -48,8 +48,12 @@ class RouteInventory {
     add(RouteObservation(actual, 'document'));
     for (final row in parsed['routes'] as List) {
       if (row is! Map || !sources.contains(row['source'])) continue;
-      final url = scopedUrl(project, policy, row['url']);
-      if (url != null) add(RouteObservation(url, row['source'] as String));
+      final raw = row['url'];
+      final uri = raw is String ? Uri.tryParse(raw) : null;
+      final source = row['source'] as String;
+      if (source == 'navigation' && (uri == null || uri.hasQuery || uri.hasFragment)) continue;
+      final url = scopedUrl(project, policy, raw);
+      if (url != null) add(RouteObservation(url, source));
       if (records.length >= maxEntries) break;
     }
     return List.unmodifiable(records.values);
@@ -105,7 +109,10 @@ class RouteInventory {
     if (value && routes.length < 299) routes.push({url: value, source});
   };
   for (const anchor of Array.from(document.querySelectorAll('a[href]')).slice(0, 100)) {
-    add(anchor.href, 'link');
+    try {
+      const destination = new URL(anchor.href, location.href);
+      add(anchor.href, !destination.search && !destination.hash ? 'navigation' : 'link');
+    } catch (_) { /* invalid anchor */ }
   }
   for (const form of Array.from(document.querySelectorAll('form')).slice(0, 60)) {
     const method = form.method.toLowerCase();

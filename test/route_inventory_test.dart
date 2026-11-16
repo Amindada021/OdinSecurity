@@ -38,6 +38,16 @@ void main() {
     expect(found[2].url.toString(), 'https://panel.example.test/search');
     expect(found[3].url.toString(), 'https://panel.example.test/static/app.js');
   });
+  test('navigation markers cannot promote parameterized anchors to automatic candidates', () {
+    final found = RouteInventory.fromBrowser(project, policy, Uri.parse('https://panel.example.test/dashboard'),
+      jsonEncode({'page': 'https://panel.example.test/dashboard', 'routes': [
+        {'source': 'navigation', 'url': 'https://panel.example.test/test?x=1'},
+        {'source': 'navigation', 'url': 'https://panel.example.test/other#section'},
+        {'source': 'navigation', 'url': 'https://panel.example.test/reports'}
+      ]}));
+    expect(found.map((r) => r.source), ['document', 'navigation']);
+    expect(found.last.url.toString(), 'https://panel.example.test/reports');
+  });
   test('reject snapshot from different page', () {
     expect(() => RouteInventory.fromBrowser(project, policy, Uri.parse('https://panel.example.test/dashboard'),
       jsonEncode({'page': 'https://panel.example.test/reports', 'routes': []})), throwsFormatException);

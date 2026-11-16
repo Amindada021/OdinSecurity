@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.36.0+36
+- User-selected rendered page exploration in the existing signed-in WebView, bounded exact-origin queryless anchors and stop controls.
+- Added scope, exclusions and candidate-cap tests; no automatic forms or arbitrary navigation.
+
 ## 0.35.0+35
 - Declarative custom HTTP security-header rules, project-local editor and persistence.
 - Applied to successful responses during scan and crawl; informational findings included in normal reports. Offline rule and storage tests.

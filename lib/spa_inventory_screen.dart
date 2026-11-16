@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'core/project.dart';
 import 'core/route_inventory.dart';
+import 'core/rendered_navigation.dart';
 import 'core/har_traffic.dart';
 import 'core/scan_policy.dart';
 
@@ -26,6 +28,22 @@ class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
   List<RouteObservation> routes = [];
   bool authorized = false, busy = false, loaded = false, closing = false, showRoutes = false;
   String? error;
+  bool autoRunning = false, stopRequested = false;
+  int explored = 0;
+  Uri? expectedNavigation;
+  Completer<bool>? navigationFinished;
+
+  void finishNavigation(bool success) {
+    final pending = navigationFinished;
+    if (pending != null && !pending.isCompleted) pending.complete(success);
+  }
+
+  @override
+  void dispose() {
+    stopRequested = true;
+    finishNavigation(false);
+    super.dispose();
+  }
 
   bool permits(Uri? url) => url != null && url.scheme == 'https' &&
     SecurityProject.sameOrigin(widget.target, url) &&
@@ -42,15 +60,23 @@ class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
       await web.setJavaScriptMode(JavaScriptMode.unrestricted);
       await web.setNavigationDelegate(NavigationDelegate(
         onNavigationRequest: (request) {
-          final allowed = !closing && permits(Uri.tryParse(request.url));
+          final destination = Uri.tryParse(request.url);
+          final unexpected = autoRunning && request.isMainFrame && destination != expectedNavigation;
+          final allowed = !closing && permits(destination) && !unexpected;
+          if (unexpected) { stopRequested = true; finishNavigation(false); }
           if (!allowed && mounted && !closing) setState(() => error = 'Navigation outside the selected HTTPS origin or allowed paths was blocked.');
           return allowed ? NavigationDecision.navigate : NavigationDecision.prevent;
         },
         onPageStarted: (_) { if (mounted && !closing) setState(() => loaded = false); },
-        onPageFinished: (url) { if (mounted && !closing) setState(() => loaded = permits(Uri.tryParse(url))); },
+        onPageFinished: (url) {
+          final destination = Uri.tryParse(url);
+          if (mounted && !closing) setState(() => loaded = permits(destination));
+          if (autoRunning && destination == expectedNavigation) finishNavigation(true);
+        },
         onWebResourceError: (failure) {
           if (mounted && !closing && failure.isForMainFrame == true) {
             setState(() { loaded = false; error = 'Page failed to load.'; });
+            if (autoRunning) finishNavigation(false);
           }
         },
       ));
@@ -80,6 +106,72 @@ class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
       if (mounted) setState(() => error = 'Capture failed or the page changed. Try again after navigation finishes.');
     } finally {
       if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> exploreSelected() async {
+    final web = browser;
+    if (web == null || busy || !loaded) return;
+    final current = Uri.tryParse(await web.currentUrl() ?? '');
+    if (!mounted || busy || !permits(current)) return;
+    final candidates = RenderedNavigation.candidates(widget.project, widget.policy, widget.target, current!, routes);
+    if (candidates.isEmpty) {
+      setState(() => error = 'Capture queryless links before exploring selected pages.');
+      return;
+    }
+    final selected = <Uri>{};
+    final approved = await showDialog<List<Uri>>(context: context, builder: (context) => StatefulBuilder(
+      builder: (context, update) => AlertDialog(
+        title: const LText('Select rendered pages'),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const LText('Select only known read-only staging pages. The browser will visit these exact URLs using the current session. Site scripts may run. No forms or buttons are automatically submitted.'),
+          for (final route in candidates) CheckboxListTile(
+            value: selected.contains(route), title: Text(route.toString(), textDirection: TextDirection.ltr),
+            onChanged: (v) => update(() { if (v == true) { selected.add(route); } else { selected.remove(route); } })),
+        ])),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const LText('Cancel')),
+          FilledButton(onPressed: selected.isEmpty ? null : () => Navigator.pop(context, selected.toList()), child: const LText('Explore selected pages')),
+        ],
+      ),
+    ));
+    if (approved == null || !mounted || busy) return;
+    final stillCurrent = Uri.tryParse(await web.currentUrl() ?? '');
+    if (!mounted || busy) return;
+    if (stillCurrent != current || !permits(stillCurrent)) {
+      setState(() => error = 'Rendered exploration stopped after a navigation change or page error.');
+      return;
+    }
+    setState(() { busy = true; autoRunning = true; stopRequested = false; explored = 0; error = null; });
+    try {
+      for (final route in approved) {
+        if (stopRequested || !mounted) break;
+        if (!permits(route)) throw const FormatException();
+        await Future<void>.delayed(Duration(milliseconds: widget.policy.delayMs));
+        if (stopRequested || !mounted) break;
+        expectedNavigation = route;
+        final completion = Completer<bool>();
+        navigationFinished = completion;
+        await web.loadRequest(route).timeout(const Duration(seconds: 15));
+        final success = await completion.future.timeout(const Duration(seconds: 15), onTimeout: () => false);
+        if (!success || stopRequested || !mounted) break;
+        if (Uri.tryParse(await web.currentUrl() ?? '') != route) break;
+        final snapshot = await web.runJavaScriptReturningResult(RouteInventory.browserSnapshot).timeout(const Duration(seconds: 5));
+        if (Uri.tryParse(await web.currentUrl() ?? '') != route) break;
+        final found = RouteInventory.fromBrowser(widget.project, widget.policy, route, snapshot);
+        if (!mounted) break;
+        setState(() { routes = RouteInventory.merge(routes, found); explored++; showRoutes = true; });
+      }
+      if (mounted && explored != approved.length && !stopRequested) {
+        setState(() => error = 'Rendered exploration stopped after a navigation change or page error.');
+      }
+    } catch (_) {
+      if (mounted) setState(() => error = 'Rendered exploration stopped after a navigation change or page error.');
+    } finally {
+      finishNavigation(false);
+      navigationFinished = null;
+      expectedNavigation = null;
+      if (mounted) setState(() { busy = false; autoRunning = false; });
     }
   }
 
@@ -124,7 +216,7 @@ class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
           ]))
         else ...[
           Expanded(child: IndexedStack(index: showRoutes ? 1 : 0, children: [
-            WebViewWidget(controller: browser!),
+            IgnorePointer(ignoring: autoRunning, child: WebViewWidget(controller: browser!)),
             RouteList(routes: routes),
           ])),
           SafeArea(top: false, child: Wrap(spacing: 8, children: [
@@ -133,6 +225,9 @@ class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
               try { await saveObservedRoutes(context, widget.project, widget.policy, routes); }
               finally { if (mounted) setState(() => busy = false); }
             }, child: const LText('Save routes')),
+            if (autoRunning) OutlinedButton(onPressed: stopRequested ? null : () => setState(() { stopRequested = true; finishNavigation(false); }), child: const LText('Stop')),
+            if (autoRunning) Text('${uiNumber(context, explored)} ${tr(context, "Pages captured")}'),
+            OutlinedButton(onPressed: loaded && !busy && !closing && routes.isNotEmpty ? exploreSelected : null, child: const LText('Explore selected pages')),
             FilledButton.icon(onPressed: loaded && !busy && !closing ? capture : null, icon: const Icon(Icons.search), label: const LText('Capture routes')),
             OutlinedButton(onPressed: busy || closing ? null : () => setState(() => showRoutes = !showRoutes),
               child: Text(showRoutes ? tr(context, 'Back to browser') : '${tr(context, 'Routes')} (${uiNumber(context, routes.length)})')),
