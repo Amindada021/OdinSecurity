@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.0+42
+- Direct live receive-only WSS session viewer with scoped no-redirect upgrade, optional same-origin static credentials, text/binary message metadata and opt-in ephemeral preview.
+- Session time/message/observed-byte limits and explicit disconnect; no captured payload persistence or automatic reconnect. Added offline scope and metadata tests.
+
 ## 0.41.0+41
 - Repeater-style manual HTTP editor with explicit HTTPS staging confirmation for write methods, bounded JSON/text body, allowlisted custom headers and immutable forward/drop review.
 - Session history stores no body or custom header values; customized and write requests are excluded from automatic response comparisons. Added offline validation fixtures.

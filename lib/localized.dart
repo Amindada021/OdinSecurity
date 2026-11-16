@@ -19,6 +19,21 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Live WebSocket': 'وب‌سوکت زنده',
+  'Connect to an authorized WSS test endpoint. Receive only; no application messages are sent.': 'به آدرس آزمایشی مجاز WSS متصل شوید. فقط دریافت پیام انجام می‌شود.',
+  'WebSocket URL': 'نشانی وب‌سوکت',
+  'Show latest text message (up to 4 KiB, in memory only)': 'نمایش آخرین پیام متنی (تا ۴ کیبی‌بایت، فقط در حافظه)',
+  'Connect': 'اتصال',
+  'Disconnect': 'قطع اتصال',
+  'Disconnected': 'اتصال قطع است',
+  'Connecting': 'در حال اتصال',
+  'Connected': 'متصل',
+  'Connection failed': 'اتصال ناموفق',
+  'Session limit reached': 'محدودیت نشست به پایان رسید',
+  'Session stops after 45 seconds, 100 messages or 256 KiB observed. Individual messages are buffered by the Dart SDK before counting.': 'نشست پس از ۴۵ ثانیه، ۱۰۰ پیام یا ۲۵۶ کیبی‌بایت داده متوقف می‌شود. پیام‌ها پیش از شمارش توسط Dart SDK دریافت و بافر می‌شوند.',
+  'Latest text message': 'آخرین پیام متنی',
+  'Text message': 'پیام متنی',
+  'Binary message': 'پیام باینری',
   'Compose a single authorized HTTP request. Write methods require HTTPS staging confirmation. Only the latest response content is displayed.': 'درخواست HTTP مجاز را دستی بسازید. متدهای تغییردهنده نیازمند تأیید محیط آزمایشی HTTPS هستند. فقط محتوای آخرین پاسخ نمایش داده می‌شود.',
   'Warning: this request may change or delete test data.': 'هشدار: این درخواست ممکن است داده آزمایشی را تغییر دهد یا حذف کند.',
   'Custom headers (one Name: value per line)': 'هدرهای سفارشی (هر خط نام: مقدار)',
