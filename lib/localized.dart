@@ -19,6 +19,14 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Offline CVE review': 'بررسی آفلاین CVE',
+  'Import your own verified advisory list and enter the known product and exact version. Matches are possible exposure, not confirmed vulnerabilities. No network requests.': 'فهرست تأییدشده خود و نام محصول و نسخه دقیق را وارد کنید. تطبیق به معنی احتمال آسیب‌پذیری است، نه تأیید قطعی. بدون درخواست شبکه.',
+  'Exact version': 'نسخه دقیق',
+  'Advisory catalog JSON': 'فهرست هشدارها (JSON)',
+  'Review advisories': 'بررسی هشدارها',
+  'Invalid catalog or unsupported product version.': 'فهرست نامعتبر یا نسخه محصول پشتیبانی نمی‌شود.',
+  'No exact matches in this catalog. This does not establish safety.': 'در این فهرست تطبیق دقیقی یافت نشد؛ این نتیجه امنیت را تضمین نمی‌کند.',
+  'Product': 'محصول',
   'Adjacent duplicates': 'نمونه‌های تکراری متوالی',
   'Adjacent character difference': 'اختلاف نویسه‌های متوالی',
   'Hex one-bit proportion': 'نسبت بیت یک در نمونه هگز',

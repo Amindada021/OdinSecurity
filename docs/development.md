@@ -1,6 +1,6 @@
 # Build and verification
 
-Current version is 0.51.0+51; pubspec.yaml is the version source of truth.
+Current version is 0.52.0+52; pubspec.yaml is the version source of truth.
 The repo contains Flutter application source, an Android vector icon, and offline test fixtures, but platform scaffolding has not yet been generated or validated by Flutter.
 
 ## First local build (Windows PowerShell)
@@ -17,9 +17,9 @@ flutter build apk --debug
 The preparation script is idempotent and changes only generated Android manifest/Gradle settings. Review it before running. Preserve the application ID after the first install. The debug APK is an install/test artifact, not a production release. Release signing, APK publication and stable upgrade compatibility will be validated before a real release.
 
 For distribution after testing, follow the Odin family convention:
-- App semantic version + increasing Android build number, e.g. `0.51.0+51`.
-- Git tag `v0.51.0` when released.
-- `OdinSecurity-v0.51.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
+- App semantic version + increasing Android build number, e.g. `0.52.0+52`.
+- Git tag `v0.52.0` when released.
+- `OdinSecurity-v0.52.0.apk`, `OdinSecurity-latest.apk`, with SHA-256 checksums.
 - Do not commit signing secrets or keystores.
 
 ## Test status
@@ -152,3 +152,7 @@ The crawl saves its bounded observed and pending queryless route queue after eac
 ## Advanced offline sample and traffic analysis
 
 Token samples now show per-position empirical Shannon/min-entropy, adjacent duplicate and difference ratios, and bit balance for hexadecimal samples. These are descriptive statistics, not cryptographic randomness certification. Traffic journal filters combine method, status class, duration, route search, truncation and sort by newest, slowest or largest; raw traffic contents are not captured.
+
+## Offline advisory review
+
+Paste a JSON array of up to 500 advisory entries: `id`, `product`, `source` (HTTPS), `affectedVersions` (explicit numeric version strings). Enter the independently confirmed product/version; exact literal matches are unverified leads only. No feed, version inference, network or automatic vulnerability verdict. Verify ecosystem packages and vendor backports manually.

@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.52.0+52
+- Add offline exact-version advisory catalog validation and matching with conservative evidence labels and offline fixtures.
+
 ## 0.51.0+51
 - Expand offline Sequencer sample statistics with positional Shannon/min-entropy, adjacent repetition/change and hexadecimal bit balance.
 - Advanced traffic metadata filters and timing/size ordering; offline fixtures.
