@@ -232,7 +232,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
             CheckedPopupMenuItem(value: 'dark', checked: widget.preferences.theme == 'dark', child: const LText('Dark theme')),
             CheckedPopupMenuItem(value: 'system', checked: widget.preferences.theme == 'system', child: const LText('System theme')),
           ],
-        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.77.1+80', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.82.0+87', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const LText('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: LText(loadError!))) : projects.isEmpty
             ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -683,8 +683,13 @@ class _ScanScreenState extends State<ScanScreen> {
             automatic: true, policy: settings, allowInsecureHttp: quickAllowInsecure)));
         if (!mounted || captured == null || flag.cancelled) return;
         scanStart = captured.start;
-        credential = AuthProfile(mode: AuthMode.cookie, target: selectedTarget,
-          name: 'Automatic browser session', secret: captured.cookieHeader, cookiePath: captured.cookiePath, allowInsecureHttp: quickAllowInsecure);
+        credential = captured.usesToken
+          ? AuthProfile(mode: AuthMode.bearer, target: selectedTarget,
+              name: 'Automatic browser token', secret: captured.token!,
+              tokenDelivery: captured.tokenDelivery, allowInsecureHttp: quickAllowInsecure)
+          : AuthProfile(mode: AuthMode.cookie, target: selectedTarget,
+              name: 'Automatic browser session', secret: captured.cookieHeader,
+              cookiePath: captured.cookiePath, allowInsecureHttp: quickAllowInsecure);
       }
       // Credential is session-only; no vault writes or advanced checkpoint changes.
       final data = await SiteCrawler().run(widget.project, scanStart,
