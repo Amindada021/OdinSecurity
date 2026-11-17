@@ -36,10 +36,8 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
   @override
   void initState() {
     super.initState();
-    final hesabran = widget.target.host.toLowerCase() == 'api.hesabran.com' &&
-        widget.target.scheme == 'https' && widget.target.port == 443;
-    endpoint = TextEditingController(text: widget.target.resolve(hesabran ? '/api/v1/Account/Login' : '/login').toString());
-    tokenPath = TextEditingController(text: hesabran ? 'data.token' : 'token');
+    endpoint = TextEditingController(text: widget.target.resolve('/login').toString());
+    tokenPath = TextEditingController(text: 'token');
   }
 
   @override
@@ -89,6 +87,10 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
       field(endpoint, 'Exact login endpoint'),
       field(username, 'Username / email / mobile'),
       field(password, 'Password', obscure: true),
+      ExpansionTile(
+        title: const LText('API login settings'),
+        childrenPadding: const EdgeInsets.symmetric(horizontal: 4),
+        children: [
       DropdownButtonFormField<TokenDelivery>(
         initialValue: delivery, isExpanded: true,
         decoration: const InputDecoration(label: LText('Send authentication as')),
@@ -97,10 +99,6 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
       ),
       if (delivery == TokenDelivery.apiKey || delivery == TokenDelivery.customHeader)
         field(header, 'Credential header name'),
-      ExpansionTile(
-        title: const LText('API login settings'),
-        childrenPadding: const EdgeInsets.symmetric(horizontal: 4),
-        children: [
           DropdownButtonFormField<AuthMode>(initialValue: mode, isExpanded: true,
             decoration: const InputDecoration(label: LText('Login request format')),
             items: const [

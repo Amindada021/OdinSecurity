@@ -19,6 +19,12 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Reuse project identity': 'استفاده از پروفایل پروژه دیگر',
+  'No saved identity for this origin.': 'برای این مبدأ پروفایل ذخیره‌شده‌ای پیدا نشد.',
+  'Authentication method': 'روش ورود',
+  'HTTP traffic is unencrypted.': 'ترافیک HTTP رمزگذاری نمی‌شود.',
+  'Choose identity': 'انتخاب پروفایل',
+  'Request failed': 'درخواست ناموفق بود',
   "Direct API sign-in": "ورود مستقیم API",
   "Sign in with your username and password; no token copy required.": "با نام کاربری و رمز عبور وارد شوید؛ نیازی به کپی توکن نیست.",
   "Sign in to API and scan": "ورود API و شروع اسکن",

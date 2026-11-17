@@ -61,6 +61,7 @@ class SiteCrawler {
     ScanPolicy? policy,
     CancellationFlag? cancellation,
     void Function(int count)? onProgress,
+    void Function(String tag, String message, String detail)? onEvent,
     CrawlCheckpoint? resumeFrom,
     Future<void> Function(CrawlCheckpoint?)? onCheckpoint,
   }) async {
@@ -73,6 +74,7 @@ class SiteCrawler {
     resumeFrom?.validate(project, settings, start, identity);
     await cancellation?.waitIfPaused();
     if (cancellation?.cancelled == true) return const CrawlResult([], 0, true, 'cancelled');
+    onEvent?.call('INFO', 'Scan running', start.origin);
     final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized, permits: settings.permits);
     final queue = Queue<Uri>.of(resumeFrom?.pending ?? [start]);
     final seen = <Uri>{...(resumeFrom?.seen ?? [start])};
@@ -109,9 +111,15 @@ class SiteCrawler {
         break;
       }
       attempted++;
+      final address = '${next.origin}${next.path}';
+      onEvent?.call('SCAN', '', address);
       try {
         final page = await scanner.scanWithSession(project, next, authorized: authorized, session: session);
         pages.add(page);
+        onEvent?.call('HTTP', '', '${page.statusCode} $address');
+        for (final finding in page.findings) {
+          onEvent?.call('FOUND', finding.severity.name, finding.id);
+        }
         onProgress?.call(attempted);
         if (page.statusCode == 429) {
           stopReason = 'rate_limited';
@@ -131,6 +139,7 @@ class SiteCrawler {
           }
         }
       } catch (_) {
+        onEvent?.call('WARN', 'Request failed', address);
         failed++;
         onProgress?.call(attempted);
       } finally {

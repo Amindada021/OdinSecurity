@@ -81,8 +81,8 @@ class _ReportScreenState extends State<ReportScreen> {
         const Divider(),
         Wrap(spacing: 8, children: [
           ChoiceChip(label: Text('${tr(context, 'All')}: ${uiNumber(context, widget.record.observationCount)}'), selected: filter == 'all', onSelected: (_) => setState(() => filter = 'all')),
-          for (final entry in report.counts.entries)
-            ChoiceChip(label: Text('${tr(context, entry.key)}: ${uiNumber(context, entry.value)}'), selected: filter == entry.key, onSelected: (_) => setState(() => filter = entry.key)),
+          for (final level in const ['critical', 'high', 'medium', 'low', 'info'])
+            ChoiceChip(avatar: Icon(Icons.circle, size: 10, color: severityColor(context, level)), label: Text('${tr(context, level)}: ${uiNumber(context, report.counts[level] ?? 0)}'), selected: filter == level, onSelected: (_) => setState(() => filter = level)),
         ]),
         if (baselines.isNotEmpty) DropdownButtonFormField<int>(initialValue: baselineIndex,
           decoration: const InputDecoration(label: LText('Comparison baseline')),
