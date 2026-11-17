@@ -1,8 +1,52 @@
+import 'dart:convert';
 import 'project.dart';
 import 'scan_policy.dart';
 import 'discovery.dart';
 
 class BrowserLoginPolicy {
+  /// Read only URLs in the currently rendered document. Redact signed file
+  /// links for inventory only; never replay the redacted path. No navigation.
+  static const observedSnapshot = r'''(() => {
+    const rows = [];
+    for (const node of document.querySelectorAll('a[href],img[src],audio[src],video[src],source[src],form[action]')) {
+      if (rows.length >= 300) break;
+      if (node.tagName === 'FORM' && (node.method.toLowerCase() !== 'get' || node.querySelector('[name]'))) continue;
+      try {
+        const url = new URL(node.href || node.src || node.action, document.baseURI);
+        if (url.username || url.password || !['http:', 'https:'].includes(url.protocol)) continue;
+        const query = !!url.search;
+        url.hash = '';
+        url.search = '';
+        rows.push({url: url.href, query, file: ['IMG','AUDIO','VIDEO','SOURCE'].includes(node.tagName) || node.hasAttribute('download')});
+      } catch (_) {}
+    }
+    return JSON.stringify({page: location.href, rows});
+  })()''';
+
+  static ({List<Uri> routes, List<Uri> files, List<Uri> queryFiles}) observedUrls(Object raw, Uri target, Uri current, ScanPolicy? policy) {
+    if (raw is! String || raw.length > 1024 * 1024) throw const FormatException('Invalid browser snapshot.');
+    dynamic parsed = jsonDecode(raw);
+    if (parsed is String) parsed = jsonDecode(parsed);
+    if (parsed is! Map || parsed['page'] != current.toString() || parsed['rows'] is! List) {
+      throw const FormatException('Page changed during capture.');
+    }
+    final routes = <Uri>{}, files = <Uri>{}, queryFiles = <Uri>{};
+    for (final row in (parsed['rows'] as List).take(300)) {
+      if (row is! Map || row['url'] is! String) continue;
+      final uri = Uri.tryParse(row['url'] as String);
+      if (uri == null || !LinkDiscovery.safeMediaTarget(target, uri) ||
+          (policy != null && !policy.permits(uri))) continue;
+      final clean = LinkDiscovery.canonical(uri);
+      if (row['query'] == true) {
+        if (row['file'] == true || LinkDiscovery.isFile(clean)) queryFiles.add(clean);
+        continue;
+      }
+      if (row['file'] == true || LinkDiscovery.isFile(clean)) { files.add(clean); }
+      else if (LinkDiscovery.eligible(target, clean)) { routes.add(clean); }
+    }
+    return (routes: routes.toList(), files: files.toList(), queryFiles: queryFiles.toList());
+  }
+
   static bool allows(Uri target, Uri candidate, {bool allowInsecureHttp = false}) =>
       (target.scheme == 'https' || (allowInsecureHttp && target.scheme == 'http')) &&
       candidate.userInfo.isEmpty && SecurityProject.sameOrigin(target, candidate);

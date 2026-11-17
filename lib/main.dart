@@ -778,6 +778,7 @@ class _ScanScreenState extends State<ScanScreen> {
     });
     try {
       var scanStart = selectedTarget;
+      var observedRoutes = <Uri>[], observedFiles = <Uri>[], observedQueryFilePaths = <Uri>[];
       if (quickLoginEnabled && quickSaved) {
         credential = await prepareAuth();
         if (credential == null || !mounted || flag.cancelled) return;
@@ -794,12 +795,17 @@ class _ScanScreenState extends State<ScanScreen> {
             automatic: true, policy: settings, allowInsecureHttp: quickAllowInsecure)));
         if (!mounted || captured == null || flag.cancelled) return;
         scanStart = captured.start;
+        observedRoutes = captured.observedRoutes;
+        observedFiles = captured.observedFiles;
+        observedQueryFilePaths = captured.observedQueryFilePaths;
         credential = captured.usesToken
           ? AuthProfile(mode: AuthMode.bearer, target: selectedTarget,
               name: 'Automatic browser token', secret: captured.token!,
+              validationUrl: captured.validationUrl, validationMarker: captured.validationMarker,
               tokenDelivery: captured.tokenDelivery, allowInsecureHttp: quickAllowInsecure)
           : AuthProfile(mode: AuthMode.cookie, target: selectedTarget,
               name: 'Automatic browser session', secret: captured.cookieHeader,
+              validationUrl: captured.validationUrl, validationMarker: captured.validationMarker,
               cookiePath: captured.cookiePath, allowInsecureHttp: quickAllowInsecure);
         if (captured.usesToken && captured.rememberCredential &&
             selectedTarget.scheme == 'https') {
@@ -808,6 +814,7 @@ class _ScanScreenState extends State<ScanScreen> {
             final stored = AuthProfile(
               mode: AuthMode.bearer, target: selectedTarget,
               name: name, secret: captured.token!,
+              validationUrl: captured.validationUrl, validationMarker: captured.validationMarker,
               tokenDelivery: captured.tokenDelivery);
             final updated = [
               ...profiles.where((p) => !(p.name == name &&
@@ -831,9 +838,10 @@ class _ScanScreenState extends State<ScanScreen> {
       // Authentication is scoped to the chosen target; secrets never enter scan preferences.
       final data = await SiteCrawler().run(widget.project, scanStart,
         authorized: true, policy: settings, cancellation: flag, auth: credential, moviePurchases: movies,
+        observedRoutes: observedRoutes, observedFiles: observedFiles, observedQueryFilePaths: observedQueryFilePaths,
         onEvent: logEvent, onProgress: (count) { if (mounted) setState(() => visited = count); });
       if (!mounted) return;
-      final report = ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled, files: data.files);
+      final report = ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled, files: data.files, coverage: data.coverage);
       setState(() { crawlResult = data; quickReport = report; });
       await record(report);
     } catch (_) {
@@ -850,7 +858,7 @@ class _ScanScreenState extends State<ScanScreen> {
     'rate_limited' => 'Stopped: server request limit reached',
     'server_errors' => 'Stopped: repeated server errors',
     'time_budget' => 'Stopped: time limit reached',
-    'page_budget' => 'Completed: page limit reached',
+    'page_budget' => 'Stopped: request budget reached',
     'authentication_rejected' => 'Stopped: access requires review',
     _ => 'Scan completed',
   };
@@ -878,7 +886,7 @@ class _ScanScreenState extends State<ScanScreen> {
         }, onEvent: logEvent, onProgress: (n) { if (mounted) setState(() => visited = n); });
       if (mounted) {
         setState(() => crawlResult = data);
-        await record(ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled, files: data.files));
+        await record(ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled, files: data.files, coverage: data.coverage));
       }
     } catch (_) {
       if (mounted) setState(() => error = 'Could not finish the assessment. Check authentication and scope.');
@@ -1221,7 +1229,7 @@ class _ScanScreenState extends State<ScanScreen> {
                     backgroundColor: severityColor(context, severity.name).withValues(alpha: .12),
                     label: Text('${tr(context, severity.name)}: ${uiNumber(context, crawlResult!.pages.expand((page) => page.findings).where((finding) => finding.severity == severity).length)}')),
               ]),
-              Text('${tr(context, 'Accessible files')}: ${uiNumber(context, quickReport!.files.where((f) => f['outcome'] == 'File accessible').length)}'),
+              ScanCoverageView(record: quickReport!),
               if (crawlResult!.pages.any((page) => page.statusCode == 401 || page.statusCode == 403))
                 const LText('Access was not validated. Check authentication and permissions.'),
               const LText('Observations are not proof of vulnerabilities. A clean result is not a security guarantee.'),
@@ -1248,6 +1256,7 @@ class _ScanScreenState extends State<ScanScreen> {
         ],
         if (advanced && crawlResult != null) ...[
           Text('Pages: ${crawlResult!.pages.length} · Failed: ${crawlResult!.failedCount} · ${crawlResult!.stopReason}'),
+          ScanCoverageView(record: ScanRecord.fromPages(crawlResult!.pages, files: crawlResult!.files, coverage: crawlResult!.coverage)),
           for (final page in crawlResult!.pages) ExpansionTile(title: Text(page.url.toString()), subtitle: Text('HTTP ${page.statusCode} · ${page.findings.length} observations'), children: [
             for (final finding in page.findings) FindingTile(id: finding.id, title: finding.title, severity: finding.severity.name, evidence: finding.evidence, remediation: finding.remediation),
           ]),
