@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'auth.dart';
-import 'project.dart';
 import 'project_storage.dart';
 
 /// Persistent project UI preferences only. Never store credentials or cookies.
