@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'localized.dart';
 import 'core/auth.dart';
 import 'core/browser_login_policy.dart';
 import 'core/login_network_capture.dart';
+import 'core/project_storage.dart';
+import 'core/quick_scan_preferences.dart';
 import 'core/scan_policy.dart';
 
 class BrowserLoginResult {
@@ -26,10 +29,12 @@ class BrowserLoginResult {
 
 class BrowserLoginScreen extends StatefulWidget {
   final Uri target, login;
+  final String projectId;
   final bool automatic, allowInsecureHttp;
   final ScanPolicy? policy;
   const BrowserLoginScreen({
     super.key, required this.target, required this.login,
+    this.projectId = '',
     this.automatic = false, this.policy, this.allowInsecureHttp = false,
   });
 
@@ -47,6 +52,26 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
   String? error;
   int progress = 0, selectedEntry = -1;
   TokenDelivery delivery = TokenDelivery.bearer;
+  double networkFraction = 0.45;
+  Future<LoginPanelPreferencesRepository> _panelRepo() async =>
+      LoginPanelPreferencesRepository(PreferencesStorage(await SharedPreferences.getInstance()));
+
+  Future<void> loadPanelSize() async {
+    if (widget.projectId.isEmpty) return;
+    try {
+      final value = await (await _panelRepo()).load(widget.projectId);
+      if (mounted) setState(() => networkFraction = value);
+    } catch (_) { /* keep safe default */ }
+  }
+
+  Future<void> savePanelSize() async {
+    if (widget.projectId.isEmpty) return;
+    try {
+      await (await _panelRepo()).save(widget.projectId, networkFraction);
+    } catch (_) {
+      if (mounted) setState(() => error = 'Network panel size could not be saved.');
+    }
+  }
 
   bool permits(Uri candidate) => BrowserLoginPolicy.allowsNavigation(
     widget.target, widget.login, candidate, widget.policy,
@@ -56,6 +81,7 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
   @override
   void initState() {
     super.initState();
+    loadPanelSize();
     if (widget.automatic) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) start();
@@ -415,8 +441,48 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
         ]),
       ))) else ...[
         if (progress < 100) LinearProgressIndicator(value: progress / 100),
-        Expanded(flex: 6, child: WebViewWidget(controller: controller!)),
-        Expanded(flex: 5, child: networkPane(context)),
+        Expanded(flex: ((1 - networkFraction) * 100).round(),
+          child: WebViewWidget(controller: controller!)),
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onVerticalDragUpdate: (details) {
+            final height = MediaQuery.sizeOf(context).height;
+            if (height < 1) return;
+            setState(() {
+              networkFraction = LoginPanelPreferencesRepository.normalize(
+                networkFraction - details.delta.dy / (height * 0.72));
+            });
+          },
+          onVerticalDragEnd: (_) => unawaited(savePanelSize()),
+          onDoubleTap: () {
+            setState(() => networkFraction = networkFraction > 0.55 ? 0.3 : 0.70);
+            unawaited(savePanelSize());
+          },
+          child: Container(
+            height: 28,
+            width: double.infinity,
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.drag_handle, size: 24),
+              const SizedBox(width: 6),
+              LText('Drag to resize Network',
+                style: Theme.of(context).textTheme.labelSmall),
+              const SizedBox(width: 6),
+              IconButton(
+                tooltip: tr(context, 'Expand or shrink Network'),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minHeight: 24, minWidth: 32),
+                icon: const Icon(Icons.unfold_more, size: 17),
+                onPressed: () {
+                  setState(() => networkFraction = networkFraction > 0.55 ? 0.3 : 0.70);
+                  unawaited(savePanelSize());
+                },
+              ),
+            ]),
+          ),
+        ),
+        Expanded(flex: (networkFraction * 100).round(),
+          child: networkPane(context)),
         SafeArea(top: false, child: Padding(
           padding: const EdgeInsets.all(8),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
