@@ -74,12 +74,24 @@ class _ReportScreenState extends State<ReportScreen> {
             OutlinedButton.icon(onPressed: saving ? null : () => export(ext, report),
               icon: const Icon(Icons.download), label: Text(ext.toUpperCase())),
         ]),
-        if (widget.record.files.isNotEmpty)
+        if (widget.record.files.any((f) => f.containsKey('purchased')))
+          Card(child: ExpansionTile(initiallyExpanded: true, leading: const Icon(Icons.movie_outlined),
+            title: const LText('Movie purchase check'), children: [
+              for (final row in widget.record.files.where((f) => f.containsKey('purchased')))
+                ListTile(title: LText(switch ((row['purchased'], row['outcome'])) {
+                  (false, 'Media bytes returned') => 'Review: unpurchased media returned',
+                  (true, 'Media bytes returned') => 'Purchased media returned',
+                  (false, 'Access denied') => 'Unpurchased media blocked',
+                  (true, 'Access denied') => 'Purchased media blocked',
+                  _ => row['outcome'] as String,
+                }), subtitle: SelectableText("${tr(context, row['purchased'] == true ? 'Purchased movies' : 'Unpurchased paid movies')} · ${row['status'] ?? '—'}\n${row['url']}")),
+            ])),
+        if (widget.record.files.any((f) => !f.containsKey('purchased')))
           Card(child: ExpansionTile(leading: const Icon(Icons.folder_open),
             title: const LText('Linked files'),
-            subtitle: Text('${tr(context, 'Accessible files')}: ${uiNumber(context, widget.record.files.where((f) => f['outcome'] == 'File accessible').length)} / ${uiNumber(context, widget.record.files.length)}'),
+            subtitle: Text('${tr(context, 'Accessible files')}: ${uiNumber(context, widget.record.files.where((f) => f['outcome'] == 'File accessible').length)} / ${uiNumber(context, widget.record.files.where((f) => !f.containsKey('purchased')).length)}'),
             children: [
-              for (final file in widget.record.files)
+              for (final file in widget.record.files.where((f) => !f.containsKey('purchased')))
                 ListTile(title: SelectableText(file['url'] as String, textDirection: TextDirection.ltr),
                   subtitle: Text("${tr(context, file['outcome'] as String)}  ${(file['status'] ?? 0) == 0 ? '' : 'HTTP ${file['status']}'}\n${tr(context, 'Linked from')}: ${file['source']}")),
             ])),

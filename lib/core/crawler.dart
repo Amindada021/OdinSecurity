@@ -60,6 +60,7 @@ class SiteCrawler {
     required bool authorized,
     AuthProfile? auth,
     int maxPages = 12,
+    Map<Uri, bool> moviePurchases = const {},
     ScanPolicy? policy,
     CancellationFlag? cancellation,
     void Function(int count)? onProgress,
@@ -82,7 +83,18 @@ class SiteCrawler {
     final seen = <Uri>{...(resumeFrom?.seen ?? [start])};
     final files = <Uri, Map<String, dynamic>>{};
     final pendingFiles = Queue<Uri>();
-    var fileTurn = false;
+    if (moviePurchases.isNotEmpty && (session == null || !session.expectsCredentials)) {
+      throw StateError('A signed-in session is required for the movie check.');
+    }
+    for (final entry in moviePurchases.entries) {
+      final url = entry.key;
+      if (!LinkDiscovery.safeMediaTarget(start, url) || !project.contains(url) || !settings.permits(url)) {
+        throw StateError('Movie URL outside scan scope.');
+      }
+      files[url] = {'url': url.toString(), 'purchased': entry.value, 'outcome': 'Not checked'};
+      pendingFiles.add(url);
+    }
+    var fileTurn = pendingFiles.isNotEmpty;
     var attempted = resumeFrom?.attempted ?? 0;
     Future<void> checkpoint() async {
       if (onCheckpoint != null) {
@@ -110,13 +122,13 @@ class SiteCrawler {
       await waitForResume();
       if (cancellation?.cancelled == true || elapsed.elapsed >= timeBudget) break;
       if (pendingFiles.isNotEmpty && (fileTurn || queue.isEmpty)) {
-        fileTurn = false;
         final file = pendingFiles.removeFirst();
         final row = files[file]!;
+        fileTurn = pendingFiles.isNotEmpty && moviePurchases.containsKey(pendingFiles.first);
         attempted++;
         onEvent?.call('SCAN', 'Linked files', file.toString());
         try {
-          final check = await checkLinkedFile(file, session);
+          final check = await checkLinkedFile(file, session, movie: moviePurchases.containsKey(file));
           row['status'] = check.status;
           row['outcome'] = check.outcome;
           onEvent?.call('INFO', check.outcome, file.toString());

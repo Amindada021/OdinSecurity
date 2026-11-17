@@ -8,7 +8,11 @@ class LinkDiscovery {
   static final _asset = RegExp(r'\.(png|jpg|jpeg|gif|svg|ico|pdf|zip|rar|mp4|woff2?|css|js)$', caseSensitive: false);
 
   static final _download = RegExp(r'(^|[-_/\.])(export|download)([-_/\.]|$)', caseSensitive: false);
-  static final _file = RegExp(r'\.(pdf|zip|rar|7z|gz|docx?|xlsx?|pptx?|odt|csv|txt|png|jpe?g|gif|svg|webp|ico|mp[34]|wav)$', caseSensitive: false);
+  static final _file = RegExp(r'\.(pdf|zip|rar|7z|gz|docx?|xlsx?|pptx?|odt|csv|txt|png|jpe?g|gif|svg|webp|ico|mp[34]|wav|webm|mkv|mov|m3u8|mpd)$', caseSensitive: false);
+
+  static bool safeMediaTarget(Uri root, Uri url) =>
+      SecurityProject.sameOrigin(root, url) && !url.hasFragment && !url.hasQuery &&
+      url.toString().length <= 2048 && !_unsafe.hasMatch(url.pathSegments.join('/'));
 
   static bool eligible(Uri root, Uri url) {
     if (!SecurityProject.sameOrigin(root, url) || url.hasQuery || url.userInfo.isNotEmpty) return false;
@@ -26,7 +30,7 @@ class LinkDiscovery {
       try { base = page.resolve(href); } on FormatException { return const []; }
       if (!SecurityProject.sameOrigin(page, base)) return const [];
     }
-    for (final anchor in document.querySelectorAll(files ? 'a[href],img[src]' : 'a[href]')) {
+    for (final anchor in document.querySelectorAll(files ? 'a[href],img[src],video[src],video source[src]' : 'a[href]')) {
       final raw = (anchor.attributes['href'] ?? anchor.attributes['src'] ?? '').trim();
       if (raw.isEmpty || raw.startsWith('#') || raw.length > 2048) continue;
       try {
@@ -35,7 +39,7 @@ class LinkDiscovery {
           final path = resolved.pathSegments.join('/');
           if (SecurityProject.sameOrigin(page, resolved) && !resolved.hasQuery &&
               resolved.toString().length <= 2048 && !_unsafe.hasMatch(path) &&
-              (_file.hasMatch(path) || _download.hasMatch(path) || anchor.attributes.containsKey('download'))) {
+              (anchor.localName == 'video' || anchor.localName == 'source' || _file.hasMatch(path) || _download.hasMatch(path) || anchor.attributes.containsKey('download'))) {
             found.add(resolved);
           }
         } else if (eligible(page, resolved) && !_file.hasMatch(resolved.path) && !anchor.attributes.containsKey('download')) {

@@ -45,6 +45,7 @@ import 'core/auth.dart';
 import 'core/auth_vault.dart';
 import 'auth_dialog.dart';
 import 'core/crawler.dart';
+import 'core/discovery.dart';
 import 'core/crawl_checkpoint.dart';
 import 'core/custom_rules.dart';
 import 'core/metadata_program_settings.dart';
@@ -346,6 +347,8 @@ class _ScanScreenState extends State<ScanScreen> {
   ScanRecord? quickReport;
   final quickToken = TextEditingController();
   bool quickTokenEnabled = false, quickLoginEnabled = false, quickApiEnabled = false;
+  final purchasedMovies = TextEditingController();
+  final restrictedMovies = TextEditingController();
   bool quickSaved = false;
   bool quickAllowInsecure = false;
   bool get quickAuthTransportAllowed => target.scheme == 'https' || (target.scheme == 'http' && quickAllowInsecure);
@@ -598,6 +601,8 @@ class _ScanScreenState extends State<ScanScreen> {
   void dispose() {
     cancellation?.cancel();
     quickToken.dispose();
+    purchasedMovies.dispose();
+    restrictedMovies.dispose();
     quickLoginUrl.dispose();
     quickHeader.dispose();
     super.dispose();
@@ -620,6 +625,23 @@ class _ScanScreenState extends State<ScanScreen> {
     terminalLines.clear();
     final settings = policy.quickDefaults;
     final selectedTarget = target;
+    final movies = <Uri, bool>{};
+    if (quickLoginEnabled) {
+      try {
+        for (final group in [(purchasedMovies.text, true), (restrictedMovies.text, false)]) {
+          for (final line in group.$1.split('\n').map((v) => v.trim()).where((v) => v.isNotEmpty)) {
+            final url = SecurityProject.parseTarget(selectedTarget.resolve(line).toString());
+            if (!LinkDiscovery.safeMediaTarget(selectedTarget, url) || !settings.permits(url) ||
+                (movies.containsKey(url) && movies[url] != group.$2)) throw const FormatException();
+            movies[url] = group.$2;
+          }
+        }
+        if (movies.length > settings.maxPages) throw const FormatException();
+      } on FormatException {
+        setState(() => error = 'Check movie URLs, purchase groups and scan limit.');
+        return;
+      }
+    }
     AuthProfile? credential;
     Uri? login;
     final apiLogin = quickLoginEnabled && quickApiEnabled;
@@ -666,7 +688,7 @@ class _ScanScreenState extends State<ScanScreen> {
       }
       // Credential is session-only; no vault writes or advanced checkpoint changes.
       final data = await SiteCrawler().run(widget.project, scanStart,
-        authorized: true, policy: settings, cancellation: flag, auth: credential,
+        authorized: true, policy: settings, cancellation: flag, auth: credential, moviePurchases: movies,
         onEvent: logEvent, onProgress: (count) { if (mounted) setState(() => visited = count); });
       if (!mounted) return;
       final report = ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled, files: data.files);
@@ -791,7 +813,7 @@ class _ScanScreenState extends State<ScanScreen> {
             decoration: const InputDecoration(label: LText('Website URL')),
             items: [for (final u in widget.project.targets) DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))],
             onChanged: busy ? null : (value) => setState(() {
-              target = value!; authorized = false; quickReport = null; crawlResult = null; error = null;
+              target = value!; purchasedMovies.clear(); restrictedMovies.clear(); authorized = false; quickReport = null; crawlResult = null; error = null;
               quickAllowInsecure = false; quickToken.clear(); quickTokenEnabled = false; quickLoginEnabled = false; quickApiEnabled = false; quickSaved = false; selectedProfile = ''; quickLoginUrl.text = '/login'; quickDelivery = TokenDelivery.bearer; quickHeader.text = 'X-API-Key';
             }),
           ),
@@ -866,6 +888,15 @@ class _ScanScreenState extends State<ScanScreen> {
               const Padding(padding: EdgeInsets.only(top: 6), child: LText('Enter a login path or full sign-in URL. The scan target stays unchanged. Cookie-based sessions are supported; token-only APIs require API authentication.')),
             ],
           ],
+          if (quickLoginEnabled) ExpansionTile(
+            leading: const Icon(Icons.movie_outlined), title: const LText('Movie purchase check'),
+            children: [
+              Text(tr(context, 'Enter full-feature media URLs, one per line. Exclude trailers and free titles.')),
+              for (final group in [(purchasedMovies, 'Purchased movies'), (restrictedMovies, 'Unpurchased paid movies')])
+                Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: TextField(
+                  controller: group.$1, minLines: 1, maxLines: 5, textDirection: TextDirection.ltr,
+                  decoration: InputDecoration(label: LText(group.$2)))),
+            ]),
           if (quickLoginEnabled && quickTokenEnabled) ...[
             DropdownButtonFormField<TokenDelivery>(
               initialValue: quickDelivery, isExpanded: true,

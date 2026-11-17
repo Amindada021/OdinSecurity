@@ -19,6 +19,17 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Movie purchase check': 'بررسی دسترسی فیلم‌های پولی',
+  'Check movie URLs, purchase groups and scan limit.': 'آدرس‌های رسانه باید در مبدأ فعلی، بدون پارامتر و در محدودهٔ اسکن باشند. هر فیلم را فقط در یک گروه قرار دهید و سقف تعداد درخواست‌ها را رعایت کنید.',
+  'Enter full-feature media URLs, one per line. Exclude trailers and free titles.': 'لینک مستقیم رسانهٔ فیلم کامل را در هر خط وارد کنید. تریلر و فیلم رایگان را وارد نکنید.',
+  'Purchased movies': 'فیلم‌های خریداری‌شده',
+  'Unpurchased paid movies': 'فیلم‌های پولی خریداری‌نشده',
+  'Playlist returned': 'فهرست پخش دریافت شد؛ دسترسی به فیلم نامشخص است',
+  'Media bytes returned': 'بخشی از رسانه دریافت شد',
+  'Review: unpurchased media returned': 'نیازمند بررسی: دریافت رسانهٔ خریداری‌نشده',
+  'Purchased media returned': 'رسانهٔ خریداری‌شده پاسخ داد',
+  'Unpurchased media blocked': 'دسترسی به رسانهٔ خریداری‌نشده رد شد',
+  'Purchased media blocked': 'دسترسی به رسانهٔ خریداری‌شده رد شد',
   'Linked files': 'فایل‌های پیوندشده',
   'Accessible files': 'فایل‌های قابل‌دسترسی',
   'File accessible': 'فایل قابل‌دسترسی است',

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'auth.dart';
 
 /// The caller checks scope, policy and the shared crawl budget before each GET.
-Future<({int status, String outcome})> checkLinkedFile(Uri url, AuthSession? session) async {
+Future<({int status, String outcome})> checkLinkedFile(Uri url, AuthSession? session, {bool movie = false}) async {
   final client = HttpClient()..connectionTimeout = const Duration(seconds: 8);
   Future<({int status, String outcome})> read() async {
     final headers = session?.headersFor(url) ?? const <String, String>{};
@@ -27,6 +27,16 @@ Future<({int status, String outcome})> checkLinkedFile(Uri url, AuthSession? ses
     final sample = latin1.decode(bytes).trimLeft().toLowerCase();
     final looksLikeError = sample.startsWith('<!doctype html') || sample.startsWith('<html') ||
         sample.startsWith('{') || sample.startsWith('[') || type.contains('html') || type.contains('json');
+    if (movie) {
+      if (looksLikeError) return (status: status, outcome: 'Unconfirmed');
+      if (sample.startsWith('#extm3u') || sample.contains('<mpd')) {
+        return (status: status, outcome: 'Playlist returned');
+      }
+      final iso = bytes.length >= 12 && latin1.decode(bytes.sublist(4, 8)) == 'ftyp';
+      final ebml = bytes.length >= 4 && bytes[0] == 0x1a && bytes[1] == 0x45 && bytes[2] == 0xdf && bytes[3] == 0xa3;
+      final segment = bytes.length > 376 && bytes[0] == 0x47 && bytes[188] == 0x47 && bytes[376] == 0x47;
+      return (status: status, outcome: iso || ebml || segment ? 'Media bytes returned' : 'Unconfirmed');
+    }
     final fileType = type.startsWith('image/') || type.startsWith('audio/') || type.startsWith('video/') ||
         const {'application/pdf', 'application/zip', 'application/octet-stream', 'text/csv',
           'application/msword', 'application/gzip', 'application/vnd.rar', 'application/x-7z-compressed'}.contains(type) ||
