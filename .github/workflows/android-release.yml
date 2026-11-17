@@ -1,0 +1,94 @@
+name: OdinSecurity Android Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tool/android-release-request.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: odinsecurity-android-release
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Generate Android platform scaffold
+        run: |
+          flutter create --platforms=android --project-name odin_security --org com.odin --no-pub .
+          dart run tool/prepare_android.dart
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          FULL="$(awk '/^version:/ { print $2 }' pubspec.yaml)"
+          VERSION="${FULL%%+*}"
+          BUILD="${FULL##*+}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || [[ ! "$BUILD" =~ ^[0-9]+$ ]]; then
+            echo "::error::Invalid pubspec version (expected x.y.z+build)"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Static analysis
+        run: flutter analyze --no-fatal-infos
+      - name: Unit and widget tests
+        run: flutter test
+      - name: Build optimized release APK
+        run: flutter build apk --release
+      - name: Prepare APK and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp build/app/outputs/flutter-apk/app-release.apk OdinSecurity.apk
+          sha256sum OdinSecurity.apk > OdinSecurity.apk.sha256
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OdinSecurity-release
+          path: |
+            OdinSecurity.apk
+            OdinSecurity.apk.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish GitHub preview release
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::notice::Release $TAG already exists. Bump pubspec version for a new distribution."
+            exit 0
+          fi
+          cat > release-notes.md <<'EOF'
+          Optimized Android APK of OdinSecurity for authorized web security assessment.
+
+          Download OdinSecurity.apk directly and verify its SHA-256 using the accompanying checksum.
+          Static analysis and automated tests passed before publication.
+
+          Preview distribution: the generated Flutter Android project uses the CI-local debug signing identity for this release-mode APK. A persistent signing key is needed for reliable in-place upgrades; uninstalling an older build can erase locally stored data.
+          EOF
+          gh release create "$TAG" OdinSecurity.apk OdinSecurity.apk.sha256 \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "OdinSecurity $TAG" --notes-file release-notes.md --prerelease
