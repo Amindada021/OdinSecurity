@@ -17,6 +17,13 @@ class ScanPolicy {
     }
   }
 
+  /// Quick scanning uses conservative defaults without relaxing saved restrictions.
+  ScanPolicy get quickDefaults => ScanPolicy(
+    maxPages: maxPages < 12 ? maxPages : 12,
+    delayMs: delayMs > 1000 ? delayMs : 1000,
+    excludedPaths: excludedPaths,
+  );
+
   bool permits(Uri uri) {
     // Compare decoded path segments conservatively, including encoded separators.
     final path = '/${uri.pathSegments.join('/')}';
