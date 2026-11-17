@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:file_picker/file_picker.dart';
+import 'core/report_file_saver.dart';
 import 'package:flutter/material.dart';
 import 'localized.dart';
 import 'finding_cards.dart';
@@ -30,11 +30,11 @@ class _ReportScreenState extends State<ReportScreen> {
         'html' => Uint8List.fromList(utf8.encode(report.exportHtml())),
         _ => Uint8List.fromList(utf8.encode(widget.record.exportJson())),
       };
-      final path = await FilePicker.platform.saveFile(
+      final saved = await ReportFileSaver.save(
         fileName: 'OdinSecurity-${widget.record.finishedAt.millisecondsSinceEpoch}.$extension',
-        bytes: bytes, type: FileType.custom, allowedExtensions: [extension],
+        extension: extension, bytes: bytes,
       );
-      if (mounted && path != null) {
+      if (mounted && saved) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: LText('Report saved.')));
       }
     } catch (_) {
