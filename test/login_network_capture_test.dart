@@ -48,7 +48,7 @@ void main() {
     expect(LoginNetworkResponse.fromBridge('{not-json',
       login: login, target: target), isNull);
     expect(LoginNetworkResponse.fromBridge(
-      event('https://api.example.test/v1/login', 'x' * 35000),
+      event('https://api.example.test/v1/login', 'x'.padRight(35000, 'x')),
       login: login, target: target), isNull);
     final item = LoginNetworkResponse.fromBridge(
       event('https://api.example.test/v1/login', '{}', source: 'xhr'),
