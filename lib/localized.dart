@@ -19,6 +19,9 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  "Enter a permitted HTTPS sign-in URL.": "آدرس HTTPS معتبر و مجاز برای ورود وارد کنید.",
+  "Enter a login path or full HTTPS sign-in URL. It is allowed for this browser session only; the scan target stays unchanged. Cookie-based sessions are supported; token-only APIs require API authentication.": "مسیر یا آدرس کامل HTTPS ورود را وارد کنید؛ فقط برای همین نشست مرورگر مجاز است و مقصد اسکن تغییر نمی‌کند. نشست کوکی پشتیبانی می‌شود؛ APIهای فقط توکنی به احراز هویت API نیاز دارند.",
+  "I am authorized to access the sign-in site and assess the selected target.": "مجوز ورود به سایت و بررسی مقصد انتخاب‌شده را دارم.",
   "Public website": "لندینگ (عمومی)",
   "After sign-in": "پس از ورود",
   "Scan the landing page and public links without signing in.": "صفحه لندینگ و لینک‌های عمومی بدون ورود بررسی می‌شوند.",

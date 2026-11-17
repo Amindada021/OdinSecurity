@@ -7,16 +7,17 @@ class BrowserLoginPolicy {
       target.scheme == 'https' && candidate.scheme == 'https' &&
       candidate.userInfo.isEmpty && SecurityProject.sameOrigin(target, candidate);
 
-  /// A login can use a second explicitly registered HTTPS origin. Session
-  /// cookies are still read only for the selected assessment URL.
+  /// The user may enter a separate HTTPS sign-in origin for this run.
+  /// It is browser-only: never expand the project's assessment scope or
+  /// read session cookies from anything other than the selected target.
   static Uri loginUrl(SecurityProject project, Uri target, String raw, ScanPolicy policy) {
     final value = raw.trim();
     final uri = SecurityProject.parseTarget(value.startsWith('/') && !value.startsWith('//')
         ? target.resolve(value).toString() : value);
     if (target.scheme != 'https' || uri.scheme != 'https' ||
-        !project.contains(target) || !project.contains(uri) ||
+        !project.contains(target) ||
         !policy.permits(target) || !policy.permits(uri)) {
-      throw const FormatException('Sign-in URL must be a registered, permitted HTTPS address.');
+      throw const FormatException('Enter a permitted HTTPS sign-in URL.');
     }
     return uri;
   }

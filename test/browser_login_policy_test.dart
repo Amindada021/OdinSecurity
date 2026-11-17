@@ -12,17 +12,23 @@ void main() {
       expect(BrowserLoginPolicy.allows(target, Uri.parse(url)), isFalse);
     }
   });
-  test('automatic login accepts only registered HTTPS origins and permitted paths', () {
+  test('automatic login admits the explicit browser-only HTTPS origin without changing assessment scope', () {
     final project = SecurityProject(name: 'Example', url: 'https://example.test',
-      additionalUrls: ['https://login.example.test']);
+      additionalUrls: ['https://api.example.test']);
     final policy = ScanPolicy(excludedPaths: ['/blocked']);
     final start = project.startUrl;
     expect(BrowserLoginPolicy.loginUrl(project, start, '/login', policy), Uri.parse('https://example.test/login'));
     final login = BrowserLoginPolicy.loginUrl(project, start, 'https://login.example.test/sign-in', policy);
+    expect(login, Uri.parse('https://login.example.test/sign-in'));
+    expect(project.contains(login), isFalse);
     expect(BrowserLoginPolicy.allowsNavigation(start, login, login, policy), isTrue);
+    expect(BrowserLoginPolicy.assessmentStart(start, login, policy), start);
+    final api = project.additionalUrls.single;
+    expect(BrowserLoginPolicy.loginUrl(project, api, login.toString(), policy), login);
+    expect(() => BrowserLoginPolicy.loginUrl(project, login, '/sign-in', policy), throwsFormatException);
     expect(BrowserLoginPolicy.allowsNavigation(start, login, Uri.parse('https://outside.test'), policy), isFalse);
     expect(BrowserLoginPolicy.allowsNavigation(start, login, Uri.parse('https://example.test/blocked'), policy), isFalse);
-    for (final raw in ['https://outside.test/login', 'http://example.test/login', '/blocked', '//outside.test/login']) {
+    for (final raw in ['http://example.test/login', '/blocked', '//outside.test/login', 'https://user@outside.test/login', 'https://outside.test/login?code=secret', 'https://outside.test/blocked']) {
       expect(() => BrowserLoginPolicy.loginUrl(project, start, raw, policy), throwsFormatException);
     }
   });

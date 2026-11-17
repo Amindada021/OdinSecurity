@@ -552,6 +552,16 @@ class _ScanScreenState extends State<ScanScreen> {
     super.dispose();
   }
 
+  String? get quickLoginError {
+    if (!quickLoginEnabled || quickTokenEnabled || target.scheme != 'https') return null;
+    try {
+      BrowserLoginPolicy.loginUrl(widget.project, target, quickLoginUrl.text, policy.quickDefaults);
+      return null;
+    } on FormatException {
+      return 'Enter a permitted HTTPS sign-in URL.';
+    }
+  }
+
   Future<void> quickScan() async {
     if (advanced || !authorized || busy || loadingPolicy || loadingHistory ||
         policyError != null || !policy.permits(target)) return;
@@ -572,7 +582,7 @@ class _ScanScreenState extends State<ScanScreen> {
     } on FormatException {
       setState(() => error = quickTokenEnabled
           ? 'Enter a valid Bearer token for an HTTPS target.'
-          : 'Sign-in URL must be a registered, permitted HTTPS address.');
+          : 'Enter a permitted HTTPS sign-in URL.');
       return;
     }
     quickToken.clear();
@@ -751,11 +761,12 @@ class _ScanScreenState extends State<ScanScreen> {
               TextField(
                 controller: quickLoginUrl, enabled: !busy && target.scheme == 'https',
                 keyboardType: TextInputType.url, autocorrect: false,
-                decoration: const InputDecoration(prefixIcon: Icon(Icons.login),
-                  label: LText('Sign-in page URL'), hintText: '/login'),
+                decoration: InputDecoration(prefixIcon: const Icon(Icons.login),
+                  label: const LText('Sign-in page URL'), hintText: '/login',
+                  errorText: quickLoginError == null ? null : tr(context, quickLoginError!)),
                 onChanged: (_) => setState(() { authorized = false; error = null; }),
               ),
-              const Padding(padding: EdgeInsets.only(top: 6), child: LText('Enter a login path or a registered HTTPS sign-in URL. Cookie-based sessions are supported; token-only APIs require API authentication.')),
+              const Padding(padding: EdgeInsets.only(top: 6), child: LText('Enter a login path or full HTTPS sign-in URL. It is allowed for this browser session only; the scan target stays unchanged. Cookie-based sessions are supported; token-only APIs require API authentication.')),
             ],
           ],
           if (quickLoginEnabled && quickTokenEnabled) ...[
@@ -772,16 +783,22 @@ class _ScanScreenState extends State<ScanScreen> {
           ],
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
-            title: const LText('I own this target or have permission to assess it.'),
+            title: LText(quickLoginEnabled && !quickTokenEnabled
+                ? 'I am authorized to access the sign-in site and assess the selected target.'
+                : 'I own this target or have permission to assess it.'),
             value: authorized,
             onChanged: busy ? null : (value) => setState(() => authorized = value ?? false),
           ),
           FilledButton.icon(
             onPressed: authorized && !busy && !loadingPolicy && !loadingHistory && policyError == null && policy.permits(target) &&
                 (!quickLoginEnabled || (target.scheme == 'https' && (quickTokenEnabled
-                    ? quickToken.text.trim().isNotEmpty : quickLoginUrl.text.trim().isNotEmpty))) ? quickScan : null,
+                    ? quickToken.text.trim().isNotEmpty : quickLoginError == null))) ? quickScan : null,
             icon: Icon(quickLoginEnabled && !quickTokenEnabled ? Icons.login : Icons.play_arrow),
             label: LText(quickLoginEnabled && !quickTokenEnabled ? 'Open sign-in and scan' : 'Start automatic scan'),
+          ),
+          if (error != null) Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: LText(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
           ExpansionTile(
             title: const LText('Default settings'),
@@ -922,7 +939,7 @@ class _ScanScreenState extends State<ScanScreen> {
             for (final finding in page.findings) FindingTile(id: finding.id, title: finding.title, severity: finding.severity.name, evidence: finding.evidence, remediation: finding.remediation),
           ]),
         ],
-        if (error != null) LText(error!),
+        if (advanced && error != null) LText(error!),
         const Divider(),
         const LText('Scan history'),
         if (loadingHistory) const LinearProgressIndicator(),

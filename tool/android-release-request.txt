@@ -1,3 +1,3 @@
 Explicit Android release request
-Version: 0.78.0+81
-Automatic public or interactive browser sign-in scan
+Version: 0.78.1+82
+Allow explicit browser-only sign-in origin and visible validation

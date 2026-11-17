@@ -43,6 +43,34 @@ void main() {
     expect(find.text('Bearer token'), findsNothing);
   });
 
+  testWidgets('explicit separate login origin can be entered without adding project target', (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+    final project = SecurityProject(name: 'Example', url: 'https://example.test',
+        additionalUrls: ['https://api.example.test']);
+    await tester.pumpWidget(MaterialApp(home: ScanScreen(project: project)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('After sign-in'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'https://panel.example.test/login');
+    await tester.pumpAndSettle();
+    final consent = find.text('I am authorized to access the sign-in site and assess the selected target.');
+    await tester.ensureVisible(consent);
+    await tester.tap(consent);
+    await tester.pumpAndSettle();
+    final button = find.ancestor(of: find.text('Open sign-in and scan'),
+      matching: find.byWidgetPredicate((widget) => widget is FilledButton));
+    expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
+    expect(project.targets.length, 2);
+    await tester.enterText(find.byType(TextField), 'http://panel.example.test/login');
+    await tester.pumpAndSettle();
+    expect(find.text('Enter a permitted HTTPS sign-in URL.'), findsOneWidget);
+    expect(tester.widget<FilledButton>(button).onPressed, isNull);
+  });
+
   testWidgets('project list shows branded empty state', (tester) async {
     await tester.pumpWidget(OdinSecurityApp(repository: ProjectRepository(MemoryStorage())));
     await tester.pumpAndSettle();
