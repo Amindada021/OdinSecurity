@@ -113,6 +113,8 @@ void main() {
     final next = root.resolve('/next');
     final saved = CrawlCheckpoint(root, '', [root, next], [next], 1, requestCount: 4);
     expect(CrawlCheckpoint.fromJson(saved.toJson()).requestCount, 4);
+    // Inapplicable cookie paths are processed without sending a request.
+    expect(CrawlCheckpoint(root, '', [root, next], [next], 1, requestCount: 0).requestCount, 0);
   });
 
   test('report roundtrips coverage and escapes file inventory', () {

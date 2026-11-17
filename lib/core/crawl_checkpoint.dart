@@ -13,7 +13,7 @@ class CrawlCheckpoint {
   final int attempted, requestCount;
   CrawlCheckpoint(this.start, this.identity, Iterable<Uri> seen, Iterable<Uri> pending, this.attempted, {int? requestCount})
       : requestCount = requestCount ?? attempted, seen = List.unmodifiable(seen), pending = List.unmodifiable(pending) {
-    if (this.requestCount < attempted || this.requestCount > 30 || this.seen.length > 30 || this.pending.length > 30 || attempted < 0 ||
+    if (this.requestCount < 0 || this.requestCount > 30 || this.seen.length > 30 || this.pending.length > 30 || attempted < 0 ||
         attempted + this.pending.length != this.seen.length ||
         this.seen.toSet().length != this.seen.length || this.pending.toSet().length != this.pending.length ||
         !this.seen.contains(start) || !this.seen.toSet().containsAll(this.pending) ||
