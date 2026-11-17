@@ -17,11 +17,14 @@ class BrowserLoginResult {
   final String cookieHeader, cookiePath;
   final String? token;
   final TokenDelivery tokenDelivery;
+  final bool rememberCredential;
 
   const BrowserLoginResult.cookie(this.start, this.cookieHeader, this.cookiePath)
-      : token = null, tokenDelivery = TokenDelivery.bearer;
+      : token = null, tokenDelivery = TokenDelivery.bearer,
+        rememberCredential = false;
 
-  const BrowserLoginResult.token(this.start, String value, this.tokenDelivery)
+  const BrowserLoginResult.token(this.start, String value, this.tokenDelivery,
+      {this.rememberCredential = false})
       : token = value, cookieHeader = '', cookiePath = '/';
 
   bool get usesToken => token != null;
@@ -52,6 +55,7 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
   String? error;
   int progress = 0, selectedEntry = -1;
   TokenDelivery delivery = TokenDelivery.bearer;
+  bool rememberToken = false;
   double networkFraction = 0.45;
   Future<LoginPanelPreferencesRepository> _panelRepo() async =>
       LoginPanelPreferencesRepository(PreferencesStorage(await SharedPreferences.getInstance()));
@@ -230,7 +234,8 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
       if (enteredToken.isNotEmpty) {
         // Validate before leaving the browser; never reveal or log the token.
         Authenticator.tokenHeaders(enteredToken, delivery);
-        final captured = BrowserLoginResult.token(scanStart, enteredToken, delivery);
+        final captured = BrowserLoginResult.token(scanStart, enteredToken, delivery,
+          rememberCredential: widget.automatic && rememberToken && widget.target.scheme == 'https');
         await clearSession();
         if (mounted) Navigator.pop(context, captured);
         return;
@@ -396,6 +401,14 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
               ),
               onChanged: (_) => setState(() => error = null),
             ),
+            if (tokenField.text.isNotEmpty && widget.automatic && widget.target.scheme == 'https')
+              CheckboxListTile(
+                dense: true, contentPadding: EdgeInsets.zero,
+                title: const LText('Remember selected token securely for this project'),
+                subtitle: const LText('Optional; saved in encrypted storage. Expired tokens must be replaced.'),
+                value: rememberToken,
+                onChanged: (value) => setState(() => rememberToken = value ?? false),
+              ),
             Row(children: [
               Expanded(child: DropdownButtonFormField<TokenDelivery>(
                 initialValue: delivery,
@@ -441,6 +454,18 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
         ]),
       ))) else ...[
         if (progress < 100) LinearProgressIndicator(value: progress / 100),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Row(children: [
+            const Icon(Icons.shield_outlined, size: 17),
+            const SizedBox(width: 6),
+            Expanded(child: Text(
+              '${tr(context, 'Scanning')}: ${widget.target.host}  ·  ${tr(context, 'Signing in')}: ${widget.login.host}',
+              maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium,
+            )),
+          ]),
+        ),
         Expanded(flex: ((1 - networkFraction) * 100).round(),
           child: WebViewWidget(controller: controller!)),
         GestureDetector(
