@@ -6,6 +6,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import 'localized.dart';
 import 'core/auth.dart';
+import 'core/project.dart';
+import 'core/discovery.dart';
 import 'core/browser_login_policy.dart';
 import 'core/login_network_capture.dart';
 import 'core/project_storage.dart';
@@ -18,13 +20,16 @@ class BrowserLoginResult {
   final String? token;
   final TokenDelivery tokenDelivery;
   final bool rememberCredential;
+  final List<Uri> observedRoutes, observedFiles, observedQueryFilePaths;
+  final String validationUrl, validationMarker;
 
-  const BrowserLoginResult.cookie(this.start, this.cookieHeader, this.cookiePath)
+  const BrowserLoginResult.cookie(this.start, this.cookieHeader, this.cookiePath,
+      {this.observedRoutes = const [], this.observedFiles = const [], this.observedQueryFilePaths = const [], this.validationUrl = '', this.validationMarker = ''})
       : token = null, tokenDelivery = TokenDelivery.bearer,
         rememberCredential = false;
 
   const BrowserLoginResult.token(this.start, String value, this.tokenDelivery,
-      {this.rememberCredential = false})
+      {this.rememberCredential = false, this.observedRoutes = const [], this.observedFiles = const [], this.observedQueryFilePaths = const [], this.validationUrl = '', this.validationMarker = ''})
       : token = value, cookieHeader = '', cookiePath = '/';
 
   bool get usesToken => token != null;
@@ -49,6 +54,7 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
   WebViewController? controller;
   final cookies = WebViewCookieManager();
   final tokenField = TextEditingController();
+  final protectedField = TextEditingController(), markerField = TextEditingController();
   final network = <LoginNetworkResponse>[];
   bool busy = false, loaded = false, cleaned = false;
   bool hasTargetCookies = false, networkHookInstalled = false, showResponse = false;
@@ -134,6 +140,8 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
   void dispose() {
     unawaited(clearSession());
     tokenField.dispose();
+    protectedField.dispose();
+    markerField.dispose();
     super.dispose();
   }
 
@@ -230,12 +238,34 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
               widget.target, current, widget.policy,
               allowInsecureHttp: widget.allowInsecureHttp)
           : widget.target;
+      final protectedRaw = protectedField.text.trim();
+      final verification = protectedRaw.isEmpty ? '' : widget.target.resolve(protectedRaw).toString();
+      if (verification.isNotEmpty) {
+        final url = Uri.tryParse(verification);
+        if (url == null || !BrowserLoginPolicy.allows(widget.target, url, allowInsecureHttp: widget.allowInsecureHttp) ||
+            (widget.policy != null && !widget.policy!.permits(url))) throw const FormatException('Invalid protected URL.');
+        // Enforce the same queryless read-only request rule as the crawler.
+        SecurityProject.parseTarget(verification);
+        if (!LinkDiscovery.safeMediaTarget(widget.target, url)) throw const FormatException('Invalid protected URL.');
+      }
+      var observed = (routes: <Uri>[], files: <Uri>[], queryFiles: <Uri>[]);
+      if (BrowserLoginPolicy.allows(widget.target, current, allowInsecureHttp: widget.allowInsecureHttp)) {
+        try {
+          final snapshot = await web.runJavaScriptReturningResult(BrowserLoginPolicy.observedSnapshot)
+              .timeout(const Duration(seconds: 5));
+          if (await web.currentUrl() == current.toString()) {
+            observed = BrowserLoginPolicy.observedUrls(snapshot, widget.target, current, widget.policy);
+          }
+        } catch (_) { /* HTML traversal remains available; report can identify missing rendered routes. */ }
+      }
       final enteredToken = tokenField.text.trim();
       if (enteredToken.isNotEmpty) {
         // Validate before leaving the browser; never reveal or log the token.
         Authenticator.tokenHeaders(enteredToken, delivery);
         final captured = BrowserLoginResult.token(scanStart, enteredToken, delivery,
-          rememberCredential: widget.automatic && rememberToken && widget.target.scheme == 'https');
+          rememberCredential: widget.automatic && rememberToken && widget.target.scheme == 'https',
+          observedRoutes: observed.routes, observedFiles: observed.files, observedQueryFilePaths: observed.queryFiles,
+          validationUrl: verification, validationMarker: markerField.text);
         await clearSession();
         if (mounted) Navigator.pop(context, captured);
         return;
@@ -254,12 +284,14 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
           cookiePath = widget.target.path.isEmpty ? '/' : widget.target.path;
         }
       }
-      final captured = BrowserLoginResult.cookie(scanStart, header, cookiePath);
+      final captured = BrowserLoginResult.cookie(scanStart, header, cookiePath,
+        observedRoutes: observed.routes, observedFiles: observed.files, observedQueryFilePaths: observed.queryFiles,
+        validationUrl: verification, validationMarker: markerField.text);
       await clearSession();
       if (mounted) Navigator.pop(context, captured);
     } catch (_) {
       if (mounted) {
-        setState(() => error = 'No usable cookie for the scan target. Select a token from a Network response or paste one below.');
+        setState(() => error = 'Check the protected URL and credential. Use a cookie for the scan target or select a token.');
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -378,6 +410,13 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 2, 12, 4),
           child: Column(children: [
+            Row(children: [
+              Expanded(child: TextField(controller: protectedField, autocorrect: false,
+                decoration: const InputDecoration(isDense: true, label: LText('Protected HTTPS URL (optional)')))),
+              const SizedBox(width: 8),
+              Expanded(child: TextField(controller: markerField, obscureText: true,
+                decoration: const InputDecoration(isDense: true, label: LText('Expected response marker (optional)')))),
+            ]),
             TextField(
               controller: tokenField,
               obscureText: true,

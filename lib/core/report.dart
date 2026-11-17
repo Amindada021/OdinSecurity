@@ -31,6 +31,44 @@ class ReportSummary {
 
   String get overview => 'Pages: ${record.pages.length} | Observations: ${record.observationCount} | Failed: ${record.failedCount} | Cancelled: ${record.cancelled}';
 
+  bool get incomplete => record.coverage['incomplete'] == true ||
+      record.failedCount > 0 || record.cancelled ||
+      record.pages.any((p) => p['bodyTruncated'] == true || p['redirectNotFollowed'] == true);
+
+  Map<String, Object> get coverageCounts => {
+    if (record.coverage.isNotEmpty) ...{
+      'Discovered URLs': record.coverage['discovered'] ?? 0,
+      'Checked URLs': record.coverage['checked'] ?? 0,
+      'Requests used': record.coverage['requests'] ?? 0,
+      'Unchecked URLs': record.coverage['unchecked'] ?? 0,
+    },
+    'Truncated responses': record.coverage['truncated'] as int? ?? record.pages.where((p) => p['bodyTruncated'] == true).length,
+    'Discovered media pages': record.pages.where((p) => p['moviePage'] == true).length,
+    'Linked file and media URLs': record.files.length,
+    'File metadata available': record.files.where((f) => f['outcome'] == 'File metadata available').length,
+    'Accessible files': record.files.where((f) => f['outcome'] == 'File accessible').length,
+    'Media samples returned': record.files.where((f) => f['outcome'] == 'Media bytes returned').length,
+    'Excluded HTML references': (record.coverage['htmlExclusions'] as Map? ?? const {}).values.fold<int>(0, (sum, n) => sum + (n as int)),
+    'Unchecked files': record.files.where((f) => (f['outcome'] == 'Not checked' || f['queryRedacted'] == true)).length,
+  };
+
+  List<String> get coverageLines => [
+    if (incomplete) 'Scan incomplete; site security has not been established.',
+    for (final entry in coverageCounts.entries) '${entry.key}: ${entry.value}',
+    'Authentication: ${record.coverage['authentication'] ?? 'Session not independently verified'}',
+    if (record.coverage['stopReason'] != null) 'Stop reason: ${record.coverage['stopReason']}',
+    if (record.coverage['retryAfter'] != null) 'Retry-After: ${record.coverage['retryAfter']}',
+    for (final entry in (record.coverage['skipped'] as Map? ?? const {}).entries)
+      'Skipped (${entry.key}): ${entry.value}',
+    for (final entry in (record.coverage['htmlExclusions'] as Map? ?? const {}).entries)
+      'Excluded HTML references (${entry.key}): ${entry.value}',
+    'Discovered URLs count candidate inventory; HTML exclusions count unique references per response.',
+    ...(record.coverage['warnings'] as List? ?? const []).cast<String>(),
+    'Inventory covers observed queryless URLs only; signed/query URLs are not replayed.',
+    'Media pages are identified by observed media elements or links; this is not a complete movie catalog.',
+    'HEAD metadata and media samples do not establish complete download or playback access.',
+  ];
+
   Set<String> get comparableUrls {
     final groups = <String, List<Map<String, dynamic>>>{};
     for (final page in record.pages) {
@@ -42,6 +80,7 @@ class ReportSummary {
             (entry.value.single['statusCode'] as int) >= 200 &&
             (entry.value.single['statusCode'] as int) < 300 &&
             entry.value.single['bodyTruncated'] == false &&
+            entry.value.single['loginPage'] != true &&
             entry.value.single['redirectNotFollowed'] == false)
           entry.key,
     };
@@ -83,7 +122,13 @@ class ReportSummary {
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
 <title>Odin Security Report</title><style>body{font:16px system-ui,sans-serif;margin:2rem;max-width:1000px;color:#16232d}h1,h2{color:#08675a}article{border:1px solid #cbd5e1;padding:1rem;margin:1rem 0;overflow-wrap:anywhere}p{white-space:pre-wrap}small{color:#475569}</style></head><body><h1>Odin Security Report</h1>''');
     out.write('<p>${esc(record.finishedAt.toIso8601String())}</p><p>${esc(overview)}</p>');
-    out.write('<p>${esc(limitation)}</p><h2>Severity summary</h2><ul>');
+    out.write('<p>${esc(limitation)}</p><h2>Scan coverage</h2>');
+    for (final line in coverageLines) { out.write('<p>${esc(line)}</p>'); }
+    out.write('<h2>Linked files and media samples</h2>');
+    for (final file in record.files) {
+      out.write('<article><p>${esc(file['url'])}</p><p>${esc(file['outcome'])}; HTTP ${esc(file['status'])}; access: ${esc(file['access'] ?? 'Unknown')}; purchased: ${esc(file['purchased'])}</p><p>Full playback not verified.</p></article>');
+    }
+    out.write('<h2>Severity summary</h2><ul>');
     for (final entry in counts.entries) {
       out.write('<li>${esc(entry.key)}: ${entry.value}</li>');
     }
@@ -123,6 +168,13 @@ class ReportSummary {
     line(record.finishedAt.toIso8601String());
     line(overview);
     line(limitation);
+    line('Scan coverage', heading: true);
+    for (final entry in coverageLines) { line(entry); }
+    line('Linked files and media samples', heading: true);
+    for (final file in record.files) {
+      line(file['url']);
+      line("${file['outcome']}; HTTP ${file['status']}; access: ${file['access'] ?? 'Unknown'}; purchased: ${file['purchased']}; full playback not verified");
+    }
     line('Severity summary', heading: true);
     line(counts.entries.map((e) => '${e.key}: ${e.value}').join(' | '));
     line('Pages and technology observations', heading: true);

@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:html/parser.dart' as html;
 
 import 'project.dart';
+import 'discovery.dart';
 import 'oauth_grant.dart';
 
 enum AuthMode { none, basic, bearer, cookie, apiKey, jsonLogin, formLogin }
@@ -25,11 +27,11 @@ class AuthProfile {
     if (oauth != null && (mode != AuthMode.bearer || tokenDelivery != TokenDelivery.bearer)) throw const FormatException('OAuth requires a bearer profile.');
     if (name.trim().isEmpty || name.length > 80) throw const FormatException('Enter a profile name (1–80 characters).');
     if (validationUrl.isNotEmpty || validationMarker.isNotEmpty) {
-      if (mode == AuthMode.none || validationUrl.isEmpty || validationMarker.isEmpty || validationMarker.length > 512) {
-        throw const FormatException('Provide both a validation URL and an expected response marker.');
+      if (mode == AuthMode.none || validationUrl.isEmpty || validationMarker.length > 512) {
+        throw const FormatException('Provide a validation URL when using an expected response marker.');
       }
       final verification = SecurityProject.parseTarget(validationUrl);
-      if (!SecurityProject.sameOrigin(target, verification) || (verification.scheme != 'https' && !allowInsecureHttp)) {
+      if (!LinkDiscovery.safeMediaTarget(target, verification) || (verification.scheme != 'https' && !allowInsecureHttp)) {
         throw const FormatException('Validation URL must be on the credential HTTPS origin.');
       }
     }
@@ -93,7 +95,17 @@ class AuthProfile {
   );
 }
 
+class AuthenticationException implements Exception {
+  final String reason;
+  final String? retryAfter;
+  const AuthenticationException(this.reason, {this.retryAfter});
+  @override
+  String toString() => reason;
+}
+
 class AuthSession {
+  // Credential presence never establishes an authenticated identity.
+  String verification = 'Session not independently verified';
   final Uri origin;
   final Map<String, String> _headers;
   final List<Cookie> _cookies;
@@ -133,6 +145,34 @@ class AuthSession {
 }
 
 class Authenticator {
+  static bool looksLikeLogin(String body) {
+    final document = html.parse(body);
+    final fields = document.querySelectorAll('input[type="password"]');
+    final title = document.querySelector('title')?.text ?? '';
+    final loginTitle = RegExp(r'login|sign[ -]?in|ورود', caseSensitive: false).hasMatch(title);
+    if (fields.isEmpty) return loginTitle && document.querySelector('form') != null;
+    // Many signed-in pages retain a hidden global sign-in dialog. Its presence
+    // alone is not evidence that the document is a login response.
+    final embedded = document.querySelectorAll(
+      'dialog input[type="password"],[hidden] input[type="password"],'
+      '[aria-hidden="true"] input[type="password"],.modal input[type="password"],'
+      '[role="dialog"] input[type="password"],header input[type="password"],nav input[type="password"]');
+    if (fields.every(embedded.contains)) return false;
+    if (loginTitle) return true;
+    return document.querySelector('article,video,[itemtype*="Movie"]') == null;
+  }
+
+  static bool loginRedirect(int status, String? location) => status >= 300 && status < 400 &&
+      location != null && RegExp(r'(^|[/_.-])(login|signin|sign-in|log-in|authorize)([/_.?&#-]|$)',
+        caseSensitive: false).hasMatch(Uri.tryParse(location)?.path ?? '');
+
+  // Do not persist arbitrary server header text in reports.
+  static String? safeRetryAfter(String? value) {
+    if (value == null) return null;
+    if (RegExp(r'^\d{1,9}$').hasMatch(value)) return value;
+    try { return HttpDate.parse(value).toUtc().toIso8601String(); } catch (_) { return null; }
+  }
+
   /// Normalize only the selected token transport. Never duplicate Bearer.
   static Map<String, String> tokenHeaders(String value, TokenDelivery delivery, {String headerName = 'X-API-Key'}) {
     if (value.length > 16384 || value.contains(RegExp(r'[^\x20-\x7e]'))) {
@@ -200,17 +240,18 @@ class Authenticator {
     }
   }
 
-  Future<AuthSession> authenticate(SecurityProject project, AuthProfile profile, {required bool authorized, bool Function(Uri)? permits}) async {
+  Future<AuthSession> authenticate(SecurityProject project, AuthProfile profile, {required bool authorized, bool Function(Uri)? permits, Future<void> Function()? beforeRequest}) async {
     validateScope(project, profile, authorized: authorized, permits: permits);
     if (!profile.isLogin) {
       final session = manual(profile);
-      await _validateIfConfigured(profile, session);
+      await _validateIfConfigured(profile, session, beforeRequest);
       return session;
     }
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
     try {
+      await beforeRequest?.call();
       final session = await _login(client, profile).timeout(const Duration(seconds: 25));
-      await _validateIfConfigured(profile, session);
+      await _validateIfConfigured(profile, session, beforeRequest);
       return session;
     } finally {
       client.close(force: true);
@@ -218,33 +259,53 @@ class Authenticator {
   }
 
   static bool validationMatches(int status, String body, String expectedMarker) =>
-      status >= 200 && status < 300 && expectedMarker.isNotEmpty && body.contains(expectedMarker);
+      status >= 200 && status < 300 && !looksLikeLogin(body) && expectedMarker.isNotEmpty && body.contains(expectedMarker);
 
-  Future<void> _validateIfConfigured(AuthProfile profile, AuthSession session) async {
+  Future<void> _validateIfConfigured(AuthProfile profile, AuthSession session,
+      Future<void> Function()? beforeRequest) async {
     if (profile.validationUrl.isEmpty) return;
     final url = SecurityProject.parseTarget(profile.validationUrl);
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
     try {
-      final verified = await _verify(client, url, session, profile.validationMarker).timeout(const Duration(seconds: 15));
-      if (!verified) throw StateError('Authentication verification failed.');
+      await beforeRequest?.call();
+      await _verify(client, url, session, profile.validationMarker).timeout(const Duration(seconds: 15));
     } finally {
       client.close(force: true);
     }
   }
 
-  Future<bool> _verify(HttpClient client, Uri url, AuthSession session, String marker) async {
+  Future<void> _verify(HttpClient client, Uri url, AuthSession session, String marker) async {
     final headers = session.headersFor(url);
-    if (headers.isEmpty) return false;
+    if (headers.isEmpty) throw const AuthenticationException('Session credentials do not apply to the protected URL');
     final request = await client.getUrl(url);
     request.followRedirects = false;
     headers.forEach((key, value) => request.headers.set(key, value));
     final response = await request.close();
+    final status = response.statusCode;
+    if (status == 429) throw AuthenticationException('rate_limited',
+      retryAfter: safeRetryAfter(response.headers.value('retry-after')));
+    if (status == 401) throw const AuthenticationException('Protected URL returned HTTP 401');
+    if (status == 403) throw const AuthenticationException('Protected URL returned HTTP 403');
+    if (status >= 300 && status < 400) throw AuthenticationException(
+      loginRedirect(status, response.headers.value('location'))
+        ? 'Protected URL redirected to sign-in' : 'Protected URL redirected; session unverified');
+    if (status < 200 || status >= 300) throw const AuthenticationException('Protected URL failed; session unverified');
     final body = <int>[];
+    var truncated = false;
     await for (final chunk in response) {
-      if (body.length + chunk.length > 256 * 1024) return false;
-      body.addAll(chunk);
+      final remaining = 256 * 1024 - body.length;
+      body.addAll(chunk.take(remaining));
+      if (chunk.length > remaining) { truncated = true; break; }
     }
-    return validationMatches(response.statusCode, utf8.decode(body, allowMalformed: true), marker);
+    final text = utf8.decode(body, allowMalformed: true);
+    if (looksLikeLogin(text)) throw const AuthenticationException('Protected URL returned a sign-in page');
+    if (truncated) throw const AuthenticationException('Protected URL response truncated; session unverified');
+    if (marker.isNotEmpty && !validationMatches(status, text, marker)) {
+      throw const AuthenticationException('Expected session marker was not found');
+    }
+    session.verification = marker.isEmpty
+        ? 'Protected URL responded; identity not independently verified'
+        : 'Session verified by protected URL and expected marker';
   }
 
   Future<AuthSession> _login(HttpClient client, AuthProfile profile) async {
@@ -262,7 +323,8 @@ class Authenticator {
     final response = await req.close();
     // Redirects are never automatically followed. A redirect with a session
     // cookie can be a valid login, but protected target validation is separate.
-    if (response.statusCode < 200 || response.statusCode >= 400) throw StateError('Login failed.');
+    if (response.statusCode == 429) throw AuthenticationException('rate_limited', retryAfter: safeRetryAfter(response.headers.value('retry-after')));
+    if (response.statusCode < 200 || response.statusCode >= 400) throw const AuthenticationException('Login failed; session unverified');
     final headers = <String, String>{};
     final cookies = <Cookie>[];
     if (profile.tokenPath.isNotEmpty) {

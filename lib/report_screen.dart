@@ -66,6 +66,7 @@ class _ReportScreenState extends State<ReportScreen> {
             Text('${tr(context, 'Failed requests')}: ${uiNumber(context, widget.record.failedCount)}'),
             if (widget.record.cancelled) const LText('Scan stopped'),
             const SizedBox(height: 8),
+            ScanCoverageView(record: widget.record),
             LText(ReportSummary.limitation),
           ]))),
         const SizedBox(height: 12),
@@ -77,6 +78,7 @@ class _ReportScreenState extends State<ReportScreen> {
         if (widget.record.files.any((f) => f.containsKey('purchased')))
           Card(child: ExpansionTile(initiallyExpanded: true, leading: const Icon(Icons.movie_outlined),
             title: const LText('Movie purchase check'), children: [
+              const ListTile(title: LText('Media samples do not establish full playback access.')),
               for (final row in widget.record.files.where((f) => f.containsKey('purchased')))
                 ListTile(title: LText(switch ((row['purchased'], row['outcome'])) {
                   (false, 'Media bytes returned') => 'Review: unpurchased media returned',
@@ -84,7 +86,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   (false, 'Access denied') => 'Unpurchased media blocked',
                   (true, 'Access denied') => 'Purchased media blocked',
                   _ => row['outcome'] as String,
-                }), subtitle: SelectableText("${tr(context, row['purchased'] == true ? 'Purchased movies' : 'Unpurchased paid movies')} · ${row['status'] ?? '—'}\n${row['url']}")),
+                }), subtitle: SelectableText("${tr(context, row['purchased'] == true ? 'Purchased movies' : 'Unpurchased paid movies')} · ${row['status'] ?? '—'} · ${tr(context, row['access'] as String? ?? 'Unknown')}\n${row['url']}")),
             ])),
         if (widget.record.files.any((f) => !f.containsKey('purchased')))
           Card(child: ExpansionTile(leading: const Icon(Icons.folder_open),
@@ -139,5 +141,32 @@ class _ReportScreenState extends State<ReportScreen> {
           FindingTile(id: f.id, title: f.title, severity: f.severity, evidence: f.evidence, remediation: f.remediation, url: f.url),
       ]),
     );
+  }
+}
+
+/// Shared summary for quick scans, advanced crawls and saved reports.
+class ScanCoverageView extends StatelessWidget {
+  final ScanRecord record;
+  const ScanCoverageView({super.key, required this.record});
+  @override
+  Widget build(BuildContext context) {
+    final report = ReportSummary(record);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (report.incomplete) Text(tr(context, 'Scan incomplete; site security has not been established.'),
+        style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold)),
+      for (final entry in report.coverageCounts.entries)
+        Text('${tr(context, entry.key)}: ${entry.value is int ? uiNumber(context, entry.value as int) : entry.value}'),
+      LText(record.coverage['authentication'] as String? ?? 'Session not independently verified'),
+      if (record.coverage['retryAfter'] != null) Text('Retry-After: ${record.coverage['retryAfter']}'),
+      for (final entry in (record.coverage['skipped'] as Map? ?? const {}).entries)
+        Text('${tr(context, 'Skipped')}: ${tr(context, entry.key as String)} (${entry.value})'),
+      for (final entry in (record.coverage['htmlExclusions'] as Map? ?? const {}).entries)
+        Text('${tr(context, 'Excluded HTML references')}: ${tr(context, entry.key as String)} (${entry.value})'),
+      const LText('Discovered URLs count candidate inventory; HTML exclusions count unique references per response.'),
+      for (final warning in (record.coverage['warnings'] as List? ?? const []).cast<String>()) LText(warning),
+      const LText('Inventory covers observed queryless URLs only; signed/query URLs are not replayed.'),
+      const LText('Media pages are identified by observed media elements or links; this is not a complete movie catalog.'),
+      const LText('HEAD metadata and media samples do not establish complete download or playback access.'),
+    ]);
   }
 }

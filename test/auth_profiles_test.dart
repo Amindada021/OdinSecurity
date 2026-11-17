@@ -33,9 +33,9 @@ void main() {
     expect(await vault.loadProfiles('a'), isEmpty);
     expect(await store.read('odin_security.auth.v1.a'), isNull);
   });
-  test('validation requires the same origin and nonempty marker', () {
+  test('validation uses the same origin and can check rejection without a marker', () {
     expect(() => AuthProfile(mode: AuthMode.bearer, target: origin, secret: 'fixture', validationUrl: 'https://other.test/path', validationMarker: 'ok'), throwsFormatException);
-    expect(() => AuthProfile(mode: AuthMode.bearer, target: origin, secret: 'fixture', validationUrl: 'https://example.test/path'), throwsFormatException);
+    expect(AuthProfile(mode: AuthMode.bearer, target: origin, secret: 'fixture', validationUrl: 'https://example.test/path').validationMarker, isEmpty);
     final a = AuthProfile(mode: AuthMode.bearer, target: origin, secret: 'fixture', validationUrl: 'https://example.test/path', validationMarker: 'user-test');
     expect(AuthProfile.fromJson(a.toJson()).validationMarker, 'user-test');
     expect(Authenticator.validationMatches(200, 'login', 'user-test'), isFalse);

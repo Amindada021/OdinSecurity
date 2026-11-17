@@ -32,7 +32,7 @@ class _SessionCheckScreenState extends State<SessionCheckScreen> {
       final applicable = session.headersFor(widget.target).isNotEmpty;
       final status = !applicable ? 'Identity does not have applicable credentials for the selected target.' :
         widget.profile.validationUrl.isEmpty ? 'Credentials prepared; no protected verification was configured.' :
-        'Protected verification endpoint returned the expected marker.';
+        session.verification;
       if (mounted) setState(() => outcome = status);
     } catch (_) {
       if (mounted) setState(() => outcome = 'Session verification failed. Check scope, expiry and identity configuration.');

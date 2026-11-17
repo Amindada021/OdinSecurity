@@ -10,10 +10,10 @@ class CrawlCheckpoint {
   final Uri start;
   final String identity;
   final List<Uri> seen, pending;
-  final int attempted;
-  CrawlCheckpoint(this.start, this.identity, Iterable<Uri> seen, Iterable<Uri> pending, this.attempted)
-      : seen = List.unmodifiable(seen), pending = List.unmodifiable(pending) {
-    if (this.seen.length > 30 || this.pending.length > 30 || attempted < 0 ||
+  final int attempted, requestCount;
+  CrawlCheckpoint(this.start, this.identity, Iterable<Uri> seen, Iterable<Uri> pending, this.attempted, {int? requestCount})
+      : requestCount = requestCount ?? attempted, seen = List.unmodifiable(seen), pending = List.unmodifiable(pending) {
+    if (this.requestCount < attempted || this.requestCount > 30 || this.seen.length > 30 || this.pending.length > 30 || attempted < 0 ||
         attempted + this.pending.length != this.seen.length ||
         this.seen.toSet().length != this.seen.length || this.pending.toSet().length != this.pending.length ||
         !this.seen.contains(start) || !this.seen.toSet().containsAll(this.pending) ||
@@ -31,7 +31,7 @@ class CrawlCheckpoint {
   }
 
   Map<String, dynamic> toJson() => {
-    'start': start.toString(), 'identity': identity, 'attempted': attempted,
+    'requestCount': requestCount, 'start': start.toString(), 'identity': identity, 'attempted': attempted,
     'seen': seen.map((url) => url.toString()).toList(),
     'pending': pending.map((url) => url.toString()).toList(),
   };
@@ -39,7 +39,7 @@ class CrawlCheckpoint {
   factory CrawlCheckpoint.fromJson(Map<String, dynamic> json) => CrawlCheckpoint(
     Uri.parse(json['start'] as String), json['identity'] as String,
     (json['seen'] as List).cast<String>().map(Uri.parse),
-    (json['pending'] as List).cast<String>().map(Uri.parse), json['attempted'] as int);
+    (json['pending'] as List).cast<String>().map(Uri.parse), json['attempted'] as int, requestCount: json['requestCount'] as int?);
 }
 
 class CrawlCheckpointRepository {

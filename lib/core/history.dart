@@ -8,16 +8,19 @@ class ScanRecord {
   final int failedCount;
   final bool cancelled;
   final List<Map<String, dynamic>> pages, files;
+  final Map<String, dynamic> coverage;
 
-  ScanRecord({required this.finishedAt, required this.failedCount, required this.cancelled, required this.pages, this.files = const []});
+  ScanRecord({required this.finishedAt, required this.failedCount, required this.cancelled, required this.pages, this.files = const [], this.coverage = const {}});
 
-  factory ScanRecord.fromPages(List<PassiveScanResult> results, {int failedCount = 0, bool cancelled = false, List<Map<String, dynamic>> files = const []}) => ScanRecord(
-    finishedAt: DateTime.now().toUtc(), failedCount: failedCount, cancelled: cancelled, files: files,
+  factory ScanRecord.fromPages(List<PassiveScanResult> results, {int failedCount = 0, bool cancelled = false, List<Map<String, dynamic>> files = const [], Map<String, dynamic> coverage = const {}}) => ScanRecord(
+    finishedAt: DateTime.now().toUtc(), failedCount: failedCount, cancelled: cancelled, files: files, coverage: coverage,
     pages: results.map((page) => <String, dynamic>{
       'url': page.url.removeFragment().replace(query: '').toString(),
       'statusCode': page.statusCode,
       'bodyTruncated': page.bodyTruncated,
       'redirectNotFollowed': page.redirectNotFollowed,
+      'moviePage': page.moviePage,
+      'loginPage': page.loginPage,
       'technologies': page.technologies.map((tech) => {
         'name': tech.name, 'layer': tech.layer.name, 'confidence': tech.confidence.name, 'evidence': tech.evidence,
         if (tech.observedVersion != null) 'observedVersion': tech.observedVersion,
@@ -30,12 +33,13 @@ class ScanRecord {
   );
 
   Map<String, dynamic> toJson() => {
-    'finishedAt': finishedAt.toIso8601String(), 'failedCount': failedCount, 'cancelled': cancelled, 'pages': pages, 'files': files,
+    'finishedAt': finishedAt.toIso8601String(), 'failedCount': failedCount, 'cancelled': cancelled, 'pages': pages, 'files': files, 'coverage': coverage,
   };
 
   factory ScanRecord.fromJson(Map<String, dynamic> data) => ScanRecord(
     finishedAt: DateTime.parse(data['finishedAt'] as String), failedCount: data['failedCount'] as int,
     cancelled: data['cancelled'] as bool,
+    coverage: Map<String, dynamic>.from(data['coverage'] as Map? ?? const {}),
     files: (data['files'] as List? ?? const []).map((v) => Map<String, dynamic>.from(v as Map)).toList(),
     pages: (data['pages'] as List<dynamic>).map((p) => Map<String, dynamic>.from(p as Map)).toList(),
   );

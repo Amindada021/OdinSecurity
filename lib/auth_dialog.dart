@@ -14,6 +14,7 @@ class AuthDialog extends StatefulWidget {
 
 class _AuthDialogState extends State<AuthDialog> {
   late AuthMode mode;
+  TokenDelivery tokenDelivery = TokenDelivery.bearer;
   late Uri target;
   late final TextEditingController name, username, secret, header, login, usernameField, passwordField, tokenPath, validationUrl, validationMarker;
   String? error;
@@ -25,6 +26,7 @@ class _AuthDialogState extends State<AuthDialog> {
     super.initState();
     final a = widget.existing;
     mode = a?.mode ?? AuthMode.bearer;
+    tokenDelivery = a?.tokenDelivery ?? TokenDelivery.bearer;
     cookiePath = a?.cookiePath ?? '/';
     target = a != null && widget.project.targets.contains(a.target) ? a.target : widget.project.startUrl;
     name = TextEditingController(text: a?.name ?? '');
@@ -55,7 +57,13 @@ class _AuthDialogState extends State<AuthDialog> {
       setState(() { importing = true; error = null; });
       final captured = await Navigator.of(context).push<BrowserLoginResult>(MaterialPageRoute(builder: (_) => BrowserLoginScreen(target: target, login: loginUri)));
       if (captured != null && mounted) {
-        setState(() { secret.text = captured.cookieHeader; cookiePath = captured.cookiePath; });
+        setState(() {
+          secret.text = captured.token ?? captured.cookieHeader;
+          cookiePath = captured.cookiePath;
+          if (captured.usesToken) { mode = AuthMode.bearer; tokenDelivery = captured.tokenDelivery; }
+          validationUrl.text = captured.validationUrl;
+          validationMarker.text = captured.validationMarker;
+        });
       }
     } on FormatException catch (e) {
       if (mounted) setState(() => error = e.message);
@@ -66,7 +74,7 @@ class _AuthDialogState extends State<AuthDialog> {
 
   void submit() {
     try {
-      Navigator.pop(context, AuthProfile(mode: mode, target: target, name: name.text.trim(), cookiePath: cookiePath, validationUrl: validationUrl.text.trim(), validationMarker: validationMarker.text, username: username.text,
+      Navigator.pop(context, AuthProfile(mode: mode, tokenDelivery: tokenDelivery, target: target, name: name.text.trim(), cookiePath: cookiePath, validationUrl: validationUrl.text.trim(), validationMarker: validationMarker.text, username: username.text,
         secret: secret.text, headerName: header.text, loginUrl: login.text,
         usernameField: usernameField.text, passwordField: passwordField.text, tokenPath: tokenPath.text.trim()));
     } on FormatException catch (e) {
@@ -115,7 +123,7 @@ class _AuthDialogState extends State<AuthDialog> {
           ],
           field(validationUrl, 'Protected HTTPS URL (optional)'),
           field(validationMarker, 'Expected response marker (optional)', obscure: true),
-          const LText('If a protected URL is configured, the marker must appear in its 2xx response before scanning.'),
+          const LText('A protected URL checks session rejection. Add an expected marker to verify identity.'),
         ]),
         const Padding(padding: EdgeInsets.only(top: 12), child: LText('Credentials are saved separately in encrypted storage. Only the selected HTTPS origin receives them.')),
         if (error != null) LText(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),

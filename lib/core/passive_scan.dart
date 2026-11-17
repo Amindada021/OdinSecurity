@@ -19,22 +19,30 @@ import 'traffic_journal.dart';
 class PassiveScanResult {
   final Uri url;
   final int statusCode;
-  final List<Uri> links, fileLinks;
+  final List<Uri> links, fileLinks, queryFilePaths;
   final List<SecurityFinding> findings;
   final List<TechnologyFinding> technologies;
   final bool bodyTruncated;
   final bool redirectNotFollowed;
   final int bodyBytes;
+  final bool loginPage, moviePage;
+  final String? retryAfter;
+  final Map<String, int> discoveryExclusions;
   const PassiveScanResult({
     required this.url,
     required this.statusCode,
     required this.links,
     this.fileLinks = const [],
+    this.queryFilePaths = const [],
     required this.findings,
     required this.technologies,
     required this.bodyTruncated,
     required this.redirectNotFollowed,
     this.bodyBytes = 0,
+    this.loginPage = false,
+    this.moviePage = false,
+    this.retryAfter,
+    this.discoveryExclusions = const {},
   });
 }
 
@@ -127,13 +135,21 @@ class PassiveScanner {
         ...inspectConfiguredRules(observation, response.statusCode),
         if (certificate != null) ...CertificateChecks.inspect(certificate.startValidity, certificate.endValidity, DateTime.now()),
       ]),
-      links: isHtml && response.statusCode >= 200 && response.statusCode < 300 ? LinkDiscovery.extract(url, observation.body) : [],
+      links: isHtml && response.statusCode >= 200 && response.statusCode < 300 ? LinkDiscovery.extract(url, observation.body, limit: 300) : [],
       fileLinks: isHtml && response.statusCode >= 200 && response.statusCode < 300
-          ? LinkDiscovery.extract(url, observation.body, files: true) : const [],
+          ? LinkDiscovery.extract(url, observation.body, files: true, limit: 100) : const [],
+      queryFilePaths: isHtml && response.statusCode >= 200 && response.statusCode < 300
+          ? LinkDiscovery.queryFilePaths(url, observation.body) : const [],
+      discoveryExclusions: isHtml ? LinkDiscovery.exclusions(url, observation.body) : const {},
       technologies: technologies,
       bodyTruncated: truncated,
       bodyBytes: bytes.length,
       redirectNotFollowed: response.isRedirect,
+      moviePage: isHtml && (RegExp(r'<(video|audio)\b', caseSensitive: false).hasMatch(observation.body) ||
+          LinkDiscovery.extract(url, observation.body, files: true).any(LinkDiscovery.isMedia)),
+      loginPage: Authenticator.looksLikeLogin(observation.body) ||
+          Authenticator.loginRedirect(response.statusCode, response.headers.value('location')),
+      retryAfter: Authenticator.safeRetryAfter(response.headers.value('retry-after')),
     );
   }
 }
