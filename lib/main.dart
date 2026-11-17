@@ -801,8 +801,34 @@ class _ScanScreenState extends State<ScanScreen> {
           : AuthProfile(mode: AuthMode.cookie, target: selectedTarget,
               name: 'Automatic browser session', secret: captured.cookieHeader,
               cookiePath: captured.cookiePath, allowInsecureHttp: quickAllowInsecure);
+        if (captured.usesToken && captured.rememberCredential &&
+            selectedTarget.scheme == 'https') {
+          try {
+            final name = 'Quick credential - ${selectedTarget.host}';
+            final stored = AuthProfile(
+              mode: AuthMode.bearer, target: selectedTarget,
+              name: name, secret: captured.token!,
+              tokenDelivery: captured.tokenDelivery);
+            final updated = [
+              ...profiles.where((p) => !(p.name == name &&
+                  SecurityProject.sameOrigin(p.target, selectedTarget))),
+              stored,
+            ];
+            await vault.saveProfiles(widget.project.id, updated);
+            if (mounted) {
+              setState(() {
+                profiles = updated; selectedProfile = name;
+                quickSaved = true; quickTokenEnabled = false; quickApiEnabled = false;
+              });
+              rememberQuickSettings(immediate: true);
+            }
+          } catch (_) {
+            if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: LText('Token could not be saved; this scan can continue.')));
+          }
+        }
       }
-      // Credential is session-only; no vault writes or advanced checkpoint changes.
+      // Authentication is scoped to the chosen target; secrets never enter scan preferences.
       final data = await SiteCrawler().run(widget.project, scanStart,
         authorized: true, policy: settings, cancellation: flag, auth: credential, moviePurchases: movies,
         onEvent: logEvent, onProgress: (count) { if (mounted) setState(() => visited = count); });
