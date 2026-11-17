@@ -669,7 +669,7 @@ class _ScanScreenState extends State<ScanScreen> {
         authorized: true, policy: settings, cancellation: flag, auth: credential,
         onEvent: logEvent, onProgress: (count) { if (mounted) setState(() => visited = count); });
       if (!mounted) return;
-      final report = ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled);
+      final report = ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled, files: data.files);
       setState(() { crawlResult = data; quickReport = report; });
       await record(report);
     } catch (_) {
@@ -714,7 +714,7 @@ class _ScanScreenState extends State<ScanScreen> {
         }, onEvent: logEvent, onProgress: (n) { if (mounted) setState(() => visited = n); });
       if (mounted) {
         setState(() => crawlResult = data);
-        await record(ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled));
+        await record(ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled, files: data.files));
       }
     } catch (_) {
       if (mounted) setState(() => error = 'Could not finish the assessment. Check authentication and scope.');
@@ -1010,6 +1010,7 @@ class _ScanScreenState extends State<ScanScreen> {
                     backgroundColor: severityColor(context, severity.name).withValues(alpha: .12),
                     label: Text('${tr(context, severity.name)}: ${uiNumber(context, crawlResult!.pages.expand((page) => page.findings).where((finding) => finding.severity == severity).length)}')),
               ]),
+              Text('${tr(context, 'Accessible files')}: ${uiNumber(context, quickReport!.files.where((f) => f['outcome'] == 'File accessible').length)}'),
               if (crawlResult!.pages.any((page) => page.statusCode == 401 || page.statusCode == 403))
                 const LText('Access was not validated. Check authentication and permissions.'),
               const LText('Observations are not proof of vulnerabilities. A clean result is not a security guarantee.'),

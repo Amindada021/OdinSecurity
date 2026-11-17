@@ -74,6 +74,15 @@ class _ReportScreenState extends State<ReportScreen> {
             OutlinedButton.icon(onPressed: saving ? null : () => export(ext, report),
               icon: const Icon(Icons.download), label: Text(ext.toUpperCase())),
         ]),
+        if (widget.record.files.isNotEmpty)
+          Card(child: ExpansionTile(leading: const Icon(Icons.folder_open),
+            title: const LText('Linked files'),
+            subtitle: Text('${tr(context, 'Accessible files')}: ${uiNumber(context, widget.record.files.where((f) => f['outcome'] == 'File accessible').length)} / ${uiNumber(context, widget.record.files.length)}'),
+            children: [
+              for (final file in widget.record.files)
+                ListTile(title: SelectableText(file['url'] as String, textDirection: TextDirection.ltr),
+                  subtitle: Text("${tr(context, file['outcome'] as String)}  ${(file['status'] ?? 0) == 0 ? '' : 'HTTP ${file['status']}'}\n${tr(context, 'Linked from')}: ${file['source']}")),
+            ])),
         if (candidates.isNotEmpty && candidates.length <= 100)
           OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdvisoryReviewScreen(initialInventory: const JsonEncoder.withIndent('  ').convert(candidates)))), icon: const Icon(Icons.security), label: const LText('Review declared versions against catalog')),
         if (candidates.length > 100) const LText('Too many declared components for one advisory review. Use a smaller inventory.'),

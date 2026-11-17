@@ -19,7 +19,7 @@ import 'traffic_journal.dart';
 class PassiveScanResult {
   final Uri url;
   final int statusCode;
-  final List<Uri> links;
+  final List<Uri> links, fileLinks;
   final List<SecurityFinding> findings;
   final List<TechnologyFinding> technologies;
   final bool bodyTruncated;
@@ -29,6 +29,7 @@ class PassiveScanResult {
     required this.url,
     required this.statusCode,
     required this.links,
+    this.fileLinks = const [],
     required this.findings,
     required this.technologies,
     required this.bodyTruncated,
@@ -127,6 +128,8 @@ class PassiveScanner {
         if (certificate != null) ...CertificateChecks.inspect(certificate.startValidity, certificate.endValidity, DateTime.now()),
       ]),
       links: isHtml && response.statusCode >= 200 && response.statusCode < 300 ? LinkDiscovery.extract(url, observation.body) : [],
+      fileLinks: isHtml && response.statusCode >= 200 && response.statusCode < 300
+          ? LinkDiscovery.extract(url, observation.body, files: true) : const [],
       technologies: technologies,
       bodyTruncated: truncated,
       bodyBytes: bytes.length,

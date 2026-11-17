@@ -19,6 +19,14 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Linked files': 'فایل‌های پیوندشده',
+  'Accessible files': 'فایل‌های قابل‌دسترسی',
+  'File accessible': 'فایل قابل‌دسترسی است',
+  'Access denied': 'دسترسی رد شد',
+  'Not checked': 'بررسی نشده',
+  'Unconfirmed': 'دسترسی تأیید نشد',
+  'Outside session scope': 'خارج از محدودهٔ نشست',
+  'Linked from': 'صفحهٔ مبدأ',
   'Reuse project identity': 'استفاده از پروفایل پروژه دیگر',
   'No saved identity for this origin.': 'برای این مبدأ پروفایل ذخیره‌شده‌ای پیدا نشد.',
   'Authentication method': 'روش ورود',

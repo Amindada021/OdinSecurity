@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 import 'auth.dart';
+import 'file_access.dart';
 import 'discovery.dart';
 import 'passive_scan.dart';
 import 'project.dart';
@@ -42,7 +43,8 @@ class CrawlResult {
   final int failedCount;
   final bool cancelled;
   final String stopReason;
-  const CrawlResult(this.pages, this.failedCount, this.cancelled, [this.stopReason = 'completed']);
+  final List<Map<String, dynamic>> files;
+  const CrawlResult(this.pages, this.failedCount, this.cancelled, [this.stopReason = 'completed', this.files = const []]);
 }
 
 /// A deliberately bounded, same-origin HTML traversal. No guessed paths,
@@ -78,6 +80,9 @@ class SiteCrawler {
     final session = auth == null ? null : await Authenticator().authenticate(project, auth, authorized: authorized, permits: settings.permits);
     final queue = Queue<Uri>.of(resumeFrom?.pending ?? [start]);
     final seen = <Uri>{...(resumeFrom?.seen ?? [start])};
+    final files = <Uri, Map<String, dynamic>>{};
+    final pendingFiles = Queue<Uri>();
+    var fileTurn = false;
     var attempted = resumeFrom?.attempted ?? 0;
     Future<void> checkpoint() async {
       if (onCheckpoint != null) {
@@ -97,13 +102,34 @@ class SiteCrawler {
       await cancellation!.waitIfPaused();
       elapsed.start();
     }
-    while (queue.isNotEmpty && attempted < maxPages &&
+    while ((queue.isNotEmpty || pendingFiles.isNotEmpty) && attempted < maxPages &&
         cancellation?.cancelled != true && elapsed.elapsed < timeBudget) {
       await waitForResume();
       if (cancellation?.cancelled == true || elapsed.elapsed >= timeBudget) break;
       if (attempted > 0) await wait(Duration(milliseconds: settings.delayMs));
       await waitForResume();
       if (cancellation?.cancelled == true || elapsed.elapsed >= timeBudget) break;
+      if (pendingFiles.isNotEmpty && (fileTurn || queue.isEmpty)) {
+        fileTurn = false;
+        final file = pendingFiles.removeFirst();
+        final row = files[file]!;
+        attempted++;
+        onEvent?.call('SCAN', 'Linked files', file.toString());
+        try {
+          final check = await checkLinkedFile(file, session);
+          row['status'] = check.status;
+          row['outcome'] = check.outcome;
+          onEvent?.call('INFO', check.outcome, file.toString());
+          if (check.status == 429) { stopReason = 'rate_limited'; break; }
+          serverErrors = check.status >= 500 ? serverErrors + 1 : 0;
+          if (serverErrors >= 2) { stopReason = 'server_errors'; break; }
+        } catch (_) {
+          row['outcome'] = 'Request failed';
+        } finally {
+          await checkpoint();
+        }
+        continue;
+      }
       final next = queue.removeFirst();
       if (session != null && session.expectsCredentials && session.headersFor(next).isEmpty) {
         queue.addFirst(next);
@@ -120,7 +146,7 @@ class SiteCrawler {
         for (final finding in page.findings) {
           onEvent?.call('FOUND', finding.severity.name, finding.id);
         }
-        onProgress?.call(attempted);
+        onProgress?.call(pages.length);
         if (page.statusCode == 429) {
           stopReason = 'rate_limited';
           break;
@@ -133,6 +159,14 @@ class SiteCrawler {
         if (page.statusCode == 401 || page.statusCode == 403) {
           if (session != null) { stopReason = 'authentication_rejected'; break; }
         } else if (page.statusCode >= 200 && page.statusCode < 300) {
+          for (final file in page.fileLinks) {
+            if (files.length >= 100) break;
+            if (!SecurityProject.sameOrigin(start, file) || !project.contains(file) ||
+                !settings.permits(file) || files.containsKey(file)) continue;
+            files[file] = {'url': file.toString(), 'source': address, 'outcome': 'Not checked'};
+            pendingFiles.add(file);
+          }
+          fileTurn = true;
           for (final link in page.links) {
             if (seen.length >= maxPages) break;
             if (!link.hasFragment && LinkDiscovery.eligible(start, link) && project.contains(link) && settings.permits(link) && seen.add(link)) queue.add(link);
@@ -141,7 +175,7 @@ class SiteCrawler {
       } catch (_) {
         onEvent?.call('WARN', 'Request failed', address);
         failed++;
-        onProgress?.call(attempted);
+        onProgress?.call(pages.length);
       } finally {
         await checkpoint();
       }
@@ -149,6 +183,6 @@ class SiteCrawler {
     if (cancellation?.cancelled == true) stopReason = 'cancelled';
     else if (elapsed.elapsed >= timeBudget && stopReason == 'completed') stopReason = 'time_budget';
     else if (attempted >= maxPages && stopReason == 'completed') stopReason = 'page_budget';
-    return CrawlResult(List.unmodifiable(pages), failed, cancellation?.cancelled == true, stopReason);
+    return CrawlResult(List.unmodifiable(pages), failed, cancellation?.cancelled == true, stopReason, files.values.toList());
   }
 }
