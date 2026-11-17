@@ -19,6 +19,22 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  'Selected scan target': 'مقصد انتخاب‌شده برای اسکن',
+  'Scanning': 'اسکن',
+  'Signing in': 'ورود',
+  'Drag to resize Network': 'برای تغییر اندازه Network بکشید',
+  'Expand or shrink Network': 'بزرگ و کوچک کردن Network',
+  'Network panel size could not be saved.': 'اندازه پنجره شبکه ذخیره نشد.',
+  'Remember selected token securely for this project': 'توکن انتخاب‌شده برای این پروژه امن ذخیره شود',
+  'Optional; saved in encrypted storage. Expired tokens must be replaced.': 'اختیاری؛ در فضای رمزنگاری‌شده ذخیره می‌شود. توکن منقضی‌شده باید جایگزین شود.',
+  'Save credential securely for this project': 'ذخیره امن توکن برای این پروژه',
+  'Credential saved in encrypted storage for this project.': 'توکن در فضای امن این پروژه ذخیره شد.',
+  'Token could not be saved; this scan can continue.': 'توکن ذخیره نشد؛ اسکن همچنان می‌تواند انجام شود.',
+  'Could not save credential securely.': 'ذخیره امن توکن ناموفق بود.',
+  'Could not load saved quick-scan settings.': 'تنظیمات ذخیره‌شده اسکن سریع خوانده نشد.',
+  'Could not save quick-scan settings.': 'تنظیمات اسکن سریع ذخیره نشد.',
+  'Could not restore API login settings.': 'تنظیمات قبلی ورود API بازیابی نشد.',
+  'API endpoint and field mapping are remembered for this target. Username and password are not saved.': 'آدرس ورود API و نام فیلدها برای این مقصد ذخیره می‌شوند؛ نام کاربری و رمز عبور ذخیره نمی‌شوند.',
   'Network responses': 'پاسخ‌های شبکه',
   'Clear captured responses': 'پاک کردن پاسخ‌های ثبت‌شده',
   'Cookie found for scan target': 'کوکی برای مقصد اسکن پیدا شد',
