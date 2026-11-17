@@ -18,6 +18,19 @@ void main() {
       expect(session.headersFor(Uri.parse('https://api.example.test:8443/v1')), isEmpty);
     }
   });
+  test('manual raw, cookie, API key and custom credential modes', () {
+    for (final entry in [
+      (TokenDelivery.raw, 'Authorization', 'fixture'),
+      (TokenDelivery.apiKey, 'X-Test', 'fixture'),
+      (TokenDelivery.customHeader, 'X-Test', 'fixture'),
+      (TokenDelivery.cookie, 'Cookie', 'sid=fixture'),
+    ]) {
+      final p = QuickScanCredential.parse(https, entry.$3, delivery: entry.$1, headerName: 'X-Test')!;
+      final result = Authenticator.manual(p);
+      expect(result.headersFor(https)[entry.$2], entry.$3);
+      expect(result.headersFor(Uri.parse('https://outside.test')), isEmpty);
+    }
+  });
   test('invalid input is rejected without exposing it', () {
     expect(() => QuickScanCredential.parse(Uri.parse('http://example.test'), 'abc'), throwsFormatException);
     expect(() => QuickScanCredential.parse(https, 'abc\r\nInjected: value'), throwsFormatException);

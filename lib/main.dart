@@ -35,6 +35,7 @@ import 'core/project.dart';
 import 'core/passive_scan.dart';
 import 'core/security_checks.dart';
 import 'core/quick_scan_credential.dart';
+import 'quick_api_login_dialog.dart';
 import 'core/browser_login_policy.dart';
 import 'browser_login_screen.dart';
 import 'finding_cards.dart';
@@ -337,7 +338,9 @@ class _ScanScreenState extends State<ScanScreen> {
   bool advanced = false;
   ScanRecord? quickReport;
   final quickToken = TextEditingController();
-  bool quickTokenEnabled = false, quickLoginEnabled = false;
+  bool quickTokenEnabled = false, quickLoginEnabled = false, quickApiEnabled = false;
+  TokenDelivery quickDelivery = TokenDelivery.bearer;
+  final quickHeader = TextEditingController(text: 'X-API-Key');
   final quickLoginUrl = TextEditingController(text: '/login');
   ScanPolicy policy = ScanPolicy();
   bool loadingPolicy = true;
@@ -549,11 +552,12 @@ class _ScanScreenState extends State<ScanScreen> {
     cancellation?.cancel();
     quickToken.dispose();
     quickLoginUrl.dispose();
+    quickHeader.dispose();
     super.dispose();
   }
 
   String? get quickLoginError {
-    if (!quickLoginEnabled || quickTokenEnabled || target.scheme != 'https') return null;
+    if (!quickLoginEnabled || quickTokenEnabled || quickApiEnabled || target.scheme != 'https') return null;
     try {
       BrowserLoginPolicy.loginUrl(widget.project, target, quickLoginUrl.text, policy.quickDefaults);
       return null;
@@ -570,18 +574,19 @@ class _ScanScreenState extends State<ScanScreen> {
     final selectedTarget = target;
     AuthProfile? credential;
     Uri? login;
+    final apiLogin = quickLoginEnabled && quickApiEnabled;
     try {
       if (quickLoginEnabled) {
         if (quickTokenEnabled) {
-          credential = QuickScanCredential.parse(selectedTarget, quickToken.text);
+          credential = QuickScanCredential.parse(selectedTarget, quickToken.text, delivery: quickDelivery, headerName: quickHeader.text.trim());
           if (credential == null) throw const FormatException('Missing token.');
-        } else {
+        } else if (!apiLogin) {
           login = BrowserLoginPolicy.loginUrl(widget.project, selectedTarget, quickLoginUrl.text, settings);
         }
       }
     } on FormatException {
       setState(() => error = quickTokenEnabled
-          ? 'Enter a valid Bearer token for an HTTPS target.'
+          ? 'Enter a valid credential for the selected HTTPS target.'
           : 'Enter a permitted HTTPS sign-in URL.');
       return;
     }
@@ -592,6 +597,11 @@ class _ScanScreenState extends State<ScanScreen> {
     });
     try {
       var scanStart = selectedTarget;
+      if (apiLogin) {
+        credential = await showDialog<AuthProfile>(context: context, builder: (_) => QuickApiLoginDialog(
+          project: widget.project, target: selectedTarget, policy: settings));
+        if (!mounted || credential == null || flag.cancelled) return;
+      }
       final browserLogin = login;
       if (browserLogin != null) {
         final captured = await Navigator.of(context).push<BrowserLoginResult>(MaterialPageRoute(
@@ -611,7 +621,9 @@ class _ScanScreenState extends State<ScanScreen> {
       setState(() { crawlResult = data; quickReport = report; });
       await record(report);
     } catch (_) {
-      if (mounted) setState(() => error = 'Could not finish the quick scan. Check the URL and connection.');
+      if (mounted) setState(() => error = apiLogin
+        ? 'API sign-in or scan failed. Check the endpoint, username, password and token response settings.'
+        : 'Could not finish the quick scan. Check the URL and connection.');
     } finally {
       if (mounted) setState(() { busy = false; cancellation = null; authorized = false; quickTokenEnabled = false; });
     }
@@ -694,7 +706,7 @@ class _ScanScreenState extends State<ScanScreen> {
           selected: {advanced},
           onSelectionChanged: busy ? null : (selection) => setState(() {
             advanced = selection.first; authorized = false; selectedProfile = '';
-            quickToken.clear(); quickTokenEnabled = false; quickLoginEnabled = false; quickLoginUrl.text = '/login';
+            quickToken.clear(); quickTokenEnabled = false; quickLoginEnabled = false; quickApiEnabled = false; quickLoginUrl.text = '/login'; quickDelivery = TokenDelivery.bearer; quickHeader.text = 'X-API-Key';
             result = null; crawlResult = null; quickReport = null; error = null;
           }),
         ),
@@ -725,7 +737,7 @@ class _ScanScreenState extends State<ScanScreen> {
             items: [for (final u in widget.project.targets) DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))],
             onChanged: busy ? null : (value) => setState(() {
               target = value!; authorized = false; quickReport = null; crawlResult = null; error = null;
-              quickToken.clear(); quickTokenEnabled = false; quickLoginEnabled = false; quickLoginUrl.text = '/login';
+              quickToken.clear(); quickTokenEnabled = false; quickLoginEnabled = false; quickApiEnabled = false; quickLoginUrl.text = '/login'; quickDelivery = TokenDelivery.bearer; quickHeader.text = 'X-API-Key';
             }),
           ),
           const SizedBox(height: 8),
@@ -738,6 +750,7 @@ class _ScanScreenState extends State<ScanScreen> {
             onSelectionChanged: busy ? null : (selection) => setState(() {
               quickLoginEnabled = selection.first;
               quickTokenEnabled = false; quickToken.clear();
+              quickApiEnabled = quickLoginEnabled && target.host.toLowerCase() == 'api.hesabran.com' && target.scheme == 'https';
               authorized = false; error = null;
             }),
           ),
@@ -745,19 +758,30 @@ class _ScanScreenState extends State<ScanScreen> {
           if (!quickLoginEnabled)
             const LText('Scan the landing page and public links without signing in.'),
           if (quickLoginEnabled) ...[
-            const LText('Sign in using your own account in the embedded browser, then start the read-only scan.'),
+            const LText('Choose browser sign-in, direct API sign-in, or enter an existing credential.'),
             if (target.scheme != 'https') const LText('Browser sign-in requires HTTPS.'),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              title: const LText('Use Bearer token instead'),
-              subtitle: const LText('For protected APIs. Token is not saved.'),
+              title: const LText('Direct API sign-in'),
+              subtitle: const LText('Sign in with your username and password; no token copy required.'),
+              value: quickApiEnabled,
+              onChanged: busy || target.scheme != 'https' ? null : (value) => setState(() {
+                quickApiEnabled = value; authorized = false; error = null;
+                if (value) { quickTokenEnabled = false; quickToken.clear(); }
+              }),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const LText('Use existing credential instead'),
+              subtitle: const LText('For protected APIs. The credential is not saved.'),
               value: quickTokenEnabled,
               onChanged: busy || target.scheme != 'https' ? null : (value) => setState(() {
                 quickTokenEnabled = value; authorized = false; error = null;
+                if (value) quickApiEnabled = false;
                 if (!value) quickToken.clear();
               }),
             ),
-            if (!quickTokenEnabled) ...[
+            if (!quickTokenEnabled && !quickApiEnabled) ...[
               TextField(
                 controller: quickLoginUrl, enabled: !busy && target.scheme == 'https',
                 keyboardType: TextInputType.url, autocorrect: false,
@@ -770,16 +794,29 @@ class _ScanScreenState extends State<ScanScreen> {
             ],
           ],
           if (quickLoginEnabled && quickTokenEnabled) ...[
+            DropdownButtonFormField<TokenDelivery>(
+              initialValue: quickDelivery, isExpanded: true,
+              decoration: const InputDecoration(label: LText('Send authentication as')),
+              items: TokenDelivery.values.map((value) => DropdownMenuItem(value: value, child: LText(tokenDeliveryLabel(value)))).toList(),
+              onChanged: busy ? null : (value) => setState(() {
+                if (value != null) quickDelivery = value;
+                authorized = false; error = null;
+              }),
+            ),
+            if (quickDelivery == TokenDelivery.apiKey || quickDelivery == TokenDelivery.customHeader)
+              TextField(controller: quickHeader, enabled: !busy, autocorrect: false,
+                decoration: const InputDecoration(label: LText('Credential header name')),
+                onChanged: (_) => setState(() { authorized = false; error = null; })),
             TextField(
               controller: quickToken, enabled: !busy, obscureText: true,
               autocorrect: false, enableSuggestions: false,
               keyboardType: TextInputType.visiblePassword,
               textDirection: TextDirection.ltr,
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.key_outlined),
-                label: LText('Bearer token'), hintText: 'eyJ...'),
+              decoration: InputDecoration(prefixIcon: const Icon(Icons.key_outlined),
+                label: LText(quickDelivery == TokenDelivery.bearer ? 'Bearer token' : 'Token / cookie / key')),
               onChanged: (_) => setState(() { authorized = false; error = null; }),
             ),
-            const Padding(padding: EdgeInsets.only(top: 6), child: LText('Paste the raw token or the Bearer header value. It is cleared when the scan starts.')),
+            const Padding(padding: EdgeInsets.only(top: 6), child: LText('Enter the credential. It is cleared when the scan starts.')),
           ],
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
@@ -792,9 +829,9 @@ class _ScanScreenState extends State<ScanScreen> {
           FilledButton.icon(
             onPressed: authorized && !busy && !loadingPolicy && !loadingHistory && policyError == null && policy.permits(target) &&
                 (!quickLoginEnabled || (target.scheme == 'https' && (quickTokenEnabled
-                    ? quickToken.text.trim().isNotEmpty : quickLoginError == null))) ? quickScan : null,
+                    ? quickToken.text.trim().isNotEmpty : quickApiEnabled || quickLoginError == null))) ? quickScan : null,
             icon: Icon(quickLoginEnabled && !quickTokenEnabled ? Icons.login : Icons.play_arrow),
-            label: LText(quickLoginEnabled && !quickTokenEnabled ? 'Open sign-in and scan' : 'Start automatic scan'),
+            label: LText(quickApiEnabled ? 'Sign in to API and scan' : quickLoginEnabled && !quickTokenEnabled ? 'Open sign-in and scan' : 'Start automatic scan'),
           ),
           if (error != null) Padding(
             padding: const EdgeInsets.only(top: 8),

@@ -2,6 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:odin_security/core/ui_preferences.dart';
 import 'package:odin_security/main.dart';
+import 'package:odin_security/quick_api_login_dialog.dart';
+import 'package:odin_security/core/auth.dart';
+import 'package:odin_security/core/scan_policy.dart';
 import 'package:odin_security/core/project_storage.dart';
 import 'package:odin_security/core/project.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,7 +12,7 @@ import 'project_storage_test.dart' show MemoryStorage;
 
 void main() {
   testWidgets('automatic scan is default and advanced tools are opt-in', (tester) async {
-    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -27,7 +30,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Sign-in page URL'), findsOneWidget);
     expect(find.text('Open sign-in and scan'), findsOneWidget);
-    await tester.tap(find.text('Use Bearer token instead'));
+    await tester.tap(find.text('Use existing credential instead'));
     await tester.pumpAndSettle();
     expect(find.text('Bearer token'), findsOneWidget);
     final field = tester.widget<TextField>(find.byType(TextField));
@@ -69,6 +72,34 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Enter a permitted HTTPS sign-in URL.'), findsOneWidget);
     expect(tester.widget<FilledButton>(button).onPressed, isNull);
+  });
+
+  testWidgets('Hesabran direct API login has the correct defaults without a pasted token', (tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final project = SecurityProject(name: 'Fixture', url: 'https://api.hesabran.com');
+    AuthProfile? captured;
+    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) => Scaffold(
+      body: TextButton(onPressed: () async {
+        captured = await showDialog<AuthProfile>(context: context, builder: (_) =>
+          QuickApiLoginDialog(project: project, target: project.startUrl, policy: ScanPolicy()));
+      }, child: const Text('Open fixture')),
+    ))));
+    await tester.tap(find.text('Open fixture'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextField);
+    expect(tester.widget<TextField>(fields.at(0)).controller!.text, 'https://api.hesabran.com/api/v1/Account/Login');
+    expect(tester.widget<TextField>(fields.at(2)).obscureText, isTrue);
+    await tester.enterText(fields.at(1), 'fixture-user');
+    await tester.enterText(fields.at(2), 'fixture-password');
+    await tester.tap(find.text('Sign in and scan'));
+    await tester.pumpAndSettle();
+    expect(captured?.loginUrl, 'https://api.hesabran.com/api/v1/Account/Login');
+    expect(captured?.tokenPath, 'data.token');
+    expect(captured?.tokenDelivery, TokenDelivery.bearer);
+    expect(captured?.mode, AuthMode.jsonLogin);
   });
 
   testWidgets('project list shows branded empty state', (tester) async {

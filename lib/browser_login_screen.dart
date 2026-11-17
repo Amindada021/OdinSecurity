@@ -120,7 +120,7 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
       await clearSession();
       if (mounted) Navigator.pop(context, captured);
     } catch (_) {
-      if (mounted) setState(() => error = widget.automatic ? 'No usable session cookie was found for the scan target. Complete sign-in or use API authentication if the site uses tokens.' : 'Could not import cookies for the selected target. Complete log-in first.');
+      if (mounted) setState(() => error = widget.automatic ? 'No usable session cookie was found. If the site uses tokens, go back and choose Direct API sign-in.' : 'Could not import cookies for the selected target. Complete log-in first.');
     } finally {
       if (mounted) setState(() => busy = false);
     }

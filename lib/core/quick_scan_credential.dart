@@ -1,18 +1,21 @@
 import 'auth.dart';
 
-/// Session-only credential for automatic GET assessment. Never persisted.
+/// Session-only credentials for automatic assessment. Never persisted.
 class QuickScanCredential {
-  static AuthProfile? parse(Uri target, String raw) {
+  static AuthProfile? parse(Uri target, String raw, {
+    TokenDelivery delivery = TokenDelivery.bearer, String headerName = 'X-API-Key',
+  }) {
     if (raw.trim().isEmpty) return null;
     if (target.scheme != 'https' || target.userInfo.isNotEmpty ||
-        raw.contains(RegExp(r'[\r\n]')) || raw.length > 16384) {
+        raw.contains(RegExp(r'[^\x20-\x7e]')) || raw.length > 16384) {
       throw const FormatException('Invalid quick scan token.');
     }
-    var token = raw.trim();
-    token = token.replaceFirst(RegExp(r'^Bearer[ \t]+', caseSensitive: false), '');
-    if (!RegExp(r'^[A-Za-z0-9._~+/-]+=*$').hasMatch(token)) {
-      throw const FormatException('Invalid quick scan token.');
+    if (delivery == TokenDelivery.cookie) {
+      return AuthProfile(mode: AuthMode.cookie, target: target, secret: raw.trim(), name: 'Quick scan cookie',
+        cookiePath: target.path.isEmpty ? '/' : target.path);
     }
-    return AuthProfile(mode: AuthMode.bearer, target: target, secret: token, name: 'Quick scan token');
+    Authenticator.tokenHeaders(raw, delivery, headerName: headerName);
+    return AuthProfile(mode: AuthMode.bearer, target: target, secret: raw.trim(), name: 'Quick scan token',
+      tokenDelivery: delivery, headerName: headerName);
   }
 }

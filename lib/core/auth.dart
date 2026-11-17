@@ -6,18 +6,21 @@ import 'oauth_grant.dart';
 
 enum AuthMode { none, basic, bearer, cookie, apiKey, jsonLogin, formLogin }
 
+enum TokenDelivery { bearer, raw, apiKey, customHeader, cookie }
+
 /// Bound to exactly one HTTPS origin. Profile values are secret vault data.
 class AuthProfile {
   final AuthMode mode;
+  final TokenDelivery tokenDelivery;
   final OAuthGrant? oauth;
   final Uri target;
   final String name, username, secret, headerName, loginUrl, usernameField, passwordField, tokenPath, validationUrl, validationMarker, cookiePath;
   AuthProfile({
     required this.mode, required this.target, this.oauth, this.name = 'Default', this.validationUrl = '', this.validationMarker = '', this.cookiePath = '/', this.username = '', this.secret = '',
     this.headerName = 'X-API-Key', this.loginUrl = '', this.usernameField = 'username',
-    this.passwordField = 'password', this.tokenPath = '',
+    this.passwordField = 'password', this.tokenPath = '', this.tokenDelivery = TokenDelivery.bearer,
   }) {
-    if (oauth != null && mode != AuthMode.bearer) throw const FormatException('OAuth requires a bearer profile.');
+    if (oauth != null && (mode != AuthMode.bearer || tokenDelivery != TokenDelivery.bearer)) throw const FormatException('OAuth requires a bearer profile.');
     if (name.trim().isEmpty || name.length > 80) throw const FormatException('Enter a profile name (1–80 characters).');
     if (validationUrl.isNotEmpty || validationMarker.isNotEmpty) {
       if (mode == AuthMode.none || validationUrl.isEmpty || validationMarker.isEmpty || validationMarker.length > 512) {
@@ -41,10 +44,16 @@ class AuthProfile {
     for (final value in [username, secret, headerName, usernameField, passwordField, tokenPath]) {
       if (value.contains(RegExp(r'[\r\n]'))) throw const FormatException('Invalid credential or header.');
     }
-    if (mode == AuthMode.apiKey &&
+    if ((mode == AuthMode.apiKey || tokenDelivery == TokenDelivery.apiKey || tokenDelivery == TokenDelivery.customHeader) &&
         (!RegExp(r'^[A-Za-z0-9-]+$').hasMatch(headerName) ||
          ['host', 'content-length', 'transfer-encoding', 'connection', 'cookie', 'authorization', 'proxy-authorization', 'upgrade'].contains(headerName.toLowerCase()))) {
       throw const FormatException('Invalid API key header.');
+    }
+    if (isLogin && tokenDelivery == TokenDelivery.cookie && tokenPath.isNotEmpty) {
+      throw const FormatException('Cookie login must not specify a JSON token path.');
+    }
+    if (mode == AuthMode.bearer && tokenDelivery == TokenDelivery.cookie) {
+      throw const FormatException('Use cookie authentication for cookie headers.');
     }
     if (mode == AuthMode.basic && username.contains(':')) throw const FormatException('Basic username must not contain a colon.');
     if (isLogin) {
@@ -59,13 +68,14 @@ class AuthProfile {
   bool get isLogin => mode == AuthMode.jsonLogin || mode == AuthMode.formLogin;
 
   Map<String, dynamic> toJson() => {
-    'mode': mode.name, 'oauth': oauth?.toJson(), 'target': target.toString(), 'name': name, 'validationUrl': validationUrl, 'validationMarker': validationMarker, 'cookiePath': cookiePath, 'username': username, 'secret': secret,
+    'mode': mode.name, 'tokenDelivery': tokenDelivery.name, 'oauth': oauth?.toJson(), 'target': target.toString(), 'name': name, 'validationUrl': validationUrl, 'validationMarker': validationMarker, 'cookiePath': cookiePath, 'username': username, 'secret': secret,
     'headerName': headerName, 'loginUrl': loginUrl, 'usernameField': usernameField,
     'passwordField': passwordField, 'tokenPath': tokenPath,
   };
 
   factory AuthProfile.fromJson(Map<String, dynamic> data) => AuthProfile(
     mode: AuthMode.values.byName(data['mode'] as String),
+    tokenDelivery: TokenDelivery.values.byName(data['tokenDelivery'] as String? ?? 'bearer'),
     oauth: data['oauth'] == null ? null : OAuthGrant.fromJson(Map<String, dynamic>.from(data['oauth'] as Map)),
     name: data['name'] as String? ?? 'Default', validationUrl: data['validationUrl'] as String? ?? '', validationMarker: data['validationMarker'] as String? ?? '', cookiePath: data['cookiePath'] as String? ?? '/',
     target: SecurityProject.parseTarget(data['target'] as String),
@@ -116,6 +126,34 @@ class AuthSession {
 }
 
 class Authenticator {
+  /// Normalize only the selected token transport. Never duplicate Bearer.
+  static Map<String, String> tokenHeaders(String value, TokenDelivery delivery, {String headerName = 'X-API-Key'}) {
+    if (value.length > 16384 || value.contains(RegExp(r'[^\x20-\x7e]'))) {
+      throw const FormatException('Invalid token response.');
+    }
+    var token = value.trim();
+    if (delivery == TokenDelivery.bearer || delivery == TokenDelivery.raw) {
+      token = token.replaceFirst(RegExp(r'^Bearer[ ]+', caseSensitive: false), '');
+    }
+    if (token.isEmpty || (delivery == TokenDelivery.bearer || delivery == TokenDelivery.raw) &&
+        !RegExp(r'^[A-Za-z0-9._~+/-]+=*$').hasMatch(token)) {
+      throw const FormatException('Invalid token response.');
+    }
+    switch (delivery) {
+      case TokenDelivery.bearer: return {'Authorization': 'Bearer $token'};
+      case TokenDelivery.raw: return {'Authorization': token};
+      case TokenDelivery.apiKey:
+      case TokenDelivery.customHeader:
+        if (!RegExp(r'^[A-Za-z0-9-]+$').hasMatch(headerName) ||
+            ['host', 'content-length', 'transfer-encoding', 'connection', 'cookie',
+              'authorization', 'proxy-authorization', 'upgrade'].contains(headerName.toLowerCase())) {
+          throw const FormatException('Invalid API key header.');
+        }
+        return {headerName: token};
+      case TokenDelivery.cookie: throw const FormatException('Use cookie authentication for cookie headers.');
+    }
+  }
+
   static AuthSession manual(AuthProfile profile) {
     if (profile.oauth?.expired(DateTime.now()) == true) throw StateError('OAuth access token expired; refresh or sign in again.');
     final headers = <String, String>{};
@@ -124,7 +162,7 @@ class Authenticator {
       case AuthMode.basic:
         headers['Authorization'] = 'Basic ${base64Encode(utf8.encode('${profile.username}:${profile.secret}'))}';
         break;
-      case AuthMode.bearer: headers['Authorization'] = 'Bearer ${profile.secret}'; break;
+      case AuthMode.bearer: headers.addAll(tokenHeaders(profile.secret, profile.tokenDelivery, headerName: profile.headerName)); break;
       case AuthMode.cookie: headers['Cookie'] = profile.secret; break;
       case AuthMode.apiKey: headers[profile.headerName] = profile.secret; break;
       case AuthMode.jsonLogin:
@@ -226,7 +264,7 @@ class Authenticator {
         if (body.length + chunk.length > 256 * 1024) throw StateError('Login response too large.');
         body.addAll(chunk);
       }
-      headers['Authorization'] = 'Bearer ${extractToken(utf8.decode(body), profile.tokenPath)}';
+      headers.addAll(tokenHeaders(extractToken(utf8.decode(body), profile.tokenPath), profile.tokenDelivery, headerName: profile.headerName));
     } else {
       final path = url.path;
       final defaultPath = path.lastIndexOf('/') <= 0 ? '/' : path.substring(0, path.lastIndexOf('/'));

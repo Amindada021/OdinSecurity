@@ -12,6 +12,26 @@ void main() {
       expect(session.headersFor(Uri.parse(url)), isEmpty);
     }
   });
+  test('token transport handles raw, prefixed and custom headers without duplication', () {
+    expect(Authenticator.tokenHeaders('Bearer test-token', TokenDelivery.bearer), {'Authorization': 'Bearer test-token'});
+    expect(Authenticator.tokenHeaders('test-token', TokenDelivery.bearer), {'Authorization': 'Bearer test-token'});
+    expect(Authenticator.tokenHeaders('Bearer test-token', TokenDelivery.raw), {'Authorization': 'test-token'});
+    expect(Authenticator.tokenHeaders('fixture', TokenDelivery.apiKey), {'X-API-Key': 'fixture'});
+    expect(Authenticator.tokenHeaders('fixture', TokenDelivery.customHeader, headerName: 'X-Session'), {'X-Session': 'fixture'});
+    expect(() => Authenticator.tokenHeaders('fixture\r\nX: injected', TokenDelivery.bearer), throwsFormatException);
+    expect(() => Authenticator.tokenHeaders('fixture', TokenDelivery.customHeader, headerName: 'Host'), throwsFormatException);
+  });
+  test('configured login delivery is serialized and legacy profiles default to bearer', () {
+    final p = AuthProfile(mode: AuthMode.jsonLogin, target: origin, secret: 'fixture',
+      loginUrl: origin.resolve('/login').toString(), tokenPath: 'data.token',
+      tokenDelivery: TokenDelivery.customHeader, headerName: 'X-Session');
+    final json = p.toJson();
+    expect(AuthProfile.fromJson(json).tokenDelivery, TokenDelivery.customHeader);
+    json.remove('tokenDelivery');
+    expect(AuthProfile.fromJson(json).tokenDelivery, TokenDelivery.bearer);
+    expect(Authenticator.tokenHeaders(Authenticator.extractToken('{"data":{"token":"Bearer fixture"}}', 'data.token'), TokenDelivery.bearer),
+      {'Authorization': 'Bearer fixture'});
+  });
   test('authentication refuses cleartext HTTP and cross-origin login', () {
     expect(() => AuthProfile(mode: AuthMode.basic, target: Uri.parse('http://example.test'), secret: 'secret'), throwsFormatException);
     expect(() => AuthProfile(mode: AuthMode.jsonLogin, target: origin, secret: 'test', loginUrl: 'https://evil.test/login'), throwsFormatException);
