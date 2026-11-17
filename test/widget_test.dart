@@ -22,7 +22,12 @@ void main() {
     final start = tester.widget<FilledButton>(find.ancestor(of: find.text('Start automatic scan'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)));
     expect(start.onPressed, isNull);
     expect(find.text('Representation test matrix'), findsNothing);
-    await tester.tap(find.text('Use Bearer token (optional)'));
+    expect(find.text('Public website'), findsOneWidget);
+    await tester.tap(find.text('After sign-in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sign-in page URL'), findsOneWidget);
+    expect(find.text('Open sign-in and scan'), findsOneWidget);
+    await tester.tap(find.text('Use Bearer token instead'));
     await tester.pumpAndSettle();
     expect(find.text('Bearer token'), findsOneWidget);
     final field = tester.widget<TextField>(find.byType(TextField));

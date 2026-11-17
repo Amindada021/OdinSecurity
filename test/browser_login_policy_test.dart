@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:odin_security/core/auth.dart';
 import 'package:odin_security/core/browser_login_policy.dart';
+import 'package:odin_security/core/project.dart';
+import 'package:odin_security/core/scan_policy.dart';
 
 void main() {
   final target = Uri.parse('https://example.test/panel');
@@ -9,6 +11,30 @@ void main() {
     for (final url in ['http://example.test/login', 'https://other.test/login', 'https://example.test:444/login']) {
       expect(BrowserLoginPolicy.allows(target, Uri.parse(url)), isFalse);
     }
+  });
+  test('automatic login accepts only registered HTTPS origins and permitted paths', () {
+    final project = SecurityProject(name: 'Example', url: 'https://example.test',
+      additionalUrls: ['https://login.example.test']);
+    final policy = ScanPolicy(excludedPaths: ['/blocked']);
+    final start = project.startUrl;
+    expect(BrowserLoginPolicy.loginUrl(project, start, '/login', policy), Uri.parse('https://example.test/login'));
+    final login = BrowserLoginPolicy.loginUrl(project, start, 'https://login.example.test/sign-in', policy);
+    expect(BrowserLoginPolicy.allowsNavigation(start, login, login, policy), isTrue);
+    expect(BrowserLoginPolicy.allowsNavigation(start, login, Uri.parse('https://outside.test'), policy), isFalse);
+    expect(BrowserLoginPolicy.allowsNavigation(start, login, Uri.parse('https://example.test/blocked'), policy), isFalse);
+    for (final raw in ['https://outside.test/login', 'http://example.test/login', '/blocked', '//outside.test/login']) {
+      expect(() => BrowserLoginPolicy.loginUrl(project, start, raw, policy), throwsFormatException);
+    }
+  });
+  test('root quick scan begins at the signed-in page without query secrets', () {
+    final root = Uri.parse('https://example.test');
+    final current = Uri.parse('https://example.test/dashboard?code=fixture#fragment');
+    final policy = ScanPolicy();
+    expect(BrowserLoginPolicy.assessmentStart(root, current, policy), Uri.parse('https://example.test/dashboard'));
+    expect(BrowserLoginPolicy.assessmentStart(target, current, policy), target);
+    expect(BrowserLoginPolicy.assessmentStart(root, Uri.parse('https://else.test/private'), policy), root);
+    expect(BrowserLoginPolicy.assessmentStart(root, Uri.parse('https://example.test/logout'), policy), root);
+    expect(BrowserLoginPolicy.assessmentStart(root, current, ScanPolicy(excludedPaths: ['/dashboard'])), root);
   });
   test('cookie import rejects header injection and duplicate names', () {
     expect(BrowserLoginPolicy.cookieHeader([const MapEntry('sid', 'fixture')]), 'sid=fixture');

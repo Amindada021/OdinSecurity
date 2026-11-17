@@ -53,9 +53,9 @@ class _AuthDialogState extends State<AuthDialog> {
         throw const FormatException('Browser sign-in must use the selected HTTPS origin.');
       }
       setState(() { importing = true; error = null; });
-      final captured = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => BrowserLoginScreen(target: target, login: loginUri)));
+      final captured = await Navigator.of(context).push<BrowserLoginResult>(MaterialPageRoute(builder: (_) => BrowserLoginScreen(target: target, login: loginUri)));
       if (captured != null && mounted) {
-        setState(() { secret.text = captured; cookiePath = target.path.isEmpty ? '/' : target.path; });
+        setState(() { secret.text = captured.cookieHeader; cookiePath = captured.cookiePath; });
       }
     } on FormatException catch (e) {
       if (mounted) setState(() => error = e.message);

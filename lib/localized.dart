@@ -19,6 +19,21 @@ String uiNumber(BuildContext context, int value) {
 }
 
 const persianText = <String, String>{
+  "Public website": "لندینگ (عمومی)",
+  "After sign-in": "پس از ورود",
+  "Scan the landing page and public links without signing in.": "صفحه لندینگ و لینک‌های عمومی بدون ورود بررسی می‌شوند.",
+  "Sign in using your own account in the embedded browser, then start the read-only scan.": "با حساب خودتان در مرورگر داخلی وارد شوید، سپس اسکن فقط‌خواندنی را شروع کنید.",
+  "Browser sign-in requires HTTPS.": "ورود با مرورگر به HTTPS نیاز دارد.",
+  "Use Bearer token instead": "استفاده از توکن Bearer به‌جای ورود",
+  "Sign-in page URL": "آدرس صفحه ورود",
+  "Enter a login path or a registered HTTPS sign-in URL. Cookie-based sessions are supported; token-only APIs require API authentication.": "مسیر ورود یا آدرس HTTPS ثبت‌شده ورود را وارد کنید. نشست مبتنی بر کوکی پشتیبانی می‌شود؛ APIهای فقط توکنی به احراز هویت API نیاز دارند.",
+  "Sign-in URL must be a registered, permitted HTTPS address.": "آدرس ورود باید HTTPS و در محدوده مجاز و ثبت‌شده پروژه باشد.",
+  "Open sign-in and scan": "باز کردن صفحه ورود و اسکن",
+  "Read-only, same origin, with optional browser session or token. No automatic redirects or exploit payloads.": "فقط خواندنی، محدود به همان مبدأ؛ با نشست مرورگر یا توکن اختیاری. بدون تغییر مسیر خودکار یا کد بهره‌برداری.",
+  "Browser sign-in": "ورود با مرورگر",
+  "Sign in on this page, then tap Continue to scan. Your password is not saved by OdinSecurity.": "در این صفحه وارد شوید و سپس ادامه اسکن را بزنید. رمز عبور شما در OdinSecurity ذخیره نمی‌شود.",
+  "Continue to scan": "ادامه و شروع اسکن",
+  "No usable session cookie was found for the scan target. Complete sign-in or use API authentication if the site uses tokens.": "کوکی نشست معتبر برای مقصد پیدا نشد. ابتدا ورود را کامل کنید؛ اگر سایت فقط از توکن استفاده می‌کند، از احراز هویت API استفاده کنید.",
   "Your security workspace": "فضای کاری امنیت شما",
   "Use Bearer token (optional)": "استفاده از توکن Bearer (اختیاری)",
   "For protected APIs. Token is not saved.": "برای APIهای محافظت‌شده؛ توکن ذخیره نمی‌شود.",

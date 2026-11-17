@@ -1,9 +1,41 @@
 import 'project.dart';
+import 'scan_policy.dart';
+import 'discovery.dart';
 
 class BrowserLoginPolicy {
   static bool allows(Uri target, Uri candidate) =>
       target.scheme == 'https' && candidate.scheme == 'https' &&
       candidate.userInfo.isEmpty && SecurityProject.sameOrigin(target, candidate);
+
+  /// A login can use a second explicitly registered HTTPS origin. Session
+  /// cookies are still read only for the selected assessment URL.
+  static Uri loginUrl(SecurityProject project, Uri target, String raw, ScanPolicy policy) {
+    final value = raw.trim();
+    final uri = SecurityProject.parseTarget(value.startsWith('/') && !value.startsWith('//')
+        ? target.resolve(value).toString() : value);
+    if (target.scheme != 'https' || uri.scheme != 'https' ||
+        !project.contains(target) || !project.contains(uri) ||
+        !policy.permits(target) || !policy.permits(uri)) {
+      throw const FormatException('Sign-in URL must be a registered, permitted HTTPS address.');
+    }
+    return uri;
+  }
+
+  static bool allowsNavigation(Uri target, Uri login, Uri candidate, ScanPolicy? policy) =>
+      (allows(target, candidate) || allows(login, candidate)) &&
+      (policy == null || policy.permits(candidate));
+
+  /// If a root website was selected, begin at the page reached after login.
+  /// Query strings and fragments may contain authorization codes: never scan them.
+  static Uri assessmentStart(Uri target, Uri current, ScanPolicy? policy) {
+    if ((target.path.isEmpty || target.path == '/') && allows(target, current)) {
+      final withoutQuery = Uri.parse(current.toString().split(RegExp(r'[?#]')).first);
+      if ((policy == null || policy.permits(withoutQuery)) && LinkDiscovery.eligible(target, withoutQuery)) {
+        return withoutQuery;
+      }
+    }
+    return target;
+  }
 
   /// Cookie values are imported only from the app's own WebView on explicit
   /// user action. Reject header injection and ambiguous duplicate cookie names.
