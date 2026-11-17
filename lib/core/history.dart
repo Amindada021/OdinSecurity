@@ -15,7 +15,7 @@ class ScanRecord {
   factory ScanRecord.fromPages(List<PassiveScanResult> results, {int failedCount = 0, bool cancelled = false, List<Map<String, dynamic>> files = const [], Map<String, dynamic> coverage = const {}}) => ScanRecord(
     finishedAt: DateTime.now().toUtc(), failedCount: failedCount, cancelled: cancelled, files: files, coverage: coverage,
     pages: results.map((page) => <String, dynamic>{
-      'url': page.url.removeFragment().replace(query: '').toString(),
+      'url': page.url.removeFragment().toString().split('?').first,
       'statusCode': page.statusCode,
       'bodyTruncated': page.bodyTruncated,
       'redirectNotFollowed': page.redirectNotFollowed,
@@ -27,20 +27,21 @@ class ScanRecord {
       }).toList(),
       'observations': page.findings.map((finding) => {
         'id': finding.id, 'title': finding.title, 'severity': finding.severity.name,
-        'evidence': finding.evidence, 'remediation': finding.remediation,
+        'evidence': finding.evidence, 'remediation': finding.remediation, 'certainty': finding.certainty.name,
       }).toList(),
     }).toList(),
   );
 
   Map<String, dynamic> toJson() => {
-    'finishedAt': finishedAt.toIso8601String(), 'failedCount': failedCount, 'cancelled': cancelled, 'pages': pages, 'files': files, 'coverage': coverage,
+    'finishedAt': finishedAt.toIso8601String(), 'failedCount': failedCount, 'cancelled': cancelled, 'pages': pages, 'files': files, 'discoveredAssets': files, 'coverage': coverage,
+    'findingsByCertainty': findingsByCertainty,
   };
 
   factory ScanRecord.fromJson(Map<String, dynamic> data) => ScanRecord(
     finishedAt: DateTime.parse(data['finishedAt'] as String), failedCount: data['failedCount'] as int,
     cancelled: data['cancelled'] as bool,
     coverage: Map<String, dynamic>.from(data['coverage'] as Map? ?? const {}),
-    files: (data['files'] as List? ?? const []).map((v) => Map<String, dynamic>.from(v as Map)).toList(),
+    files: ((data['discoveredAssets'] ?? data['files']) as List? ?? const []).map((v) => Map<String, dynamic>.from(v as Map)).toList(),
     pages: (data['pages'] as List<dynamic>).map((p) => Map<String, dynamic>.from(p as Map)).toList(),
   );
 
@@ -64,8 +65,20 @@ class ScanRecord {
     return List.unmodifiable(result);
   }
 
-  int get observationCount => pages.fold(0, (sum, page) => sum + (page['observations'] as List).length);
-  String exportJson() => const JsonEncoder.withIndent('  ').convert({'schemaVersion': 1, ...toJson()});
+  List<Map<String, dynamic>> get allFindings => [
+    for (final page in pages)
+      for (final item in page['observations'] as List? ?? const [])
+        {...Map<String, dynamic>.from(item as Map), 'url': page['url']},
+    for (final asset in files)
+      for (final item in asset['findings'] as List? ?? const [])
+        {...Map<String, dynamic>.from(item as Map), 'url': asset['url']},
+  ];
+  Map<String, List<Map<String, dynamic>>> get findingsByCertainty => {
+    for (final certainty in ['confirmed', 'observed', 'possible'])
+      certainty: allFindings.where((item) => (item['certainty'] ?? 'possible') == certainty).toList(),
+  };
+  int get observationCount => allFindings.length;
+  String exportJson() => const JsonEncoder.withIndent('  ').convert({'schemaVersion': 2, ...toJson()});
 }
 
 class HistoryRepository {

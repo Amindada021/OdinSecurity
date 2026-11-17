@@ -6,8 +6,6 @@ import 'scan_policy.dart';
 /// Candidate routes from queryless rendered anchors only. No forms, scripts,
 /// resource requests, guessed URLs, external origins or automatic redirects.
 class RenderedNavigation {
-  static const maxPages = 5;
-
   static String routeKey(Uri url) => url.replace(path: url.path.isEmpty ? '/' : url.path).toString();
 
   static List<Uri> candidates(SecurityProject project, ScanPolicy policy, Uri origin,
@@ -15,9 +13,8 @@ class RenderedNavigation {
     final routes = <Uri>{};
     final currentPath = current.path.isEmpty ? '/' : current.path;
     final previous = attempted.map((url) => routeKey(url)).toSet();
-    final budget = remaining ?? policy.maxPages;
-    final cap = [policy.maxPages, maxPages, budget].reduce((a, b) => a < b ? a : b);
-    if (cap <= 0) return const [];
+    if (remaining != null && remaining <= 0) return const [];
+    final cap = remaining ?? (policy.unlimited ? null : policy.maxRequests);
     for (final item in observed) {
       final target = item.url;
       if (item.source != 'navigation' || previous.contains(routeKey(target)) || target == current ||
@@ -27,7 +24,7 @@ class RenderedNavigation {
           !LinkDiscovery.eligible(origin, target)) continue;
       if (!previous.add(routeKey(target))) continue;
       routes.add(target);
-      if (routes.length >= cap) break;
+      if (cap != null && routes.length >= cap) break;
     }
     return List.unmodifiable(routes);
   }

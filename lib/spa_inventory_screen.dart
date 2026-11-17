@@ -32,7 +32,7 @@ class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
   bool autoRunning = false, stopRequested = false;
   int explored = 0;
   final attempted = <Uri>{};
-  int get remaining => widget.policy.maxPages - attempted.length;
+  int get remaining => (widget.policy.unlimited ? 300 : widget.policy.maxRequests - attempted.length);
   Uri? expectedNavigation;
   Completer<bool>? navigationFinished;
 
@@ -241,7 +241,7 @@ class _SpaInventoryScreenState extends State<SpaInventoryScreen> {
             }, child: const LText('Save routes')),
             if (autoRunning) OutlinedButton(onPressed: stopRequested ? null : () => setState(() { stopRequested = true; finishNavigation(false); }), child: const LText('Stop')),
             if (autoRunning) Text('${uiNumber(context, explored)} ${tr(context, "Pages captured")}'),
-            if (attempted.isNotEmpty) Text('${tr(context, 'Rendered crawl budget')}: ${uiNumber(context, attempted.length)}/${uiNumber(context, widget.policy.maxPages)}'),
+            if (attempted.isNotEmpty) Text('${tr(context, 'Rendered crawl budget')}: ${uiNumber(context, attempted.length)}/${widget.policy.unlimited ? tr(context, 'Unlimited') : uiNumber(context, widget.policy.maxRequests)}'),
             OutlinedButton(onPressed: loaded && !busy && !closing && routes.isNotEmpty && remaining > 0 ? exploreSelected : null,
               child: LText(attempted.isEmpty ? 'Explore selected pages' : 'Review next crawl wave')),
             FilledButton.icon(onPressed: loaded && !busy && !closing ? capture : null, icon: const Icon(Icons.search), label: const LText('Capture routes')),

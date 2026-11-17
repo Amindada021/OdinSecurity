@@ -2,10 +2,13 @@ import 'fingerprint.dart';
 
 enum Severity { info, low, medium, high, critical }
 
+enum FindingCertainty { possible, observed, confirmed }
+
 class SecurityFinding {
   final String id, title, evidence, remediation;
   final Severity severity;
-  const SecurityFinding(this.id, this.title, this.severity, this.evidence, this.remediation);
+  final FindingCertainty certainty;
+  const SecurityFinding(this.id, this.title, this.severity, this.evidence, this.remediation, {this.certainty = FindingCertainty.possible});
 }
 
 /// Header/metadata observations only. They are configuration signals,

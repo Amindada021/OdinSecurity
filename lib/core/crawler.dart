@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:collection';
 import 'auth.dart';
+import 'asset_discovery.dart';
+import 'security_checks.dart';
+import 'fingerprint.dart';
 import 'file_access.dart';
 import 'discovery.dart';
 import 'passive_scan.dart';
@@ -60,7 +63,8 @@ class SiteCrawler {
   Future<CrawlResult> run(SecurityProject project, Uri start, {
     required bool authorized,
     AuthProfile? auth,
-    int maxPages = 12,
+    int maxPages = 100,
+    int? maxRequests,
     Map<Uri, bool> moviePurchases = const {},
     Iterable<Uri> observedRoutes = const [],
     Iterable<Uri> observedFiles = const [],
@@ -68,6 +72,7 @@ class SiteCrawler {
     ScanPolicy? policy,
     CancellationFlag? cancellation,
     void Function(int count)? onProgress,
+    void Function(int count)? onRequests,
     void Function(String tag, String message, String detail)? onEvent,
     CrawlCheckpoint? resumeFrom,
     Future<void> Function(CrawlCheckpoint?)? onCheckpoint,
@@ -75,15 +80,15 @@ class SiteCrawler {
     if (!authorized || !project.contains(start) || !LinkDiscovery.eligible(start, start)) {
       throw StateError('Unauthorized target.');
     }
-    final settings = policy ?? ScanPolicy(maxPages: maxPages);
-    maxPages = settings.maxPages;
+    final settings = policy ?? ScanPolicy(maxRequests: maxRequests ?? maxPages);
     if (!settings.permits(start)) throw StateError('The start URL is excluded by scan policy.');
     if (auth != null && !SecurityProject.sameOrigin(auth.target, start)) throw StateError('Credential origin mismatch.');
     final identity = auth?.name ?? '';
     resumeFrom?.validate(project, settings, start, identity);
     final queue = Queue<Uri>.of(resumeFrom?.pending ?? [start]);
     final seen = <Uri>{...(resumeFrom?.seen ?? [start])};
-    final discovered = <Uri>{...seen.map(LinkDiscovery.canonical)};
+    final seenCanonical = <Uri>{...seen.map(LinkDiscovery.canonical)};
+    final discovered = <Uri>{...seenCanonical};
     final checked = <Uri>{
       if (resumeFrom != null) ...resumeFrom.seen.where((url) => !resumeFrom.pending.contains(url)).map(LinkDiscovery.canonical),
     };
@@ -93,20 +98,25 @@ class SiteCrawler {
     final warnings = <String>{};
     final pages = <PassiveScanResult>[];
     final files = <Uri, Map<String, dynamic>>{};
-    final pendingFiles = Queue<Uri>();
+    final pendingFiles = <Uri>[];
+    var filesDirty = true;
+    final requestKeys = <String>{...(resumeFrom?.requestKeys ?? const <String>[])};
+    final uncheckedReasons = <Uri, String>{};
+    final directories = <Uri>{};
     final queryPaths = <Uri>{};
     var authTruncated = 0;
     var attempted = resumeFrom?.requestCount ?? 0;
+    onRequests?.call(attempted);
     var pageAttempted = resumeFrom?.attempted ?? 0;
     var failed = 0, serverErrors = 0;
     var stopReason = 'completed';
     var authentication = auth == null ? 'No credentials selected' : 'Session not independently verified';
     String? retryAfter;
     AuthSession? session;
-    final elapsed = Stopwatch()..start();
-    const timeBudget = Duration(minutes: 3);
+    var lastRequestAt = DateTime.fromMillisecondsSinceEpoch(0);
 
     void skip(Uri url, String reason) {
+      uncheckedReasons[url] = reason;
       if (rejected.add(url)) skipped.update(reason, (n) => n + 1, ifAbsent: () => 1);
     }
     bool allowed(Uri url) {
@@ -115,48 +125,53 @@ class SiteCrawler {
       if (!LinkDiscovery.safeMediaTarget(start, url)) { skip(url, 'Unsafe or query-bearing URL'); return false; }
       return true;
     }
-    void discover(Uri raw, {bool file = false, String source = 'Observed browser route'}) {
+    void discover(Uri raw, {bool file = false, String source = 'Observed browser route', String? kind, bool directory = false}) {
       final url = LinkDiscovery.canonical(raw);
-      if (discovered.length >= 1000 && !discovered.contains(url)) {
-        warnings.add('Discovery inventory limit reached');
-        return;
-      }
       discovered.add(url);
       if (!allowed(url)) return;
-      if (file || LinkDiscovery.isFile(url)) {
-        if (files.containsKey(url)) return;
-        if (files.length + queryPaths.length >= 100) { skip(url, 'File inventory limit'); return; }
+      if (file || LinkDiscovery.isFile(url) || AssetDiscovery.sensitive(url) || AssetDiscovery.textAsset(url)) {
+        if (files.containsKey(url)) {
+          if (directory) { files[url]!['directory'] = true; files[url]!['kind'] = 'directory'; }
+          return;
+        }
         final media = LinkDiscovery.isMedia(url);
         files[url] = {'url': url.toString(), 'source': source,
-          'media': media, 'outcome': 'Not checked'};
-        // Unknown download routes may also be media: automatic discovery is
-        // inventory only. Only explicit movie samples are fetched as media.
-        if (!media && !RegExp(r'(^|/)(download|export)(/|$)', caseSensitive: false).hasMatch(url.path)) {
-          pendingFiles.add(url);
-        }
+          'media': media, 'outcome': 'Not checked', 'kind': kind ?? AssetDiscovery.kind(url),
+          'directory': directory, 'access': 'Unknown', 'scanContext': auth == null ? 'anonymous' : 'credentialed'};
+        // Automatic media probes use HEAD; only owner-supplied samples read bytes.
+        pendingFiles.add(url);
+        filesDirty = true;
         return;
       }
       if (!LinkDiscovery.eligible(start, url)) { skip(url, 'Not a readable page route'); return; }
-      if (seen.contains(url) || seen.any((item) => LinkDiscovery.canonical(item) == url)) return;
-      if (seen.length >= maxPages) { skip(url, 'Page queue limit'); return; }
+      if (!seenCanonical.add(url)) return;
       seen.add(url);
       queue.add(url);
     }
     void inventoryQuery(Uri path) {
       // The caller has already removed query values. Never enqueue this path.
-      if (queryPaths.length + files.length >= 100) { warnings.add('File inventory limit reached'); return; }
       if (!allowed(path)) return;
       queryPaths.add(path);
     }
     Future<void> checkpoint() async {
       // Checkpoints retain only page traversal. Request count includes every
       // login/validation/file request, so resuming cannot reset the budget.
-      await onCheckpoint?.call(queue.isEmpty || attempted >= maxPages ? null :
-        CrawlCheckpoint(start, identity, seen, queue, pageAttempted, requestCount: attempted));
+      await onCheckpoint?.call(queue.isEmpty || settings.exhausted(attempted) || seen.length > 10000 || requestKeys.length > 10000 ? null :
+        CrawlCheckpoint(start, identity, seen, queue, pageAttempted, requestCount: attempted, requestKeys: requestKeys.toList()));
     }
     CrawlResult finish() {
-      final truncated = pages.where((p) => p.bodyTruncated).length + authTruncated;
+      final truncated = pages.where((p) => p.bodyTruncated).length + authTruncated + files.values.where((row) => row['bodyTruncated'] == true).length;
+      final fullyChecked = <Uri>{
+        for (final page in pages)
+          if (page.statusCode >= 200 && page.statusCode < 300 && !page.bodyTruncated && !page.loginPage && !page.redirectNotFollowed) LinkDiscovery.canonical(page.url),
+        for (final entry in files.entries)
+          if (entry.value['status'] is int && (entry.value['status'] as int) >= 200 &&
+              (entry.value['status'] as int) < 300 && entry.value['bodyTruncated'] != true) entry.key,
+      };
       final unchecked = discovered.difference(checked).length + queryPaths.length;
+      for (final url in discovered.difference(checked)) {
+        uncheckedReasons.putIfAbsent(url, () => stopReason != 'completed' ? stopReason : 'Not requested');
+      }
       final incomplete = (auth != null && authentication != 'Session verified by protected URL and expected marker') || (pages.isNotEmpty && pages.every((p) => p.links.isEmpty)) || stopReason != 'completed' || failed > 0 || truncated > 0 || unchecked > 0 ||
           warnings.isNotEmpty || pages.any((p) => p.redirectNotFollowed);
       if (truncated > 0) warnings.add('Response body was truncated; coverage is limited.');
@@ -164,33 +179,54 @@ class SiteCrawler {
       if (pages.isNotEmpty && pages.every((p) => p.links.isEmpty)) {
         warnings.add('No readable page links found in received HTML; rendered routes may be required.');
       }
+      session?.validationResponse = null;
       return CrawlResult(List.unmodifiable(pages), failed, cancellation?.cancelled == true,
         stopReason, [...files.values, for (final path in queryPaths) {
           'url': path.toString(), 'queryRedacted': true, 'outcome': 'Query URL recorded without parameters; not requested',
           'source': 'Observed signed or query-bearing file link', 'media': LinkDiscovery.isMedia(path),
+          'kind': AssetDiscovery.kind(path), 'reason': 'Query parameters redacted; URL not replayed',
         }], {
           'incomplete': incomplete, 'discovered': discovered.length + queryPaths.length, 'checked': checked.length,
-          'requests': attempted, 'unchecked': unchecked, 'skipped': skipped,
+          'requests': attempted, 'maxRequests': settings.maxRequests, 'unchecked': unchecked, 'skipped': skipped,
+          'pagesDiscovered': seen.length, 'pagesChecked': pages.length,
+          'scanContext': auth == null || auth.mode == AuthMode.none ? 'anonymous' : 'credentialed',
+          'identityLabel': identity, 'sessionVerified': authentication == 'Session verified by protected URL and expected marker',
+          'coveragePercent': discovered.isEmpty && queryPaths.isEmpty ? 0 : (fullyChecked.intersection(discovered).length * 100 / (discovered.length + queryPaths.length)),
+          'coverageBasis': 'Observed candidate URLs only; not the whole site',
+          'uncheckedRoutes': [for (final entry in uncheckedReasons.entries) {'url': entry.key.toString().split('?').first, 'reason': entry.value},
+            for (final path in queryPaths) {'url': path.toString(), 'reason': 'Query parameters redacted; URL not replayed'}],
           'htmlExclusions': htmlExclusions, 'truncated': truncated, 'authentication': authentication, 'stopReason': stopReason,
           'warnings': warnings.toList(), if (retryAfter != null) 'retryAfter': retryAfter,
           'inventoryScope': 'Observed queryless URLs only; signed/query URLs are not replayed',
         });
     }
     Future<bool> ready() async {
-      if (cancellation?.paused == true) {
-        elapsed.stop(); await cancellation!.waitIfPaused(); elapsed.start();
-      }
+      await cancellation?.waitIfPaused();
       if (cancellation?.cancelled == true) { stopReason = 'cancelled'; return false; }
-      if (elapsed.elapsed >= timeBudget) { stopReason = 'time_budget'; return false; }
-      if (attempted >= maxPages) { stopReason = 'page_budget'; return false; }
-      if (attempted > 0) await wait(Duration(milliseconds: settings.delayMs));
-      if (cancellation?.paused == true) {
-        elapsed.stop(); await cancellation!.waitIfPaused(); elapsed.start();
-      }
+      if (settings.exhausted(attempted)) { stopReason = 'request_budget'; return false; }
+      final gap = DateTime.now().difference(lastRequestAt).inMilliseconds;
+      if (attempted > 0 && gap < settings.delayMs) await wait(Duration(milliseconds: settings.delayMs - gap));
+      await cancellation?.waitIfPaused();
       if (cancellation?.cancelled == true) { stopReason = 'cancelled'; return false; }
-      if (elapsed.elapsed >= timeBudget) { stopReason = 'time_budget'; return false; }
       return true;
     }
+    Future<bool> begin(Uri url, String method, {bool anonymous = false}) async {
+      final key = '${anonymous || session == null ? 'anonymous' : 'session'} $method ${LinkDiscovery.canonical(url)}';
+      if (requestKeys.contains(key)) return false;
+      if (!await ready()) return false;
+      requestKeys.add(key);
+      attempted++;
+      lastRequestAt = DateTime.now();
+      checked.add(LinkDiscovery.canonical(url));
+      uncheckedReasons.remove(LinkDiscovery.canonical(url));
+      onRequests?.call(attempted);
+      return true;
+    }
+    Map<String, dynamic> findingJson(SecurityFinding item) => {
+      'id': item.id, 'title': item.title, 'severity': item.severity.name,
+      'certainty': item.certainty.name, 'evidence': item.evidence, 'remediation': item.remediation,
+    };
+    void addReference(AssetReference ref) => discover(ref.url, file: true, source: ref.source, kind: ref.kind, directory: ref.directory);
     bool responseStops(int status, {String? retry}) {
       if (status == 429) {
         retryAfter = retry;
@@ -210,10 +246,9 @@ class SiteCrawler {
         if (files[url]!['purchased'] != entry.value) throw StateError('Conflicting movie sample groups.');
         continue;
       }
-      if (files.length >= 30) throw StateError('Too many movie samples.');
       discovered.add(url);
       files[url] = {'url': url.toString(), 'purchased': entry.value, 'media': true,
-        'outcome': 'Not checked', 'access': 'Unknown', 'fullPlaybackVerified': false};
+        'outcome': 'Not checked', 'kind': 'video', 'access': 'Unknown', 'fullPlaybackVerified': false};
       pendingFiles.add(url);
     }
     if (moviePurchases.isNotEmpty && (auth == null || auth.mode == AuthMode.none)) {
@@ -232,7 +267,10 @@ class SiteCrawler {
           permits: settings.permits, beforeRequest: () async {
             if (!await ready()) throw const AuthenticationException('Request budget or job control stopped authentication');
             attempted++;
+            lastRequestAt = DateTime.now();
+            onRequests?.call(attempted);
             final url = LinkDiscovery.canonical(authRequests.removeFirst());
+            requestKeys.add('session ${auth.isLogin && url.toString() == auth.loginUrl ? 'POST' : 'GET'} $url');
             discovered.add(url);
             checked.add(url);
           });
@@ -253,12 +291,22 @@ class SiteCrawler {
       }
     }
     await checkpoint();
-    var fileTurn = false;
     while (queue.isNotEmpty || pendingFiles.isNotEmpty) {
       if (!await ready()) break;
-      final isFile = pendingFiles.isNotEmpty && (fileTurn || queue.isEmpty);
-      final next = isFile ? pendingFiles.removeFirst() : queue.removeFirst();
-      fileTurn = !isFile;
+      // Content pages precede assets; explicit owner samples follow the first page.
+      int priority(Uri url) {
+        final row = files[url]!;
+        if (row.containsKey('purchased')) return -1;
+        return row['directory'] == true || row['kind'] == 'script' || row['kind'] == 'stylesheet' ? 0 :
+          row['kind'] == 'image' || row['kind'] == 'decorative' ? 2 : 1;
+      }
+      final isFile = pendingFiles.isNotEmpty && (queue.isEmpty ||
+          (pages.isNotEmpty && files[pendingFiles.first]!.containsKey('purchased')));
+      if (isFile && filesDirty) {
+        pendingFiles.sort((a, b) => priority(a).compareTo(priority(b)));
+        filesDirty = false;
+      }
+      final next = isFile ? pendingFiles.removeAt(0) : queue.removeFirst();
       if (!isFile) pageAttempted++;
       if (session?.expectsCredentials == true && session!.headersFor(next).isEmpty) {
         skip(next, 'Outside applicable session path or session expired');
@@ -267,25 +315,94 @@ class SiteCrawler {
         await checkpoint();
         continue;
       }
-      attempted++;
-      checked.add(LinkDiscovery.canonical(next));
+      final movieSample = isFile && files[next]!.containsKey('purchased');
+      final validation = session?.validationResponse;
+      final cached = !isFile && validation != null && LinkDiscovery.canonical(validation.url) == LinkDiscovery.canonical(next) ? validation : null;
+      if (cached == null && !await begin(next, isFile && !movieSample ? 'HEAD' : 'GET')) {
+        if (stopReason != 'completed') {
+          if (!isFile) { queue.addFirst(next); pageAttempted--; }
+          else { pendingFiles.insert(0, next); }
+          break;
+        }
+        await checkpoint();
+        continue;
+      }
       // URLs in this queue are queryless; no response bodies or credentials are logged.
       final address = '${next.origin}${next.path}';
       onEvent?.call('SCAN', '', address);
       try {
         if (isFile) {
           final row = files[next]!;
-          final movie = row.containsKey('purchased');
-          final check = await checkLinkedFile(next, session, movie: movie);
-          row['status'] = check.status;
-          row['outcome'] = check.outcome;
-          if (movie) row['access'] = check.outcome == 'Access denied' ? 'Denied' :
-            check.outcome == 'Media bytes returned' ? 'Allowed sample only' : 'Unknown';
-          if (responseStops(check.status, retry: check.retryAfter)) break;
+          if (movieSample) {
+            final check = await checkLinkedFile(next, session, movie: true);
+            row['status'] = check.status;
+            row['contentType'] = check.contentType;
+            row['sizeBytes'] = check.sizeBytes;
+            row['outcome'] = check.outcome;
+            row['access'] = check.outcome == 'Access denied' ? 'Denied' :
+              check.outcome == 'Media bytes returned' ? 'Allowed sample only' : 'Unknown';
+            if (responseStops(check.status, retry: check.retryAfter)) break;
+          } else {
+            final metadata = await inspectAsset(next, session);
+            row.addAll({'status': metadata.status, 'outcome': metadata.outcome,
+              'contentType': metadata.contentType, 'sizeBytes': metadata.sizeBytes,
+              'findings': metadata.findings.map(findingJson).toList(),
+              'sessionStatus': session == null ? null : metadata.status});
+            if (responseStops(metadata.status, retry: metadata.retryAfter)) break;
+            final success = metadata.status >= 200 && metadata.status < 300;
+            if (session?.expectsCredentials == true && success) {
+              if (await begin(next, 'HEAD', anonymous: true)) {
+                final anonymous = await inspectAsset(next, null);
+                row['anonymousStatus'] = anonymous.status;
+                row['access'] = anonymous.status >= 200 && anonymous.status < 300 &&
+                    anonymous.contentType == metadata.contentType && !anonymous.contentType.contains('html')
+                  ? 'Public metadata' : [401, 403].contains(anonymous.status) || anonymous.loginPage
+                    ? 'Session-only metadata' : 'Unknown';
+                if (responseStops(anonymous.status, retry: anonymous.retryAfter)) break;
+              } else if (stopReason != 'completed') {
+                row['reason'] = 'Anonymous comparison not performed: $stopReason';
+                uncheckedReasons[next] = row['reason'] as String;
+              }
+            } else {
+              if (session?.expectsCredentials != true) row['anonymousStatus'] = metadata.status;
+              row['access'] = session?.expectsCredentials != true && success && !metadata.contentType.contains('html') ? 'Public metadata' :
+                metadata.outcome == 'Access denied' ? 'Denied' : 'Unknown';
+            }
+            final inspectText = row['directory'] == true || row['kind'] == 'script' || row['kind'] == 'stylesheet';
+            if (inspectText && (success || metadata.status == 405 || metadata.status == 501)) {
+              if (await begin(next, 'GET')) {
+                final text = await inspectAsset(next, session, readText: true);
+                row['textStatus'] = text.status;
+                row['headStatus'] = row['status'];
+                row['status'] = text.status;
+                if (!success) { row['contentType'] = text.contentType; row['sizeBytes'] = text.sizeBytes; }
+                row['outcome'] = text.outcome;
+                row['bodyTruncated'] = text.truncated;
+                row['directoryListing'] = text.listing;
+                row['findings'] = {for (final finding in [...metadata.findings, ...text.findings]) finding.id: findingJson(finding)}.values.toList();
+                if (text.truncated) warnings.add('Asset text response truncated; referenced assets may be missing.');
+                if (responseStops(text.status, retry: text.retryAfter)) break;
+                for (final ref in text.references) { addReference(ref); }
+                for (final link in text.pageLinks) { discover(link, source: 'Directory index: ${next.path}'); }
+                if (session?.expectsCredentials == true && text.loginPage) {
+                  authentication = 'Sign-in page or login redirect received';
+                  stopReason = 'authentication_rejected';
+                  break;
+                }
+              } else if (stopReason != 'completed') {
+                row['reason'] = 'Referenced text not inspected: $stopReason';
+                uncheckedReasons[next] = row['reason'] as String;
+              }
+            }
+          }
         } else {
-          final page = await scanner.scanWithSession(project, next, authorized: authorized, session: session);
+          final page = cached == null
+              ? await scanner.scanWithSession(project, next, authorized: authorized, session: session)
+              : scanner.inspectObservation(next, HttpObservation(headers: cached.headers, body: cached.body),
+                  statusCode: cached.status, truncated: false, bodyBytes: cached.byteCount, identityHeadersSent: true);
+          if (cached != null) session?.validationResponse = null;
           pages.add(page);
-          if (page.links.length >= 300 || page.fileLinks.length >= 100 ||
+          if (page.assets.length >= 1000 || page.links.length >= 1000 || page.fileLinks.length >= 100 ||
               page.queryFilePaths.length >= 100 || page.discoveryExclusions.containsKey('HTML discovery inspection limit')) {
             warnings.add('Discovery inventory limit reached');
           }
@@ -303,6 +420,10 @@ class SiteCrawler {
             break;
           }
           if (page.statusCode >= 200 && page.statusCode < 300 && !page.loginPage) {
+            for (final ref in page.assets) { addReference(ref); }
+            for (final ref in AssetDiscovery.publicDirectories(next, page.technologies, page.assets)) {
+              if (directories.add(ref.url)) addReference(ref);
+            }
             for (final link in page.links) { discover(link, source: address); }
             for (final file in page.fileLinks) { discover(file, file: true, source: address); }
             for (final path in page.queryFilePaths) { inventoryQuery(path); }
@@ -312,6 +433,7 @@ class SiteCrawler {
       } catch (_) {
         failed++;
         if (isFile) files[next]!['outcome'] = 'Request failed';
+        uncheckedReasons[next] = 'Request failed';
         onEvent?.call('WARN', 'Request failed', address);
       } finally { await checkpoint(); }
     }

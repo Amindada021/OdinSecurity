@@ -29,7 +29,7 @@ class ConfigurationReview {
     if (!authorized || !project.targets.contains(target) || target.scheme != 'https' ||
         !policy.permits(target) || target.hasQuery || target.hasFragment ||
         target.userInfo.isNotEmpty || target.toString().length > 2048 ||
-        policy.maxPages < (cors ? 2 : 1)) throw StateError('Invalid configuration review.');
+        !policy.allowsCount(cors ? 2 : 1)) throw StateError('Invalid configuration review.');
   }
 
   Future<ConfigurationReviewResult> run(SecurityProject project, ScanPolicy policy, Uri target,

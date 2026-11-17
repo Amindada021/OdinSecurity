@@ -35,6 +35,6 @@ void main() {
     final p = SecurityProject(name: 'Fixture', url: 'https://example.test');
     final routes = List.generate(8, (i) => RouteObservation(p.startUrl.resolve('/page$i'), 'navigation'));
     expect(RenderedNavigation.candidates(p, ScanPolicy(maxPages: 2), p.startUrl, p.startUrl, routes).length, 2);
-    expect(RenderedNavigation.candidates(p, ScanPolicy(), p.startUrl, p.startUrl, routes).length, 5);
+    expect(RenderedNavigation.candidates(p, ScanPolicy(), p.startUrl, p.startUrl, routes).length, 8);
   });
 }

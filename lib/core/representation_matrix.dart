@@ -24,7 +24,7 @@ class RepresentationMatrix {
     final modes = values.toList();
     if (!authorized || target.scheme != 'https' || !project.targets.contains(target) || !policy.permits(target) ||
         target.hasQuery || target.hasFragment || target.userInfo.isNotEmpty || target.toString().length > 2048 ||
-        modes.isEmpty || modes.length > policy.maxPages || modes.toSet().length != modes.length ||
+        modes.isEmpty || !policy.allowsCount(modes.length) || modes.toSet().length != modes.length ||
         modes.length > ManualAccept.values.length) throw StateError('Invalid representation matrix.');
   }
 

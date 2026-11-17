@@ -3,13 +3,21 @@ import 'auth.dart';
 import 'project_storage.dart';
 
 class ScanPolicy {
-  final int maxPages, delayMs;
+  final int maxRequests, delayMs;
   final List<String> excludedPaths;
 
-  ScanPolicy({this.maxPages = 12, this.delayMs = 1000, List<String> excludedPaths = const []})
-      : excludedPaths = List.unmodifiable(excludedPaths.map((p) => p.trim())) {
-    if (maxPages < 1 || maxPages > 30 || delayMs < 500 || delayMs > 10000) {
-      throw const FormatException('Page cap 1–30 and delay 500–10000 ms required.');
+  // maxPages remains a source/JSON migration alias for existing tools.
+  int get maxPages => maxRequests;
+  bool get unlimited => maxRequests == 0;
+  bool allowsCount(int count) => unlimited || count <= maxRequests;
+  bool exhausted(int used) => !unlimited && used >= maxRequests;
+
+  ScanPolicy({int? maxRequests, int? maxPages, this.delayMs = 1000,
+      List<String> excludedPaths = const []})
+      : maxRequests = maxRequests ?? maxPages ?? 100,
+        excludedPaths = List.unmodifiable(excludedPaths.map((p) => p.trim())) {
+    if (this.maxRequests < 0 || delayMs < 500 || delayMs > 10000) {
+      throw const FormatException('Max Requests must be a nonnegative integer; delay 500–10000 ms required.');
     }
     if (this.excludedPaths.length > 100 || this.excludedPaths.any((p) => !p.startsWith('/') ||
         p.contains(RegExp(r'[?#\r\n]')) || p.length > 512)) {
@@ -17,12 +25,7 @@ class ScanPolicy {
     }
   }
 
-  /// Quick scanning uses conservative defaults without relaxing saved restrictions.
-  ScanPolicy get quickDefaults => ScanPolicy(
-    maxPages: maxPages < 12 ? maxPages : 12,
-    delayMs: delayMs > 1000 ? delayMs : 1000,
-    excludedPaths: excludedPaths,
-  );
+  ScanPolicy get quickDefaults => this;
 
   bool permits(Uri uri) {
     // Compare decoded path segments conservatively, including encoded separators.
@@ -31,11 +34,11 @@ class ScanPolicy {
   }
 
   Map<String, dynamic> toJson() => {
-    'maxPages': maxPages, 'delayMs': delayMs, 'excludedPaths': excludedPaths,
+    'maxRequests': maxRequests, 'maxPages': maxRequests, 'delayMs': delayMs, 'excludedPaths': excludedPaths,
   };
 
   factory ScanPolicy.fromJson(Map<String, dynamic> data) => ScanPolicy(
-    maxPages: data['maxPages'] as int,
+    maxRequests: (data['maxRequests'] ?? (data['maxPages'] == 12 ? 100 : data['maxPages']) ?? 100) as int,
     delayMs: data['delayMs'] as int,
     excludedPaths: (data['excludedPaths'] as List<dynamic>).cast<String>(),
   );

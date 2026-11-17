@@ -5,8 +5,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'history.dart';
 
 class ReportFinding {
-  final String url, id, title, severity, evidence, remediation;
-  const ReportFinding(this.url, this.id, this.title, this.severity, this.evidence, this.remediation);
+  final String url, id, title, severity, evidence, remediation, certainty;
+  const ReportFinding(this.url, this.id, this.title, this.severity, this.evidence, this.remediation, [this.certainty = 'possible']);
   String get key => '$url\n$id';
 }
 
@@ -17,12 +17,12 @@ class ReportSummary {
   static const limitation = 'Observations are not proof of exploitable vulnerabilities. Compare only equivalent sessions and coverage; absence is not proof of a fix. Reports may contain sensitive route names.';
 
   List<ReportFinding> get findings => [
-    for (final page in record.pages)
-      for (final item in page['observations'] as List)
-        ReportFinding(page['url'] as String, item['id'] as String,
-          item['title'] as String, item['severity'] as String,
-          item['evidence'] as String, item['remediation'] as String),
+    for (final item in record.allFindings)
+      ReportFinding(item['url'] as String, item['id'] as String, item['title'] as String,
+        item['severity'] as String, item['evidence'] as String, item['remediation'] as String,
+        item['certainty'] as String? ?? 'possible'),
   ];
+
 
   Map<String, int> get counts => {
     for (final severity in severities)
@@ -41,6 +41,10 @@ class ReportSummary {
       'Checked URLs': record.coverage['checked'] ?? 0,
       'Requests used': record.coverage['requests'] ?? 0,
       'Unchecked URLs': record.coverage['unchecked'] ?? 0,
+      'Pages discovered': record.coverage['pagesDiscovered'] ?? record.pages.length,
+      'Confirmed vulnerabilities': findings.where((f) => f.certainty == 'confirmed').length,
+      'Observed conditions': findings.where((f) => f.certainty == 'observed').length,
+      'Potential findings': findings.where((f) => f.certainty == 'possible').length,
     },
     'Truncated responses': record.coverage['truncated'] as int? ?? record.pages.where((p) => p['bodyTruncated'] == true).length,
     'Discovered media pages': record.pages.where((p) => p['moviePage'] == true).length,
@@ -55,6 +59,8 @@ class ReportSummary {
   List<String> get coverageLines => [
     if (incomplete) 'Scan incomplete; site security has not been established.',
     for (final entry in coverageCounts.entries) '${entry.key}: ${entry.value}',
+    'Scan context: ${record.coverage['scanContext'] ?? 'unknown'}',
+    'Observed URL coverage: ${((record.coverage['coveragePercent'] as num?) ?? 0).toStringAsFixed(1)}% (observed candidates only; not the whole site)',
     'Authentication: ${record.coverage['authentication'] ?? 'Session not independently verified'}',
     if (record.coverage['stopReason'] != null) 'Stop reason: ${record.coverage['stopReason']}',
     if (record.coverage['retryAfter'] != null) 'Retry-After: ${record.coverage['retryAfter']}',
@@ -63,6 +69,8 @@ class ReportSummary {
     for (final entry in (record.coverage['htmlExclusions'] as Map? ?? const {}).entries)
       'Excluded HTML references (${entry.key}): ${entry.value}',
     'Discovered URLs count candidate inventory; HTML exclusions count unique references per response.',
+    for (final item in record.coverage['uncheckedRoutes'] as List? ?? const [])
+      'Unchecked: ${item['url']} | ${item['reason']}',
     ...(record.coverage['warnings'] as List? ?? const []).cast<String>(),
     'Inventory covers observed queryless URLs only; signed/query URLs are not replayed.',
     'Media pages are identified by observed media elements or links; this is not a complete movie catalog.',
@@ -98,7 +106,10 @@ class ReportSummary {
   }
 
   ReportComparison compare(ReportSummary previous) {
-    final shared = comparableUrls.intersection(previous.comparableUrls);
+    final sameContext = record.coverage['scanContext'] == previous.record.coverage['scanContext'] &&
+        record.coverage['identityLabel'] == previous.record.coverage['identityLabel'] &&
+        record.coverage['sessionVerified'] == previous.record.coverage['sessionVerified'];
+    final shared = sameContext ? comparableUrls.intersection(previous.comparableUrls) : <String>{};
     final current = {for (final f in findings) if (shared.contains(f.url)) f.key: f};
     final old = {for (final f in previous.findings) if (shared.contains(f.url)) f.key: f};
     final before = previous.uniquePageStatuses;
@@ -124,9 +135,9 @@ class ReportSummary {
     out.write('<p>${esc(record.finishedAt.toIso8601String())}</p><p>${esc(overview)}</p>');
     out.write('<p>${esc(limitation)}</p><h2>Scan coverage</h2>');
     for (final line in coverageLines) { out.write('<p>${esc(line)}</p>'); }
-    out.write('<h2>Linked files and media samples</h2>');
+    out.write('<h2>Discovered Assets</h2>');
     for (final file in record.files) {
-      out.write('<article><p>${esc(file['url'])}</p><p>${esc(file['outcome'])}; HTTP ${esc(file['status'])}; access: ${esc(file['access'] ?? 'Unknown')}; purchased: ${esc(file['purchased'])}</p><p>Full playback not verified.</p></article>');
+      out.write('<article><p>${esc(file['url'])}</p><p>${esc(file['outcome'])}; HTTP ${esc(file['status'])}; MIME: ${esc(file['contentType'])}; size: ${esc(file['sizeBytes'] ?? 'unknown')} bytes; source: ${esc(file['source'])}; kind: ${esc(file['kind'])}; anonymous: ${esc(file['anonymousStatus'])}; session: ${esc(file['sessionStatus'])}; access: ${esc(file['access'] ?? 'Unknown')}; purchased: ${esc(file['purchased'])}</p><p>Full playback not verified.</p></article>');
     }
     out.write('<h2>Severity summary</h2><ul>');
     for (final entry in counts.entries) {
@@ -141,9 +152,11 @@ class ReportSummary {
       }
       out.write('</article>');
     }
-    out.write('<h2>Security observations</h2>');
-    for (final f in findings) {
-      out.write('<article><h3>${esc(f.severity.toUpperCase())}: ${esc(f.title)}</h3><small>${esc(f.url)} | ${esc(f.id)}</small><p>Evidence: ${esc(f.evidence)}</p><p>Remediation: ${esc(f.remediation)}</p></article>');
+    for (final group in ['confirmed', 'observed', 'possible']) {
+      out.write('<h2>${esc(group == 'confirmed' ? 'Confirmed vulnerabilities' : group == 'observed' ? 'Observed conditions' : 'Potential findings')}</h2>');
+      for (final f in findings.where((item) => item.certainty == group)) {
+        out.write('<article><h3>${esc(f.severity)}: ${esc(f.title)}</h3><small>${esc(f.url)} | ${esc(f.id)}</small><p>Evidence: ${esc(f.evidence)}</p><p>Remediation: ${esc(f.remediation)}</p></article>');
+      }
     }
     out.write('</body></html>');
     return out.toString();
@@ -170,9 +183,10 @@ class ReportSummary {
     line(limitation);
     line('Scan coverage', heading: true);
     for (final entry in coverageLines) { line(entry); }
-    line('Linked files and media samples', heading: true);
+    line('Discovered Assets', heading: true);
     for (final file in record.files) {
       line(file['url']);
+      line("MIME: ${file['contentType'] ?? 'unknown'}; size: ${file['sizeBytes'] ?? 'unknown'} bytes; kind: ${file['kind']}; source: ${file['source']}; anonymous HTTP: ${file['anonymousStatus']}; session HTTP: ${file['sessionStatus']}");
       line("${file['outcome']}; HTTP ${file['status']}; access: ${file['access'] ?? 'Unknown'}; purchased: ${file['purchased']}; full playback not verified");
     }
     line('Severity summary', heading: true);
@@ -186,14 +200,16 @@ class ReportSummary {
         if (tech['observedVersion'] is String) line("Declared version (unverified): ${tech['observedVersion']}");
       }
     }
-    line('Security observations', heading: true);
-    for (final f in findings) {
-      line('${f.severity.toUpperCase()}: ${f.title}', heading: true);
-      line(f.url);
-      line('Evidence: ${f.evidence}');
-      line('Remediation: ${f.remediation}');
+    for (final group in ['confirmed', 'observed', 'possible']) {
+      line(group == 'confirmed' ? 'Confirmed vulnerabilities' : group == 'observed' ? 'Observed conditions' : 'Potential findings', heading: true);
+      for (final f in findings.where((item) => item.certainty == group)) {
+        line('${f.severity.toUpperCase()}: ${f.title}', heading: true);
+        line(f.url);
+        line('Evidence: ${f.evidence}');
+        line('Remediation: ${f.remediation}');
+      }
     }
-    doc.addPage(pw.MultiPage(pageFormat: PdfPageFormat.a4, maxPages: 200,
+    doc.addPage(pw.MultiPage(pageFormat: PdfPageFormat.a4, maxPages: widgets.length + 1 < 200 ? 200 : widgets.length + 1,
       build: (_) => widgets));
     return doc.save();
   }

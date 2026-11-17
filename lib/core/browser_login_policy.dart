@@ -8,7 +8,7 @@ class BrowserLoginPolicy {
   /// links for inventory only; never replay the redacted path. No navigation.
   static const observedSnapshot = r'''(() => {
     const rows = [];
-    for (const node of document.querySelectorAll('a[href],img[src],audio[src],video[src],source[src],form[action]')) {
+    for (const node of document.querySelectorAll('a[href],link[href],script[src],img[src],audio[src],video[src],source[src],form[action]')) {
       if (rows.length >= 300) break;
       if (node.tagName === 'FORM' && (node.method.toLowerCase() !== 'get' || node.querySelector('[name]'))) continue;
       try {
@@ -17,7 +17,8 @@ class BrowserLoginPolicy {
         const query = !!url.search;
         url.hash = '';
         url.search = '';
-        rows.push({url: url.href, query, file: ['IMG','AUDIO','VIDEO','SOURCE'].includes(node.tagName) || node.hasAttribute('download')});
+        rows.push({url: url.href, query, file: ['SCRIPT','IMG','AUDIO','VIDEO','SOURCE'].includes(node.tagName) ||
+          (node.tagName === 'LINK' && ['stylesheet','icon','preload','modulepreload'].some(rel => node.relList.contains(rel))) || node.hasAttribute('download')});
       } catch (_) {}
     }
     return JSON.stringify({page: location.href, rows});

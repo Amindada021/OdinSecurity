@@ -150,7 +150,7 @@ void main() {
     expect(paths, ['/protected']);
     expect(scanner.urls, isEmpty);
     expect(result.coverage['requests'], 1);
-    expect(result.stopReason, 'page_budget');
+    expect(result.stopReason, 'request_budget');
     expect(result.coverage['authentication'], 'Session verified by protected URL and expected marker');
   });
 

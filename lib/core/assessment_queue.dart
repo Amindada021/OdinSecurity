@@ -14,7 +14,7 @@ class AssessmentQueue {
   static List<Uri> validate(SecurityProject project, ScanPolicy policy, Iterable<Uri> proposed, {required bool authorized}) {
     if (!authorized) throw StateError('Approval required.');
     final targets = proposed.toList();
-    if (targets.isEmpty || targets.length > maxTargets || targets.length > policy.maxPages ||
+    if (targets.isEmpty || targets.length > maxTargets || !policy.allowsCount(targets.length) ||
         targets.toSet().length != targets.length || targets.any((u) =>
           u.scheme != 'https' || !project.targets.contains(u) || !policy.permits(u))) {
       throw StateError('Invalid queue.');

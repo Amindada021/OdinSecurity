@@ -103,7 +103,18 @@ class AuthenticationException implements Exception {
   String toString() => reason;
 }
 
+class VerifiedResponse {
+  final Uri url;
+  final int status;
+  final Map<String, List<String>> headers;
+  final String body;
+  final int byteCount;
+  const VerifiedResponse(this.url, this.status, this.headers, this.body, [this.byteCount = 0]);
+}
+
 class AuthSession {
+  // Transient verification response; reuse for discovery, never serialize it.
+  VerifiedResponse? validationResponse;
   // Credential presence never establishes an authenticated identity.
   String verification = 'Session not independently verified';
   final Uri origin;
@@ -267,6 +278,7 @@ class Authenticator {
     final url = SecurityProject.parseTarget(profile.validationUrl);
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 10);
     try {
+      if (session.headersFor(url).isEmpty) throw const AuthenticationException('Session credentials do not apply to the protected URL');
       await beforeRequest?.call();
       await _verify(client, url, session, profile.validationMarker).timeout(const Duration(seconds: 15));
     } finally {
@@ -291,7 +303,7 @@ class Authenticator {
         ? 'Protected URL redirected to sign-in' : 'Protected URL redirected; session unverified');
     if (status < 200 || status >= 300) throw const AuthenticationException('Protected URL failed; session unverified');
     final body = <int>[];
-    var truncated = false;
+    var truncated = status == 206;
     await for (final chunk in response) {
       final remaining = 256 * 1024 - body.length;
       body.addAll(chunk.take(remaining));
@@ -303,6 +315,9 @@ class Authenticator {
     if (marker.isNotEmpty && !validationMatches(status, text, marker)) {
       throw const AuthenticationException('Expected session marker was not found');
     }
+    final responseHeaders = <String, List<String>>{};
+    response.headers.forEach((key, values) => responseHeaders[key] = List.of(values));
+    session.validationResponse = VerifiedResponse(url, status, responseHeaders, text, body.length);
     session.verification = marker.isEmpty
         ? 'Protected URL responded; identity not independently verified'
         : 'Session verified by protected URL and expected marker';

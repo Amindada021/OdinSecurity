@@ -24,9 +24,19 @@ abstract interface class AccessProbe {
 }
 
 class ScopedAccessProbe implements AccessProbe {
+  final Future<void> Function()? beforeRequest;
+  ScopedAccessProbe({this.beforeRequest});
   @override
   Future<int> status(SecurityProject project, Uri endpoint, AuthProfile identity) async {
-    final page = await PassiveScanner().scan(project, authorized: true, target: endpoint, auth: identity);
+    final session = await Authenticator().authenticate(project, identity, authorized: true, beforeRequest: beforeRequest);
+    if (session.verification != 'Session verified by protected URL and expected marker') {
+      throw StateError('A protected URL and expected identity marker are required for account comparisons.');
+    }
+    final cached = session.validationResponse;
+    if (cached != null && LinkDiscovery.canonical(cached.url) == LinkDiscovery.canonical(endpoint)) return cached.status;
+    await beforeRequest?.call();
+    final page = await PassiveScanner().scanWithSession(project, endpoint, authorized: true, session: session);
+    if (page.loginPage) throw StateError('The test account was redirected to sign-in or received a sign-in page.');
     return page.statusCode;
   }
 }
@@ -50,20 +60,31 @@ class AccessAssessment {
         expectedAllowed.mode == AuthMode.none || expectedDenied.mode == AuthMode.none ||
         !SecurityProject.sameOrigin(expectedAllowed.target, endpoint) ||
         !SecurityProject.sameOrigin(expectedDenied.target, endpoint) ||
-        expectedAllowed.validationUrl.isEmpty || expectedDenied.validationUrl.isEmpty) {
+        expectedAllowed.validationUrl.isEmpty || expectedDenied.validationUrl.isEmpty ||
+        expectedAllowed.validationMarker.isEmpty || expectedDenied.validationMarker.isEmpty) {
       throw StateError('Two distinct verified test identities from this origin are required.');
     }
     for (final identity in [expectedAllowed, expectedDenied]) {
       Authenticator.validateScope(project, identity, authorized: authorized, permits: policy.permits);
     }
-    final allowed = await probe.status(project, endpoint, expectedAllowed);
+    var requests = 0;
+    var lastRequest = DateTime.fromMillisecondsSinceEpoch(0);
+    Future<void> consume() async {
+      if (policy.exhausted(requests)) throw StateError('Request budget exhausted.');
+      final gap = DateTime.now().difference(lastRequest).inMilliseconds;
+      if (requests > 0 && gap < policy.delayMs) await Future<void>.delayed(Duration(milliseconds: policy.delayMs - gap));
+      requests++;
+      lastRequest = DateTime.now();
+    }
+    final activeProbe = probe is ScopedAccessProbe ? ScopedAccessProbe(beforeRequest: consume) : probe;
+    final allowed = await activeProbe.status(project, endpoint, expectedAllowed);
     if (allowed < 200 || allowed >= 300) {
       // A failing control makes the comparison meaningless. Do not send
       // the second request or treat the result as a vulnerability.
       return AccessAssessmentResult(allowed, 0, AccessOutcome.inconclusive);
     }
     await Future<void>.delayed(Duration(milliseconds: policy.delayMs));
-    final denied = await probe.status(project, endpoint, expectedDenied);
+    final denied = await activeProbe.status(project, endpoint, expectedDenied);
     return AccessAssessmentResult(allowed, denied, AccessAssessmentResult.classify(allowed, denied));
   }
 }

@@ -88,14 +88,18 @@ class _ReportScreenState extends State<ReportScreen> {
                   _ => row['outcome'] as String,
                 }), subtitle: SelectableText("${tr(context, row['purchased'] == true ? 'Purchased movies' : 'Unpurchased paid movies')} · ${row['status'] ?? '—'} · ${tr(context, row['access'] as String? ?? 'Unknown')}\n${row['url']}")),
             ])),
-        if (widget.record.files.any((f) => !f.containsKey('purchased')))
+        if (widget.record.files.isNotEmpty)
           Card(child: ExpansionTile(leading: const Icon(Icons.folder_open),
-            title: const LText('Linked files'),
-            subtitle: Text('${tr(context, 'Accessible files')}: ${uiNumber(context, widget.record.files.where((f) => f['outcome'] == 'File accessible').length)} / ${uiNumber(context, widget.record.files.where((f) => !f.containsKey('purchased')).length)}'),
+            title: const LText('Discovered Assets'),
+            subtitle: Text('${uiNumber(context, widget.record.files.length)}'),
             children: [
-              for (final file in widget.record.files.where((f) => !f.containsKey('purchased')))
+              for (final file in widget.record.files)
                 ListTile(title: SelectableText(file['url'] as String, textDirection: TextDirection.ltr),
-                  subtitle: Text("${tr(context, file['outcome'] as String)}  ${(file['status'] ?? 0) == 0 ? '' : 'HTTP ${file['status']}'}\n${tr(context, 'Linked from')}: ${file['source']}")),
+                  subtitle: Text("${tr(context, file['outcome'] as String? ?? 'Unknown')} · HTTP ${file['status'] ?? '—'}\n"
+                    "${tr(context, 'Asset type')}: ${file['kind'] ?? '—'} · ${file['contentType'] ?? '—'}\n"
+                    "${tr(context, 'Size (bytes)')}: ${file['sizeBytes'] ?? tr(context, 'Unknown')}\n"
+                    "${tr(context, file['access'] as String? ?? 'Unknown')} · anonymous HTTP ${file['anonymousStatus'] ?? '—'} · session HTTP ${file['sessionStatus'] ?? '—'}\n"
+                    "${tr(context, 'Linked from')}: ${file['source'] ?? '—'}")),
             ])),
         if (candidates.isNotEmpty && candidates.length <= 100)
           OutlinedButton.icon(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdvisoryReviewScreen(initialInventory: const JsonEncoder.withIndent('  ').convert(candidates)))), icon: const Icon(Icons.security), label: const LText('Review declared versions against catalog')),
@@ -137,8 +141,12 @@ class _ReportScreenState extends State<ReportScreen> {
         const Divider(),
         const LText('Security observations'),
         if (visible.isEmpty) const LText('No matching observations. This does not establish security.'),
-        for (final f in visible)
-          FindingTile(id: f.id, title: f.title, severity: f.severity, evidence: f.evidence, remediation: f.remediation, url: f.url),
+        for (final group in ['confirmed', 'observed', 'possible']) ...[
+          LText(group == 'confirmed' ? 'Confirmed vulnerabilities' : group == 'observed' ? 'Observed conditions' : 'Potential findings',
+            style: Theme.of(context).textTheme.titleMedium),
+          for (final f in visible.where((item) => item.certainty == group))
+            FindingTile(id: f.id, title: f.title, severity: f.severity, evidence: f.evidence, remediation: f.remediation, url: f.url),
+        ],
       ]),
     );
   }
@@ -156,6 +164,11 @@ class ScanCoverageView extends StatelessWidget {
         style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.bold)),
       for (final entry in report.coverageCounts.entries)
         Text('${tr(context, entry.key)}: ${entry.value is int ? uiNumber(context, entry.value as int) : entry.value}'),
+      if (record.coverage['scanContext'] != null) LText(record.coverage['scanContext'] == 'anonymous' ? 'Anonymous scan' : 'Credentialed scan'),
+      if (record.coverage['coveragePercent'] is num)
+        Text('${tr(context, 'Observed URL coverage')}: ${(record.coverage['coveragePercent'] as num).toStringAsFixed(1)}%'),
+      const LText('Coverage applies only to observed candidates, not the entire site.'),
+      if (record.coverage['stopReason'] != null) Text('${tr(context, 'Stop reason')}: ${tr(context, record.coverage['stopReason'] as String)}'),
       LText(record.coverage['authentication'] as String? ?? 'Session not independently verified'),
       if (record.coverage['retryAfter'] != null) Text('Retry-After: ${record.coverage['retryAfter']}'),
       for (final entry in (record.coverage['skipped'] as Map? ?? const {}).entries)
@@ -163,6 +176,11 @@ class ScanCoverageView extends StatelessWidget {
       for (final entry in (record.coverage['htmlExclusions'] as Map? ?? const {}).entries)
         Text('${tr(context, 'Excluded HTML references')}: ${tr(context, entry.key as String)} (${entry.value})'),
       const LText('Discovered URLs count candidate inventory; HTML exclusions count unique references per response.'),
+      if ((record.coverage['uncheckedRoutes'] as List? ?? const []).isNotEmpty)
+        ExpansionTile(title: const LText('Unchecked routes and reasons'), children: [
+          for (final row in record.coverage['uncheckedRoutes'] as List? ?? const [])
+            ListTile(title: Text(row['url'] as String), subtitle: LText(row['reason'] as String)),
+        ]),
       for (final warning in (record.coverage['warnings'] as List? ?? const []).cast<String>()) LText(warning),
       const LText('Inventory covers observed queryless URLs only; signed/query URLs are not replayed.'),
       const LText('Media pages are identified by observed media elements or links; this is not a complete movie catalog.'),

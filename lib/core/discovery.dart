@@ -31,13 +31,15 @@ class LinkDiscovery {
     try { base = page.resolve(document.querySelector('base[href]')?.attributes['href'] ?? ''); }
     on FormatException { return const []; }
     if (!SecurityProject.sameOrigin(page, base)) return const [];
-    for (final node in document.querySelectorAll('a[href],img[src],audio[src],video[src],source[src]')) {
+    for (final node in document.querySelectorAll('a[href],link[href],script[src],img[src],audio[src],video[src],source[src]')) {
       final raw = node.attributes['href'] ?? node.attributes['src'] ?? '';
       if (raw.length > 8192) continue;
       try {
         final url = base.resolve(raw);
         if (!url.hasQuery || !SecurityProject.sameOrigin(page, url)) continue;
-        if (!isFile(url) && !node.attributes.containsKey('download') && node.localName == 'a') continue;
+        if (!isFile(url) && !_asset.hasMatch(url.path) && !node.attributes.containsKey('download') &&
+            !const {'img', 'audio', 'video', 'source', 'script'}.contains(node.localName) &&
+            !(node.localName == 'link' && (node.attributes['rel'] ?? '').split(' ').any(const {'stylesheet', 'icon', 'preload', 'modulepreload'}.contains))) continue;
         final redacted = canonical(Uri.parse(url.removeFragment().toString().split('?').first));
         if (safeMediaTarget(page, redacted)) found.add(redacted);
       } on FormatException { continue; }

@@ -61,7 +61,7 @@ class RegressionAudit {
       _validate(project, policy, check);
       if (!seen.add(endpoint)) throw const FormatException('Duplicate endpoint.');
       cases.add(check);
-      if (cases.length > maxCases || cases.length > policy.maxPages) throw const FormatException('Case limit.');
+      if (cases.length > maxCases || !policy.allowsCount(cases.length)) throw const FormatException('Case limit.');
     }
     if (cases.isEmpty) throw const FormatException('No cases.');
     return List.unmodifiable(cases);
@@ -70,7 +70,7 @@ class RegressionAudit {
   Future<RegressionRun> run(SecurityProject project, ScanPolicy policy, List<RegressionCase> cases,
     {required bool authorized, required bool Function() cancelled}) async {
     if (!authorized) throw StateError('Explicit authorization required.');
-    if (cases.isEmpty || cases.length > maxCases || cases.length > policy.maxPages) {
+    if (cases.isEmpty || cases.length > maxCases || !policy.allowsCount(cases.length)) {
       throw const FormatException('Case limit.');
     }
     final snapshot = List<RegressionCase>.unmodifiable(cases);

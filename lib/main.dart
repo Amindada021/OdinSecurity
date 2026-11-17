@@ -698,7 +698,7 @@ class _ScanScreenState extends State<ScanScreen> {
   PassiveScanResult? result;
   CrawlResult? crawlResult;
   CancellationFlag? cancellation;
-  int visited = 0;
+  int visited = 0, requestsUsed = 0;
   final terminalLines = <TerminalLine>[];
   void logEvent(String tag, String message, String detail) {
     if (!mounted) return;
@@ -747,7 +747,7 @@ class _ScanScreenState extends State<ScanScreen> {
             movies[url] = group.$2;
           }
         }
-        if (movies.length > settings.maxPages) throw const FormatException();
+        if (!settings.allowsCount(movies.length)) throw const FormatException();
       } on FormatException {
         setState(() => error = 'Check movie URLs, purchase groups and scan limit.');
         return;
@@ -774,7 +774,7 @@ class _ScanScreenState extends State<ScanScreen> {
     quickToken.clear();
     setState(() {
       busy = true; result = null; crawlResult = null; quickReport = null;
-      error = null; visited = 0; cancellation = flag;
+      error = null; visited = 0; requestsUsed = 0; cancellation = flag;
     });
     try {
       var scanStart = selectedTarget;
@@ -839,7 +839,7 @@ class _ScanScreenState extends State<ScanScreen> {
       final data = await SiteCrawler().run(widget.project, scanStart,
         authorized: true, policy: settings, cancellation: flag, auth: credential, moviePurchases: movies,
         observedRoutes: observedRoutes, observedFiles: observedFiles, observedQueryFilePaths: observedQueryFilePaths,
-        onEvent: logEvent, onProgress: (count) { if (mounted) setState(() => visited = count); });
+        onEvent: logEvent, onRequests: (count) { if (mounted) setState(() => requestsUsed = count); }, onProgress: (count) { if (mounted) setState(() => visited = count); });
       if (!mounted) return;
       final report = ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled, files: data.files, coverage: data.coverage);
       setState(() { crawlResult = data; quickReport = report; });
@@ -858,7 +858,7 @@ class _ScanScreenState extends State<ScanScreen> {
     'rate_limited' => 'Stopped: server request limit reached',
     'server_errors' => 'Stopped: repeated server errors',
     'time_budget' => 'Stopped: time limit reached',
-    'page_budget' => 'Stopped: request budget reached',
+    'page_budget' || 'request_budget' => 'Stopped: request budget reached',
     'authentication_rejected' => 'Stopped: access requires review',
     _ => 'Scan completed',
   };
@@ -869,7 +869,7 @@ class _ScanScreenState extends State<ScanScreen> {
     final saved = resume ? checkpoint : null;
     final flag = CancellationFlag();
     terminalLines.clear();
-    setState(() { busy = true; result = null; crawlResult = null; error = null; visited = 0; cancellation = flag; });
+    setState(() { busy = true; result = null; crawlResult = null; error = null; visited = 0; requestsUsed = 0; cancellation = flag; });
     try {
       final selected = await prepareAuth();
       if (flag.cancelled) return;
@@ -883,7 +883,7 @@ class _ScanScreenState extends State<ScanScreen> {
         onCheckpoint: (value) async {
           await repository.save(widget.project.id, value);
           if (mounted) setState(() => checkpoint = value);
-        }, onEvent: logEvent, onProgress: (n) { if (mounted) setState(() => visited = n); });
+        }, onEvent: logEvent, onRequests: (count) { if (mounted) setState(() => requestsUsed = count); }, onProgress: (n) { if (mounted) setState(() => visited = n); });
       if (mounted) {
         setState(() => crawlResult = data);
         await record(ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled, files: data.files, coverage: data.coverage));
@@ -905,10 +905,25 @@ class _ScanScreenState extends State<ScanScreen> {
       final rules = await CustomRuleRepository(storage).load(widget.project.id);
       final program = (await MetadataProgramRepository(storage).load(widget.project.id)).activeProgram;
       if (!mounted) return;
-      final data = await PassiveScanner(customRules: rules, metadataProgram: program).scan(widget.project, authorized: authorized, target: target, auth: selected, permits: policy.permits);
+      final data = await PassiveScanner(customRules: rules, metadataProgram: program).scan(widget.project, authorized: authorized, target: target, auth: selected, permits: policy.permits, policy: policy,
+        onRequests: (count) { if (mounted) setState(() => requestsUsed = count); });
       if (mounted) {
         setState(() => result = data);
-        await record(ScanRecord.fromPages([data]));
+        await record(ScanRecord.fromPages([data], files: [
+          for (final asset in data.assets) {'url': asset.url.toString(), 'source': asset.source, 'kind': asset.kind, 'outcome': 'Not checked'},
+          for (final path in data.queryFilePaths) {'url': path.toString(), 'queryRedacted': true, 'outcome': 'Query URL recorded without parameters; not requested'},
+        ], coverage: {
+          'requests': requestsUsed, 'maxRequests': policy.maxRequests,
+          'scanContext': selected == null || selected.mode == AuthMode.none ? 'anonymous' : 'credentialed',
+          'authentication': selected == null ? 'No credentials selected' : data.loginPage || data.statusCode == 401 || data.statusCode == 403
+              ? 'Sign-in page or login redirect received' : selected.validationMarker.isNotEmpty && selected.validationUrl.isNotEmpty
+                ? 'Session verified by protected URL and expected marker' : 'Session not independently verified',
+          'incomplete': data.bodyTruncated || data.redirectNotFollowed || data.links.isNotEmpty || data.assets.isNotEmpty || data.queryFilePaths.isNotEmpty,
+          'pagesDiscovered': data.links.toSet().difference({data.url}).length + 1, 'pagesChecked': 1,
+          'discovered': data.links.toSet().difference({data.url}).length + 1 + data.assets.length + data.queryFilePaths.length, 'checked': 1,
+          'truncated': data.bodyTruncated ? 1 : 0, 'stopReason': 'single_url_inspection',
+          'uncheckedRoutes': [for (final url in data.links.where((url) => url != data.url)) {'url': url.toString(), 'reason': 'Single URL inspection only'}],
+        }));
       }
     } catch (_) {
       if (mounted) setState(() => error = 'Could not complete the request. Check the URL, connection and TLS.');
@@ -922,7 +937,7 @@ class _ScanScreenState extends State<ScanScreen> {
     final data = result;
     return Scaffold(
       appBar: AppBar(title: Text(widget.project.name)),
-      body: busy && cancellation != null ? ScanTerminal(lines: terminalLines, control: cancellation!, pages: visited,
+      body: busy && cancellation != null ? ScanTerminal(lines: terminalLines, control: cancellation!, pages: visited, requests: requestsUsed, maxRequests: policy.maxRequests,
         onToggle: () => setState(() { if (cancellation!.paused) { cancellation!.resume(); } else { cancellation!.pause(); } }),
         onStop: () => setState(() => cancellation!.cancel())) : ListView(padding: const EdgeInsets.all(16), children: [
         SegmentedButton<bool>(
@@ -1130,17 +1145,18 @@ class _ScanScreenState extends State<ScanScreen> {
             child: LText(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
           ExpansionTile(
-            title: const LText('Default settings'),
+            title: const LText('Scan settings'),
             childrenPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             expandedCrossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${tr(context, 'Maximum pages')}: ${uiNumber(context, policy.quickDefaults.maxPages)}'),
+              Text('${tr(context, 'Max Requests')}: ${policy.unlimited ? tr(context, 'Unlimited') : uiNumber(context, policy.maxRequests)}'),
+              OutlinedButton(onPressed: busy || loadingPolicy ? null : editPolicy, child: const LText('Scan limits')),
               Text('${tr(context, 'Delay between requests (ms)')}: ${uiNumber(context, policy.quickDefaults.delayMs)}'),
               const LText('Read-only, same origin, with optional browser session or token. No automatic redirects or exploit payloads.'),
             ],
           ),
           if (busy) Padding(padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text('${tr(context, 'Pages checked')}: ${uiNumber(context, visited)} / ${uiNumber(context, policy.quickDefaults.maxPages)}')),
+            child: Text('${tr(context, 'Requests used')}: ${uiNumber(context, requestsUsed)} / ${policy.unlimited ? tr(context, 'Unlimited') : uiNumber(context, policy.maxRequests)}')),
         ],
         if (advanced) ...[
         Text(widget.project.startUrl.toString(), style: Theme.of(context).textTheme.titleMedium),
@@ -1151,7 +1167,7 @@ class _ScanScreenState extends State<ScanScreen> {
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScheduledCheckScreen(project: widget.project, policy: policy))), icon: const Icon(Icons.timer_outlined), label: const LText('Android scheduled HEAD check')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () async { await Navigator.of(context).push(MaterialPageRoute(builder: (_) => AssessmentQueueScreen(project: widget.project, policy: policy))); if (mounted) await loadHistory(); }, icon: const Icon(Icons.schedule), label: const LText('Foreground assessment queue')),
         OutlinedButton.icon(onPressed: busy ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CustomRulesScreen(projectId: widget.project.id))), icon: const Icon(Icons.rule), label: const LText('Custom scan rules')),
-        OutlinedButton.icon(onPressed: busy || loadingPolicy ? null : editPolicy, icon: const Icon(Icons.tune), label: Text('Scan limits: ${policy.maxPages} pages / ${policy.delayMs} ms')),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy ? null : editPolicy, icon: const Icon(Icons.tune), label: Text('${tr(context, 'Max Requests')}: ${policy.unlimited ? tr(context, 'Unlimited') : uiNumber(context, policy.maxRequests)} / ${policy.delayMs} ms')),
         if (policyError != null) LText(policyError!),
         if (!policy.permits(target)) const LText('The selected URL is excluded from scanning.'),
         OutlinedButton.icon(onPressed: busy || loadingAuth || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AccessCheckScreen(project: widget.project, target: target, profiles: profiles, policy: policy))), icon: const Icon(Icons.people_outline), label: const LText('Compare test account access')),
@@ -1211,7 +1227,7 @@ class _ScanScreenState extends State<ScanScreen> {
         if (checkpoint != null || checkpointError != null)
           OutlinedButton(onPressed: busy || loadingCheckpoint ? null : discardCheckpoint, child: const LText('Discard saved crawl')),
         FilledButton.tonalIcon(onPressed: authorized && !busy && !loadingAuth && !loadingPolicy && !loadingCheckpoint && checkpoint == null &&
-          checkpointError == null && policyError == null && policy.permits(target) ? crawl : null, icon: const Icon(Icons.account_tree_outlined), label: Text('${tr(context, 'Assess linked pages')} (${uiNumber(context, policy.maxPages)})')),
+          checkpointError == null && policyError == null && policy.permits(target) ? crawl : null, icon: const Icon(Icons.account_tree_outlined), label: Text('${tr(context, 'Assess linked pages')} (${policy.unlimited ? tr(context, 'Unlimited') : uiNumber(context, policy.maxRequests)})')),
         ],
         if (busy) const LinearProgressIndicator(),
         if (!advanced && quickReport != null && crawlResult != null) ...[

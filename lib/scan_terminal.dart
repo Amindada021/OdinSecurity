@@ -8,10 +8,10 @@ typedef TerminalLine = ({String tag, String message, String detail});
 class ScanTerminal extends StatefulWidget {
   final List<TerminalLine> lines;
   final CancellationFlag control;
-  final int pages;
+  final int pages, requests, maxRequests;
   final VoidCallback onToggle, onStop;
   const ScanTerminal({super.key, required this.lines, required this.control,
-    required this.pages, required this.onToggle, required this.onStop});
+    required this.pages, this.requests = 0, this.maxRequests = 100, required this.onToggle, required this.onStop});
   @override
   State<ScanTerminal> createState() => _ScanTerminalState();
 }
@@ -54,6 +54,7 @@ class _ScanTerminalState extends State<ScanTerminal> {
               child: Text('[${line.tag}] ${tr(context, line.message)} ${line.detail}',
                 style: TextStyle(color: color, fontFamily: 'monospace')));
           })),
+        Text('${tr(context, 'Requests used')}: ${uiNumber(context, widget.requests)} / ${widget.maxRequests == 0 ? tr(context, 'Unlimited') : uiNumber(context, widget.maxRequests)}', style: const TextStyle(color: Colors.tealAccent)),
         Text('${tr(context, 'Pages checked')} · ${uiNumber(context, widget.pages)}', style: const TextStyle(color: Colors.white)),
         Wrap(spacing: 12, children: [
           FilledButton.tonal(onPressed: flag.cancelled ? null : widget.onToggle, child: LText(flag.paused ? 'Resume scan' : 'Pause scan')),
