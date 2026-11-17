@@ -27,7 +27,7 @@ class LabPermitVerifier {
 
   static HttpClient pinnedClient(Uri origin, InternetAddress address, {int users = 1, int timeoutSeconds = 5}) {
     final client = HttpClient()
-      ..findProxy = (_) => 'DIRECT'
+      ..findProxy = ((_) => 'DIRECT')
       ..connectionTimeout = Duration(seconds: timeoutSeconds)
       ..maxConnectionsPerHost = users
       ..idleTimeout = const Duration(seconds: 3)
