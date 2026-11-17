@@ -16,7 +16,8 @@ class QuickApiLoginDialog extends StatefulWidget {
   final SecurityProject project;
   final Uri target;
   final ScanPolicy policy;
-  const QuickApiLoginDialog({super.key, required this.project, required this.target, required this.policy});
+  final bool allowInsecureHttp;
+  const QuickApiLoginDialog({super.key, required this.project, required this.target, required this.policy, this.allowInsecureHttp = false});
 
   @override
   State<QuickApiLoginDialog> createState() => _QuickApiLoginDialogState();
@@ -62,12 +63,12 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
         loginUrl: login.toString(), username: username.text.trim(), secret: password.text,
         usernameField: usernameField.text.trim(), passwordField: passwordField.text.trim(),
         tokenPath: delivery == TokenDelivery.cookie ? '' : tokenPath.text.trim(),
-        tokenDelivery: delivery, headerName: header.text.trim());
+        tokenDelivery: delivery, headerName: header.text.trim(), allowInsecureHttp: widget.allowInsecureHttp);
       Authenticator.validateScope(widget.project, profile, authorized: true, permits: widget.policy.permits);
       password.clear();
       Navigator.pop(context, profile);
     } catch (_) {
-      setState(() => error = 'Complete the API sign-in fields using a permitted HTTPS endpoint on the selected target.');
+      setState(() => error = 'Complete the API sign-in fields using a permitted endpoint on the selected target.');
     }
   }
 
@@ -83,9 +84,9 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
     title: const LText('Direct API sign-in'),
     content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(widget.target.host, style: Theme.of(context).textTheme.titleMedium),
-      const LText('Credentials are used once for this scan and are not saved. The sign-in request and token stay on the selected HTTPS origin.'),
+      const LText('Credentials are used once for this scan and are not saved. The sign-in request and token stay on the selected origin.'),
       const SizedBox(height: 12),
-      field(endpoint, 'Exact HTTPS login endpoint'),
+      field(endpoint, 'Exact login endpoint'),
       field(username, 'Username / email / mobile'),
       field(password, 'Password', obscure: true),
       DropdownButtonFormField<TokenDelivery>(

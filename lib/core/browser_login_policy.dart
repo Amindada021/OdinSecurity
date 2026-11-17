@@ -3,18 +3,20 @@ import 'scan_policy.dart';
 import 'discovery.dart';
 
 class BrowserLoginPolicy {
-  static bool allows(Uri target, Uri candidate) =>
-      target.scheme == 'https' && candidate.scheme == 'https' &&
+  static bool allows(Uri target, Uri candidate, {bool allowInsecureHttp = false}) =>
+      (target.scheme == 'https' || (allowInsecureHttp && target.scheme == 'http')) &&
       candidate.userInfo.isEmpty && SecurityProject.sameOrigin(target, candidate);
 
   /// The user may enter a separate HTTPS sign-in origin for this run.
   /// It is browser-only: never expand the project's assessment scope or
   /// read session cookies from anything other than the selected target.
-  static Uri loginUrl(SecurityProject project, Uri target, String raw, ScanPolicy policy) {
+  static Uri loginUrl(SecurityProject project, Uri target, String raw, ScanPolicy policy, {bool allowInsecureHttp = false}) {
     final value = raw.trim();
     final uri = SecurityProject.parseTarget(value.startsWith('/') && !value.startsWith('//')
         ? target.resolve(value).toString() : value);
-    if (target.scheme != 'https' || uri.scheme != 'https' ||
+    final transportAllowed = (target.scheme == 'https' && uri.scheme == 'https') ||
+        (allowInsecureHttp && target.scheme == 'http' && allows(target, uri, allowInsecureHttp: true));
+    if (!transportAllowed ||
         !project.contains(target) ||
         !policy.permits(target) || !policy.permits(uri)) {
       throw const FormatException('Enter a permitted HTTPS sign-in URL.');
@@ -22,14 +24,15 @@ class BrowserLoginPolicy {
     return uri;
   }
 
-  static bool allowsNavigation(Uri target, Uri login, Uri candidate, ScanPolicy? policy) =>
-      (allows(target, candidate) || allows(login, candidate)) &&
+  static bool allowsNavigation(Uri target, Uri login, Uri candidate, ScanPolicy? policy, {bool allowInsecureHttp = false}) =>
+      (allows(target, candidate, allowInsecureHttp: allowInsecureHttp) ||
+        (target.scheme == 'https' && allows(login, candidate))) &&
       (policy == null || policy.permits(candidate));
 
   /// If a root website was selected, begin at the page reached after login.
   /// Query strings and fragments may contain authorization codes: never scan them.
-  static Uri assessmentStart(Uri target, Uri current, ScanPolicy? policy) {
-    if ((target.path.isEmpty || target.path == '/') && allows(target, current)) {
+  static Uri assessmentStart(Uri target, Uri current, ScanPolicy? policy, {bool allowInsecureHttp = false}) {
+    if ((target.path.isEmpty || target.path == '/') && allows(target, current, allowInsecureHttp: allowInsecureHttp)) {
       final withoutQuery = Uri.parse(current.toString().split(RegExp(r'[?#]')).first);
       if ((policy == null || policy.permits(withoutQuery)) && LinkDiscovery.eligible(target, withoutQuery)) {
         return withoutQuery;

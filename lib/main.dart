@@ -339,6 +339,8 @@ class _ScanScreenState extends State<ScanScreen> {
   ScanRecord? quickReport;
   final quickToken = TextEditingController();
   bool quickTokenEnabled = false, quickLoginEnabled = false, quickApiEnabled = false;
+  bool quickAllowInsecure = false;
+  bool get quickAuthTransportAllowed => target.scheme == 'https' || (target.scheme == 'http' && quickAllowInsecure);
   TokenDelivery quickDelivery = TokenDelivery.bearer;
   final quickHeader = TextEditingController(text: 'X-API-Key');
   final quickLoginUrl = TextEditingController(text: '/login');
@@ -557,9 +559,9 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   String? get quickLoginError {
-    if (!quickLoginEnabled || quickTokenEnabled || quickApiEnabled || target.scheme != 'https') return null;
+    if (!quickLoginEnabled || quickTokenEnabled || quickApiEnabled || !quickAuthTransportAllowed) return null;
     try {
-      BrowserLoginPolicy.loginUrl(widget.project, target, quickLoginUrl.text, policy.quickDefaults);
+      BrowserLoginPolicy.loginUrl(widget.project, target, quickLoginUrl.text, policy.quickDefaults, allowInsecureHttp: quickAllowInsecure);
       return null;
     } on FormatException {
       return 'Enter a permitted HTTPS sign-in URL.';
@@ -567,7 +569,7 @@ class _ScanScreenState extends State<ScanScreen> {
   }
 
   Future<void> quickScan() async {
-    if (advanced || !authorized || busy || loadingPolicy || loadingHistory ||
+    if (advanced || !authorized || busy || (quickLoginEnabled && !quickAuthTransportAllowed) || loadingPolicy || loadingHistory ||
         policyError != null || !policy.permits(target)) return;
     final flag = CancellationFlag();
     final settings = policy.quickDefaults;
@@ -578,15 +580,15 @@ class _ScanScreenState extends State<ScanScreen> {
     try {
       if (quickLoginEnabled) {
         if (quickTokenEnabled) {
-          credential = QuickScanCredential.parse(selectedTarget, quickToken.text, delivery: quickDelivery, headerName: quickHeader.text.trim());
+          credential = QuickScanCredential.parse(selectedTarget, quickToken.text, delivery: quickDelivery, headerName: quickHeader.text.trim(), allowInsecureHttp: quickAllowInsecure);
           if (credential == null) throw const FormatException('Missing token.');
         } else if (!apiLogin) {
-          login = BrowserLoginPolicy.loginUrl(widget.project, selectedTarget, quickLoginUrl.text, settings);
+          login = BrowserLoginPolicy.loginUrl(widget.project, selectedTarget, quickLoginUrl.text, settings, allowInsecureHttp: quickAllowInsecure);
         }
       }
     } on FormatException {
       setState(() => error = quickTokenEnabled
-          ? 'Enter a valid credential for the selected HTTPS target.'
+          ? 'Enter a valid credential for the selected target.'
           : 'Enter a permitted HTTPS sign-in URL.');
       return;
     }
@@ -599,18 +601,18 @@ class _ScanScreenState extends State<ScanScreen> {
       var scanStart = selectedTarget;
       if (apiLogin) {
         credential = await showDialog<AuthProfile>(context: context, builder: (_) => QuickApiLoginDialog(
-          project: widget.project, target: selectedTarget, policy: settings));
+          project: widget.project, target: selectedTarget, policy: settings, allowInsecureHttp: quickAllowInsecure));
         if (!mounted || credential == null || flag.cancelled) return;
       }
       final browserLogin = login;
       if (browserLogin != null) {
         final captured = await Navigator.of(context).push<BrowserLoginResult>(MaterialPageRoute(
           builder: (_) => BrowserLoginScreen(target: selectedTarget, login: browserLogin,
-            automatic: true, policy: settings)));
+            automatic: true, policy: settings, allowInsecureHttp: quickAllowInsecure)));
         if (!mounted || captured == null || flag.cancelled) return;
         scanStart = captured.start;
         credential = AuthProfile(mode: AuthMode.cookie, target: selectedTarget,
-          name: 'Automatic browser session', secret: captured.cookieHeader, cookiePath: captured.cookiePath);
+          name: 'Automatic browser session', secret: captured.cookieHeader, cookiePath: captured.cookiePath, allowInsecureHttp: quickAllowInsecure);
       }
       // Credential is session-only; no vault writes or advanced checkpoint changes.
       final data = await SiteCrawler().run(widget.project, scanStart,
@@ -625,7 +627,7 @@ class _ScanScreenState extends State<ScanScreen> {
         ? 'API sign-in or scan failed. Check the endpoint, username, password and token response settings.'
         : 'Could not finish the quick scan. Check the URL and connection.');
     } finally {
-      if (mounted) setState(() { busy = false; cancellation = null; authorized = false; quickTokenEnabled = false; });
+      if (mounted) setState(() { busy = false; cancellation = null; authorized = false; quickTokenEnabled = false; quickAllowInsecure = false; });
     }
   }
 
@@ -706,7 +708,7 @@ class _ScanScreenState extends State<ScanScreen> {
           selected: {advanced},
           onSelectionChanged: busy ? null : (selection) => setState(() {
             advanced = selection.first; authorized = false; selectedProfile = '';
-            quickToken.clear(); quickTokenEnabled = false; quickLoginEnabled = false; quickApiEnabled = false; quickLoginUrl.text = '/login'; quickDelivery = TokenDelivery.bearer; quickHeader.text = 'X-API-Key';
+            quickAllowInsecure = false; quickToken.clear(); quickTokenEnabled = false; quickLoginEnabled = false; quickApiEnabled = false; quickLoginUrl.text = '/login'; quickDelivery = TokenDelivery.bearer; quickHeader.text = 'X-API-Key';
             result = null; crawlResult = null; quickReport = null; error = null;
           }),
         ),
@@ -737,7 +739,7 @@ class _ScanScreenState extends State<ScanScreen> {
             items: [for (final u in widget.project.targets) DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))],
             onChanged: busy ? null : (value) => setState(() {
               target = value!; authorized = false; quickReport = null; crawlResult = null; error = null;
-              quickToken.clear(); quickTokenEnabled = false; quickLoginEnabled = false; quickApiEnabled = false; quickLoginUrl.text = '/login'; quickDelivery = TokenDelivery.bearer; quickHeader.text = 'X-API-Key';
+              quickAllowInsecure = false; quickToken.clear(); quickTokenEnabled = false; quickLoginEnabled = false; quickApiEnabled = false; quickLoginUrl.text = '/login'; quickDelivery = TokenDelivery.bearer; quickHeader.text = 'X-API-Key';
             }),
           ),
           const SizedBox(height: 8),
@@ -749,6 +751,7 @@ class _ScanScreenState extends State<ScanScreen> {
             selected: {quickLoginEnabled},
             onSelectionChanged: busy ? null : (selection) => setState(() {
               quickLoginEnabled = selection.first;
+              quickAllowInsecure = false;
               quickTokenEnabled = false; quickToken.clear();
               quickApiEnabled = quickLoginEnabled && target.host.toLowerCase() == 'api.hesabran.com' && target.scheme == 'https';
               authorized = false; error = null;
@@ -759,13 +762,22 @@ class _ScanScreenState extends State<ScanScreen> {
             const LText('Scan the landing page and public links without signing in.'),
           if (quickLoginEnabled) ...[
             const LText('Choose browser sign-in, direct API sign-in, or enter an existing credential.'),
-            if (target.scheme != 'https') const LText('Browser sign-in requires HTTPS.'),
+            if (target.scheme == 'http') CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const LText('Allow insecure HTTP sign-in for this scan'),
+              subtitle: const LText('Warning: HTTP sends passwords, tokens and cookies without encryption. Use only on authorized test targets.'),
+              value: quickAllowInsecure,
+              onChanged: busy ? null : (value) => setState(() {
+                quickAllowInsecure = value ?? false; authorized = false; error = null;
+                if (!quickAllowInsecure) { quickToken.clear(); quickTokenEnabled = false; quickApiEnabled = false; }
+              }),
+            ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const LText('Direct API sign-in'),
               subtitle: const LText('Sign in with your username and password; no token copy required.'),
               value: quickApiEnabled,
-              onChanged: busy || target.scheme != 'https' ? null : (value) => setState(() {
+              onChanged: busy || !quickAuthTransportAllowed ? null : (value) => setState(() {
                 quickApiEnabled = value; authorized = false; error = null;
                 if (value) { quickTokenEnabled = false; quickToken.clear(); }
               }),
@@ -775,7 +787,7 @@ class _ScanScreenState extends State<ScanScreen> {
               title: const LText('Use existing credential instead'),
               subtitle: const LText('For protected APIs. The credential is not saved.'),
               value: quickTokenEnabled,
-              onChanged: busy || target.scheme != 'https' ? null : (value) => setState(() {
+              onChanged: busy || !quickAuthTransportAllowed ? null : (value) => setState(() {
                 quickTokenEnabled = value; authorized = false; error = null;
                 if (value) quickApiEnabled = false;
                 if (!value) quickToken.clear();
@@ -783,14 +795,14 @@ class _ScanScreenState extends State<ScanScreen> {
             ),
             if (!quickTokenEnabled && !quickApiEnabled) ...[
               TextField(
-                controller: quickLoginUrl, enabled: !busy && target.scheme == 'https',
+                controller: quickLoginUrl, enabled: !busy && quickAuthTransportAllowed,
                 keyboardType: TextInputType.url, autocorrect: false,
                 decoration: InputDecoration(prefixIcon: const Icon(Icons.login),
                   label: const LText('Sign-in page URL'), hintText: '/login',
                   errorText: quickLoginError == null ? null : tr(context, quickLoginError!)),
                 onChanged: (_) => setState(() { authorized = false; error = null; }),
               ),
-              const Padding(padding: EdgeInsets.only(top: 6), child: LText('Enter a login path or full HTTPS sign-in URL. It is allowed for this browser session only; the scan target stays unchanged. Cookie-based sessions are supported; token-only APIs require API authentication.')),
+              const Padding(padding: EdgeInsets.only(top: 6), child: LText('Enter a login path or full sign-in URL. The scan target stays unchanged. Cookie-based sessions are supported; token-only APIs require API authentication.')),
             ],
           ],
           if (quickLoginEnabled && quickTokenEnabled) ...[
@@ -828,7 +840,7 @@ class _ScanScreenState extends State<ScanScreen> {
           ),
           FilledButton.icon(
             onPressed: authorized && !busy && !loadingPolicy && !loadingHistory && policyError == null && policy.permits(target) &&
-                (!quickLoginEnabled || (target.scheme == 'https' && (quickTokenEnabled
+                (!quickLoginEnabled || (quickAuthTransportAllowed && (quickTokenEnabled
                     ? quickToken.text.trim().isNotEmpty : quickApiEnabled || quickLoginError == null))) ? quickScan : null,
             icon: Icon(quickLoginEnabled && !quickTokenEnabled ? Icons.login : Icons.play_arrow),
             label: LText(quickApiEnabled ? 'Sign in to API and scan' : quickLoginEnabled && !quickTokenEnabled ? 'Open sign-in and scan' : 'Start automatic scan'),

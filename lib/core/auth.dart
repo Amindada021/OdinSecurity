@@ -8,18 +8,20 @@ enum AuthMode { none, basic, bearer, cookie, apiKey, jsonLogin, formLogin }
 
 enum TokenDelivery { bearer, raw, apiKey, customHeader, cookie }
 
-/// Bound to exactly one HTTPS origin. Profile values are secret vault data.
+/// Bound to exactly one origin. Cleartext is an explicit, session-only exception.
 class AuthProfile {
   final AuthMode mode;
   final TokenDelivery tokenDelivery;
   final OAuthGrant? oauth;
+  final bool allowInsecureHttp;
   final Uri target;
   final String name, username, secret, headerName, loginUrl, usernameField, passwordField, tokenPath, validationUrl, validationMarker, cookiePath;
   AuthProfile({
-    required this.mode, required this.target, this.oauth, this.name = 'Default', this.validationUrl = '', this.validationMarker = '', this.cookiePath = '/', this.username = '', this.secret = '',
+    required this.mode, required this.target, this.oauth, this.allowInsecureHttp = false, this.name = 'Default', this.validationUrl = '', this.validationMarker = '', this.cookiePath = '/', this.username = '', this.secret = '',
     this.headerName = 'X-API-Key', this.loginUrl = '', this.usernameField = 'username',
     this.passwordField = 'password', this.tokenPath = '', this.tokenDelivery = TokenDelivery.bearer,
   }) {
+    if (allowInsecureHttp && (target.scheme != 'http' || oauth != null)) throw const FormatException('Invalid cleartext opt-in.');
     if (oauth != null && (mode != AuthMode.bearer || tokenDelivery != TokenDelivery.bearer)) throw const FormatException('OAuth requires a bearer profile.');
     if (name.trim().isEmpty || name.length > 80) throw const FormatException('Enter a profile name (1–80 characters).');
     if (validationUrl.isNotEmpty || validationMarker.isNotEmpty) {
@@ -27,7 +29,7 @@ class AuthProfile {
         throw const FormatException('Provide both a validation URL and an expected response marker.');
       }
       final verification = SecurityProject.parseTarget(validationUrl);
-      if (!SecurityProject.sameOrigin(target, verification) || verification.scheme != 'https') {
+      if (!SecurityProject.sameOrigin(target, verification) || (verification.scheme != 'https' && !allowInsecureHttp)) {
         throw const FormatException('Validation URL must be on the credential HTTPS origin.');
       }
     }
@@ -37,7 +39,7 @@ class AuthProfile {
     if (mode == AuthMode.cookie && validationUrl.isNotEmpty && !AuthSession.matchesPath(cookiePath, Uri.parse(validationUrl).path)) {
       throw const FormatException('Validation path must be within the cookie scope.');
     }
-    if (mode != AuthMode.none && (target.scheme != 'https' || target.userInfo.isNotEmpty)) {
+    if (mode != AuthMode.none && ((target.scheme != 'https' && !(allowInsecureHttp && target.scheme == 'http')) || target.userInfo.isNotEmpty)) {
       throw const FormatException('Authentication requires an HTTPS target.');
     }
     if (mode != AuthMode.none && secret.isEmpty) throw const FormatException('Enter the credential.');
@@ -67,11 +69,14 @@ class AuthProfile {
 
   bool get isLogin => mode == AuthMode.jsonLogin || mode == AuthMode.formLogin;
 
-  Map<String, dynamic> toJson() => {
+  Map<String, dynamic> toJson() {
+    if (allowInsecureHttp) throw StateError('Cleartext credentials cannot be saved.');
+    return {
     'mode': mode.name, 'tokenDelivery': tokenDelivery.name, 'oauth': oauth?.toJson(), 'target': target.toString(), 'name': name, 'validationUrl': validationUrl, 'validationMarker': validationMarker, 'cookiePath': cookiePath, 'username': username, 'secret': secret,
     'headerName': headerName, 'loginUrl': loginUrl, 'usernameField': usernameField,
     'passwordField': passwordField, 'tokenPath': tokenPath,
-  };
+    };
+  }
 
   factory AuthProfile.fromJson(Map<String, dynamic> data) => AuthProfile(
     mode: AuthMode.values.byName(data['mode'] as String),
@@ -95,7 +100,8 @@ class AuthSession {
   final String rawCookiePath;
   final DateTime createdAt;
   final DateTime? expiresAt;
-  AuthSession(this.origin, Map<String, String> headers, [List<Cookie> cookies = const [], this.rawCookiePath = '/', DateTime? createdAt, this.expiresAt])
+  final bool allowInsecureHttp;
+  AuthSession(this.origin, Map<String, String> headers, [List<Cookie> cookies = const [], this.rawCookiePath = '/', DateTime? createdAt, this.expiresAt, this.allowInsecureHttp = false])
       : _headers = Map.unmodifiable(headers), _cookies = List.unmodifiable(cookies), createdAt = createdAt ?? DateTime.now();
 
   bool get expectsCredentials => _headers.isNotEmpty || _cookies.isNotEmpty;
@@ -107,7 +113,7 @@ class AuthSession {
 
   Map<String, String> headersFor(Uri url, {DateTime? at}) {
     final now = at ?? DateTime.now();
-    if (!SecurityProject.sameOrigin(origin, url) || url.scheme != 'https' ||
+    if (!SecurityProject.sameOrigin(origin, url) || (url.scheme != 'https' && !(allowInsecureHttp && url.scheme == 'http')) ||
         (expiresAt != null && !expiresAt!.isAfter(now))) return {};
     final headers = Map<String, String>.of(_headers);
     if (!matchesPath(rawCookiePath, url.path)) headers.remove('Cookie');
@@ -115,7 +121,8 @@ class AuthSession {
       final domain = c.domain?.replaceFirst(RegExp(r'^\.'), '').toLowerCase();
       final path = c.path ?? '/';
       final targetPath = url.path.isEmpty ? '/' : url.path;
-      return (domain == null || domain == url.host.toLowerCase()) &&
+      return (!c.secure || url.scheme == 'https') &&
+          (domain == null || domain == url.host.toLowerCase()) &&
           (c.maxAge != null ? c.maxAge! > 0 && now.difference(createdAt).inSeconds < c.maxAge! :
             c.expires == null || c.expires!.isAfter(now)) &&
           (targetPath == path || targetPath.startsWith(path.endsWith('/') ? path : '$path/'));
@@ -168,7 +175,7 @@ class Authenticator {
       case AuthMode.jsonLogin:
       case AuthMode.formLogin: throw StateError('Login requires a network session.');
     }
-    return AuthSession(profile.target, headers, const [], profile.cookiePath, null, profile.oauth?.expiresAt);
+    return AuthSession(profile.target, headers, const [], profile.cookiePath, null, profile.oauth?.expiresAt, profile.allowInsecureHttp);
   }
 
   static String extractToken(String jsonBody, String path) {
@@ -281,6 +288,6 @@ class Authenticator {
       }
       if (cookies.isEmpty) throw StateError('No session cookie returned.');
     }
-    return AuthSession(profile.target, headers, cookies);
+    return AuthSession(profile.target, headers, cookies, '/', null, null, profile.allowInsecureHttp);
   }
 }

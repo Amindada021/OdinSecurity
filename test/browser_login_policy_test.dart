@@ -5,6 +5,18 @@ import 'package:odin_security/core/project.dart';
 import 'package:odin_security/core/scan_policy.dart';
 
 void main() {
+  test('HTTP opt-in accepts only the exact target origin', () {
+    final target = Uri.parse('http://example.test:2020');
+    final project = SecurityProject(name: 'Test', url: target.toString());
+    final policy = ScanPolicy();
+    expect(() => BrowserLoginPolicy.loginUrl(project, target, '/login', policy), throwsFormatException);
+    final login = BrowserLoginPolicy.loginUrl(project, target, '/login', policy, allowInsecureHttp: true);
+    expect(login, target.resolve('/login'));
+    expect(BrowserLoginPolicy.allowsNavigation(target, login, target.resolve('/dashboard'), policy, allowInsecureHttp: true), isTrue);
+    expect(BrowserLoginPolicy.allowsNavigation(target, login, Uri.parse('http://example.test:2021'), policy, allowInsecureHttp: true), isFalse);
+    expect(() => BrowserLoginPolicy.loginUrl(project, target, 'http://other.test/login', policy, allowInsecureHttp: true), throwsFormatException);
+    expect(BrowserLoginPolicy.assessmentStart(target, target.resolve('/dashboard'), policy, allowInsecureHttp: true), target.resolve('/dashboard'));
+  });
   final target = Uri.parse('https://example.test/panel');
   test('browser rejects external origin, port and plaintext', () {
     expect(BrowserLoginPolicy.allows(target, Uri.parse('https://example.test/login')), isTrue);

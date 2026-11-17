@@ -102,6 +102,32 @@ void main() {
     expect(captured?.mode, AuthMode.jsonLogin);
   });
 
+  testWidgets('HTTP sign-in unlocks only after session consent', (tester) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+    final project = SecurityProject(name: 'Test', url: 'http://example.test:2020');
+    await tester.pumpWidget(MaterialApp(home: ScanScreen(project: project)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('After sign-in'));
+    await tester.pumpAndSettle();
+    final api = find.widgetWithText(SwitchListTile, 'Direct API sign-in');
+    expect(tester.widget<SwitchListTile>(api).onChanged, isNull);
+    final cleartext = find.text('Allow insecure HTTP sign-in for this scan');
+    await tester.ensureVisible(cleartext);
+    await tester.tap(cleartext);
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(api).onChanged, isNotNull);
+    await tester.tap(find.text('Direct API sign-in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sign in to API and scan'), findsOneWidget);
+    await tester.tap(cleartext);
+    await tester.pumpAndSettle();
+    expect(tester.widget<SwitchListTile>(api).onChanged, isNull);
+  });
+
   testWidgets('project list shows branded empty state', (tester) async {
     await tester.pumpWidget(OdinSecurityApp(repository: ProjectRepository(MemoryStorage())));
     await tester.pumpAndSettle();

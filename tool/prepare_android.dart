@@ -23,6 +23,13 @@ void main() {
   }
   text = text.replaceFirst(RegExp(r'android:label="[^"]*"'), 'android:label="Odin Security"');
   text = text.replaceFirst(RegExp(r'android:icon="[^"]*"'), 'android:icon="@drawable/odin_security_icon"');
+  // WebView may open HTTP on explicit session-only user consent; app-level
+  // authentication policy still enforces the selected origin.
+  if (text.contains('android:usesCleartextTraffic=')) {
+    text = text.replaceFirst(RegExp(r'android:usesCleartextTraffic="[^"]*"'), 'android:usesCleartextTraffic="true"');
+  } else {
+    text = text.replaceFirst('<application', '<application android:usesCleartextTraffic="true"');
+  }
   if (text.contains('android:allowBackup=')) {
     text = text.replaceFirst(RegExp(r'android:allowBackup="[^"]*"'), 'android:allowBackup="false"');
   } else {
@@ -30,6 +37,7 @@ void main() {
   }
   if (!text.contains('android:icon="@drawable/odin_security_icon"') ||
       !text.contains('android:allowBackup="false"') ||
+      !text.contains('android:usesCleartextTraffic="true"') ||
       !text.contains('android.permission.INTERNET') ||
       !text.contains('android.permission.ACCESS_NETWORK_STATE') ||
       !text.contains('.ScheduledCheckService') || !text.contains('android.permission.BIND_JOB_SERVICE')) {

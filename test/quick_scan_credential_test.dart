@@ -3,6 +3,13 @@ import 'package:odin_security/core/auth.dart';
 import 'package:odin_security/core/quick_scan_credential.dart';
 
 void main() {
+  test('HTTP token requires explicit opt-in', () {
+    final target = Uri.parse('http://example.test:2020');
+    expect(() => QuickScanCredential.parse(target, 'fixture'), throwsFormatException);
+    final profile = QuickScanCredential.parse(target, 'fixture', allowInsecureHttp: true)!;
+    expect(Authenticator.manual(profile).headersFor(target)['Authorization'], 'Bearer fixture');
+    expect(profile.toJson, throwsStateError);
+  });
   final https = Uri.parse('https://api.example.test/v1');
   test('empty value means anonymous scan', () {
     expect(QuickScanCredential.parse(https, ''), isNull);

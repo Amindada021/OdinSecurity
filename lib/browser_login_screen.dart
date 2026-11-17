@@ -13,10 +13,10 @@ class BrowserLoginResult {
 
 class BrowserLoginScreen extends StatefulWidget {
   final Uri target, login;
-  final bool automatic;
+  final bool automatic, allowInsecureHttp;
   final ScanPolicy? policy;
   const BrowserLoginScreen({super.key, required this.target, required this.login,
-    this.automatic = false, this.policy});
+    this.automatic = false, this.policy, this.allowInsecureHttp = false});
   @override
   State<BrowserLoginScreen> createState() => _BrowserLoginScreenState();
 }
@@ -29,7 +29,7 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
   int progress = 0;
   bool cleaned = false;
 
-  bool permits(Uri candidate) => BrowserLoginPolicy.allowsNavigation(widget.target, widget.login, candidate, widget.policy);
+  bool permits(Uri candidate) => BrowserLoginPolicy.allowsNavigation(widget.target, widget.login, candidate, widget.policy, allowInsecureHttp: widget.allowInsecureHttp);
 
   @override
   void initState() {
@@ -70,7 +70,7 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
         onNavigationRequest: (request) {
           final uri = Uri.tryParse(request.url);
           final permitted = uri != null && permits(uri);
-          if (!permitted && mounted) setState(() => error = 'Navigation outside this HTTPS origin was blocked.');
+          if (!permitted && mounted) setState(() => error = 'Navigation outside the permitted origin was blocked.');
           return permitted ? NavigationDecision.navigate : NavigationDecision.prevent;
         },
         onWebResourceError: (failure) {
@@ -99,7 +99,7 @@ class _BrowserLoginScreenState extends State<BrowserLoginScreen> {
         throw StateError('Not on the authorized origin.');
       }
       final scanStart = widget.automatic
-          ? BrowserLoginPolicy.assessmentStart(widget.target, current, widget.policy)
+          ? BrowserLoginPolicy.assessmentStart(widget.target, current, widget.policy, allowInsecureHttp: widget.allowInsecureHttp)
           : widget.target;
       final found = await cookies.getCookies(domain: scanStart);
       final header = BrowserLoginPolicy.cookieHeader(found.map((c) => MapEntry(c.name, c.value)));
