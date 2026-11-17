@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'core/auth.dart';
 import 'core/project.dart';
 import 'core/scan_policy.dart';
+import 'core/project_storage.dart';
+import 'core/api_login_preferences.dart';
 import 'localized.dart';
 
 String tokenDeliveryLabel(TokenDelivery delivery) => switch (delivery) {
@@ -32,12 +35,56 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
   TokenDelivery delivery = TokenDelivery.bearer;
   AuthMode mode = AuthMode.jsonLogin;
   String? error;
+  bool loadingSettings = true;
+  Future<ApiLoginPreferencesRepository> _repository() async =>
+      ApiLoginPreferencesRepository(PreferencesStorage(await SharedPreferences.getInstance()));
+
+  Future<void> loadSettings() async {
+    try {
+      final value = await (await _repository()).load(widget.project.id, widget.target);
+      if (!mounted) return;
+      setState(() {
+        if (value.loginUrl.isNotEmpty) endpoint.text = value.loginUrl;
+        usernameField.text = value.usernameField;
+        passwordField.text = value.passwordField;
+        tokenPath.text = value.tokenPath;
+        header.text = value.headerName;
+        delivery = value.delivery;
+        mode = value.mode;
+      });
+    } catch (_) {
+      if (mounted) setState(() => error = 'Could not restore API login settings.');
+    } finally {
+      if (mounted) setState(() => loadingSettings = false);
+    }
+  }
+
+  Future<void> saveSettings() async {
+    final raw = endpoint.text.trim();
+    final uri = Uri.tryParse(raw);
+    final safeLoginUrl = uri == null || uri.userInfo.isNotEmpty
+        ? widget.target.resolve('/login').toString()
+        : (raw.startsWith('/')
+            ? (uri.path.isEmpty ? '/login' : uri.path)
+            : uri.replace(query: '', fragment: '').toString());
+    final value = ApiLoginPreferences(
+      loginUrl: safeLoginUrl,
+      usernameField: usernameField.text.trim(),
+      passwordField: passwordField.text.trim(),
+      tokenPath: tokenPath.text.trim(),
+      headerName: header.text.trim(),
+      delivery: delivery,
+      mode: mode,
+    );
+    await (await _repository()).save(widget.project.id, widget.target, value);
+  }
 
   @override
   void initState() {
     super.initState();
     endpoint = TextEditingController(text: widget.target.resolve('/login').toString());
     tokenPath = TextEditingController(text: 'token');
+    loadSettings();
   }
 
   @override
@@ -48,7 +95,8 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
     super.dispose();
   }
 
-  void submit() {
+  Future<void> submit() async {
+    if (loadingSettings) return;
     try {
       if (username.text.trim().isEmpty || password.text.isEmpty ||
           (delivery != TokenDelivery.cookie && tokenPath.text.trim().isEmpty)) {
@@ -63,8 +111,9 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
         tokenPath: delivery == TokenDelivery.cookie ? '' : tokenPath.text.trim(),
         tokenDelivery: delivery, headerName: header.text.trim(), allowInsecureHttp: widget.allowInsecureHttp);
       Authenticator.validateScope(widget.project, profile, authorized: true, permits: widget.policy.permits);
+      await saveSettings();
       password.clear();
-      Navigator.pop(context, profile);
+      if (mounted) Navigator.pop(context, profile);
     } catch (_) {
       setState(() => error = 'Complete the API sign-in fields using a permitted endpoint on the selected target.');
     }
@@ -82,6 +131,8 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
     title: const LText('Direct API sign-in'),
     content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(widget.target.host, style: Theme.of(context).textTheme.titleMedium),
+      const LText('API endpoint and field mapping are remembered for this target. Username and password are not saved.'),
+      if (loadingSettings) const LinearProgressIndicator(),
       const LText('Credentials are used once for this scan and are not saved. The sign-in request and token stay on the selected origin.'),
       const SizedBox(height: 12),
       field(endpoint, 'Exact login endpoint'),
@@ -92,6 +143,7 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
         childrenPadding: const EdgeInsets.symmetric(horizontal: 4),
         children: [
       DropdownButtonFormField<TokenDelivery>(
+        key: ValueKey('api.delivery.${delivery.name}'),
         initialValue: delivery, isExpanded: true,
         decoration: const InputDecoration(label: LText('Send authentication as')),
         items: TokenDelivery.values.map((value) => DropdownMenuItem(value: value, child: LText(tokenDeliveryLabel(value)))).toList(),
@@ -99,7 +151,8 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
       ),
       if (delivery == TokenDelivery.apiKey || delivery == TokenDelivery.customHeader)
         field(header, 'Credential header name'),
-          DropdownButtonFormField<AuthMode>(initialValue: mode, isExpanded: true,
+          DropdownButtonFormField<AuthMode>(key: ValueKey('api.mode.${mode.name}'),
+            initialValue: mode, isExpanded: true,
             decoration: const InputDecoration(label: LText('Login request format')),
             items: const [
               DropdownMenuItem(value: AuthMode.jsonLogin, child: LText('JSON')),
@@ -116,8 +169,11 @@ class _QuickApiLoginDialogState extends State<QuickApiLoginDialog> {
       if (error != null) LText(error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
     ])),
     actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: const LText('Cancel')),
-      FilledButton(onPressed: submit, child: const LText('Sign in and scan')),
+      TextButton(onPressed: loadingSettings ? null : () async {
+        try { await saveSettings(); } catch (_) { /* Never save secrets. */ }
+        if (context.mounted) Navigator.pop(context);
+      }, child: const LText('Cancel')),
+      FilledButton(onPressed: loadingSettings ? null : submit, child: const LText('Sign in and scan')),
     ],
   );
 }
