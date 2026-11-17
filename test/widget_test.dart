@@ -45,7 +45,11 @@ void main() {
     await tester.tap(find.text('Automatic scan'));
     await tester.pumpAndSettle();
     expect(find.text('Start automatic scan'), findsOneWidget);
-    expect(find.text('Bearer token'), findsNothing);
+    // Switching between simple and advanced retains the chosen method,
+    // but the actual secret is erased from the input.
+    expect(find.text('Bearer token'), findsOneWidget);
+    final restoredField = tester.widget<TextField>(find.byType(TextField));
+    expect(restoredField.controller?.text, isEmpty);
   });
 
   testWidgets('explicit separate login origin can be entered without adding project target', (tester) async {
