@@ -5,6 +5,7 @@ import 'core/metadata_rule_program.dart';
 import 'core/project.dart';
 import 'core/scan_policy.dart';
 import 'localized.dart';
+import 'finding_cards.dart';
 
 class HarResponseReviewScreen extends StatefulWidget {
   final SecurityProject project;
@@ -58,8 +59,8 @@ class _HarResponseReviewScreenState extends State<HarResponseReviewScreen> {
         for (final row in results!) ExpansionTile(title: Text(row.route.toString()), subtitle: Text('HTTP ' + row.status.toString()),
           children: [
             if (!row.bodyReviewed) const LText('Headers only; body not reviewed.'),
-            for (final tech in row.technologies) ListTile(title: Text(tech.name), subtitle: Text(tech.observedVersion ?? tech.evidence)),
-            for (final finding in row.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: LText(finding.severity.name)),
+            for (final tech in row.technologies) TechnologyTile(name: tech.name, layer: tech.layer.name, confidence: tech.confidence.name, evidence: tech.evidence, version: tech.observedVersion),
+            for (final finding in row.findings) FindingTile(id: finding.id, title: finding.title, severity: finding.severity.name, evidence: finding.evidence, remediation: finding.remediation),
           ]),
       ],
     ]),

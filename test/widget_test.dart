@@ -9,6 +9,10 @@ import 'project_storage_test.dart' show MemoryStorage;
 
 void main() {
   testWidgets('automatic scan is default and advanced tools are opt-in', (tester) async {
+    tester.view.physicalSize = const Size(800, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     SharedPreferences.setMockInitialValues({});
     final project = SecurityProject(name: 'Example', url: 'https://example.test');
     await tester.pumpWidget(MaterialApp(home: ScanScreen(project: project)));
@@ -18,6 +22,12 @@ void main() {
     final start = tester.widget<FilledButton>(find.ancestor(of: find.text('Start automatic scan'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)));
     expect(start.onPressed, isNull);
     expect(find.text('Representation test matrix'), findsNothing);
+    await tester.tap(find.text('Use Bearer token (optional)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bearer token'), findsOneWidget);
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.obscureText, isTrue);
+    await tester.enterText(find.byType(TextField), 'test-token');
     await tester.tap(find.text('Advanced mode'));
     await tester.pumpAndSettle();
     expect(find.text('Representation test matrix'), findsOneWidget);
@@ -25,6 +35,7 @@ void main() {
     await tester.tap(find.text('Automatic scan'));
     await tester.pumpAndSettle();
     expect(find.text('Start automatic scan'), findsOneWidget);
+    expect(find.text('Bearer token'), findsNothing);
   });
 
   testWidgets('project list shows branded empty state', (tester) async {

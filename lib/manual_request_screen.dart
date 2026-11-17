@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'localized.dart';
+import 'finding_cards.dart';
 import 'core/auth.dart';
 import 'core/manual_request.dart';
 import 'core/project.dart';
@@ -219,8 +220,7 @@ class _ManualRequestScreenState extends State<ManualRequestScreen> {
             subtitle: Text(uiNumber(context, data.observations.length)),
             children: [
               const LText('Passive configuration observations from this response only; no additional requests.'),
-              for (final finding in data.observations) ListTile(title: Text(finding.title),
-                subtitle: Text(finding.evidence + '\n' + finding.remediation), trailing: LText(finding.severity.name)),
+              for (final finding in data.observations) FindingTile(id: finding.id, title: finding.title, severity: finding.severity.name, evidence: finding.evidence, remediation: finding.remediation),
             ]),
           const LText('Response headers (unrecognized values redacted)'),
           SelectableText(data.headers.entries.map((e) => '${e.key}: ${e.value.join(', ')}').join('\n')),

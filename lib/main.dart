@@ -34,6 +34,8 @@ import 'core/project_storage.dart';
 import 'core/project.dart';
 import 'core/passive_scan.dart';
 import 'core/security_checks.dart';
+import 'core/quick_scan_credential.dart';
+import 'finding_cards.dart';
 import 'core/fingerprint.dart';
 import 'core/auth.dart';
 import 'core/auth_vault.dart';
@@ -100,8 +102,16 @@ class _OdinSecurityAppState extends State<OdinSecurityApp> {
     }
   }
 
-  ThemeData theme(Brightness brightness) => ThemeData(
-    colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff22c5a0), brightness: brightness), useMaterial3: true);
+  ThemeData theme(Brightness brightness) {
+    final scheme = ColorScheme.fromSeed(seedColor: const Color(0xff12a89d), brightness: brightness);
+    return ThemeData(
+      colorScheme: scheme,
+      useMaterial3: true,
+      scaffoldBackgroundColor: scheme.surface,
+      filledButtonTheme: FilledButtonThemeData(style: FilledButton.styleFrom(
+        minimumSize: const Size(0, 48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)))),
+    );
+  }
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'Odin Security',
@@ -213,10 +223,16 @@ class _ProjectScreenState extends State<ProjectScreen> {
             CheckedPopupMenuItem(value: 'dark', checked: widget.preferences.theme == 'dark', child: const LText('Dark theme')),
             CheckedPopupMenuItem(value: 'system', checked: widget.preferences.theme == 'system', child: const LText('System theme')),
           ],
-        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.76.0+78', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
+        ), IconButton(tooltip: tr(context, 'About Odin Security'), icon: const Icon(Icons.info_outline), onPressed: () => showAboutDialog(context: context, applicationName: 'Odin Security', applicationVersion: '0.77.0+79', applicationIcon: const OdinLogo(size: 48))), IconButton(tooltip: tr(context, 'Offline utilities'), icon: const Icon(Icons.build_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OfflineToolsScreen())))]),
         floatingActionButton: FloatingActionButton.extended(onPressed: loading || saving || loadError != null ? null : addProject, icon: const Icon(Icons.add), label: const LText('New project')),
         body: loading ? const Center(child: CircularProgressIndicator()) : loadError != null ? Center(child: TextButton(onPressed: loadProjects, child: LText(loadError!))) : projects.isEmpty
-            ? const Center(child: Padding(padding: EdgeInsets.all(24), child: LText('Create a project to assess an authorized website.')))
+            ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const OdinLogo(size: 82),
+                const SizedBox(height: 20),
+                LText('Your security workspace', style: Theme.of(context).textTheme.headlineSmall),
+                const SizedBox(height: 8),
+                const LText('Create a project to assess an authorized website.'),
+              ])))
             : Column(children: [
                 Padding(padding: const EdgeInsets.all(12), child: TextField(
                   onChanged: (value) => setState(() => search = value),
@@ -228,13 +244,14 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     itemCount: filteredProjects.length,
                     itemBuilder: (context, index) {
                       final p = filteredProjects[index];
-                      return ListTile(
-                        leading: const Icon(Icons.shield_outlined),
+                      return Card(margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        leading: CircleAvatar(backgroundColor: Theme.of(context).colorScheme.primaryContainer, child: const Icon(Icons.shield_outlined)),
                         title: Text(p.name),
                         subtitle: Text('${p.startUrl}\n${uiNumber(context, p.targets.length)} ${tr(context, 'targets')}'),
                         trailing: IconButton(tooltip: tr(context, 'Edit project'), icon: const Icon(Icons.edit_outlined), onPressed: saving ? null : () => editProject(p)),
                         onTap: saving ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScanScreen(project: p))),
-                      );
+                      ));
                     },
                   )),
               ]),
@@ -273,7 +290,8 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
 
   void submit() {
     try {
-      final uri = SecurityProject.parseTarget(url.text);
+      final input = url.text.trim();
+      final uri = SecurityProject.parseTarget(input.contains('://') ? input : 'https://$input');
       final projectName = name.text.trim().isEmpty ? uri.host : name.text.trim();
       Navigator.of(context).pop(SecurityProject(id: widget.existing?.id, name: projectName, url: uri.toString(), additionalUrls: SecurityProject.parseTargetLines(api.text)));
     } on FormatException catch (e) {
@@ -316,6 +334,8 @@ class _ScanScreenState extends State<ScanScreen> {
   bool authorized = false;
   bool advanced = false;
   ScanRecord? quickReport;
+  final quickToken = TextEditingController();
+  bool quickTokenEnabled = false;
   ScanPolicy policy = ScanPolicy();
   bool loadingPolicy = true;
   String? policyError;
@@ -524,6 +544,7 @@ class _ScanScreenState extends State<ScanScreen> {
   @override
   void dispose() {
     cancellation?.cancel();
+    quickToken.dispose();
     super.dispose();
   }
 
@@ -533,14 +554,23 @@ class _ScanScreenState extends State<ScanScreen> {
     final flag = CancellationFlag();
     final settings = policy.quickDefaults;
     final selectedTarget = target;
+    AuthProfile? credential;
+    try {
+      credential = quickTokenEnabled ? QuickScanCredential.parse(selectedTarget, quickToken.text) : null;
+      if (quickTokenEnabled && credential == null) throw const FormatException('Missing token.');
+    } on FormatException {
+      setState(() => error = 'Enter a valid Bearer token for an HTTPS target.');
+      return;
+    }
+    quickToken.clear();
     setState(() {
       busy = true; result = null; crawlResult = null; quickReport = null;
       error = null; visited = 0; cancellation = flag;
     });
     try {
-      // No saved credentials, custom rules or advanced checkpoint changes.
+      // Credential is session-only; no vault writes or advanced checkpoint changes.
       final data = await SiteCrawler().run(widget.project, selectedTarget,
-        authorized: true, policy: settings, cancellation: flag,
+        authorized: true, policy: settings, cancellation: flag, auth: credential,
         onProgress: (count) { if (mounted) setState(() => visited = count); });
       if (!mounted) return;
       final report = ScanRecord.fromPages(data.pages, failedCount: data.failedCount, cancelled: data.cancelled);
@@ -549,7 +579,7 @@ class _ScanScreenState extends State<ScanScreen> {
     } catch (_) {
       if (mounted) setState(() => error = 'Could not finish the quick scan. Check the URL and connection.');
     } finally {
-      if (mounted) setState(() { busy = false; cancellation = null; authorized = false; });
+      if (mounted) setState(() { busy = false; cancellation = null; authorized = false; quickTokenEnabled = false; });
     }
   }
 
@@ -630,18 +660,29 @@ class _ScanScreenState extends State<ScanScreen> {
           selected: {advanced},
           onSelectionChanged: busy ? null : (selection) => setState(() {
             advanced = selection.first; authorized = false; selectedProfile = '';
+            quickToken.clear(); quickTokenEnabled = false;
             result = null; crawlResult = null; quickReport = null; error = null;
           }),
         ),
         const SizedBox(height: 12),
         if (!advanced) ...[
-          Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, children: [
-              LText('Ready to scan', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              const LText('Automatically discover linked pages and review security headers, TLS, web technologies and response configuration.'),
-
-            ]))),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primaryContainer, Theme.of(context).colorScheme.surfaceContainerHigh]),
+              borderRadius: BorderRadius.circular(22)),
+            padding: const EdgeInsets.all(18),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              CircleAvatar(backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                child: const Icon(Icons.shield_outlined)),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                LText('Ready to scan', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 6),
+                const LText('Automatically discover linked pages and review security headers, TLS, web technologies and response configuration.'),
+              ])),
+            ]),
+          ),
+          const SizedBox(height: 16),
           if (policyError != null) LText(policyError!),
           if (!policy.permits(target)) const LText('The selected URL is excluded from scanning.'),
           DropdownButtonFormField<Uri>(
@@ -650,15 +691,42 @@ class _ScanScreenState extends State<ScanScreen> {
             items: [for (final u in widget.project.targets) DropdownMenuItem(value: u, child: Text(u.toString(), overflow: TextOverflow.ellipsis))],
             onChanged: busy ? null : (value) => setState(() {
               target = value!; authorized = false; quickReport = null; crawlResult = null; error = null;
+              quickToken.clear(); quickTokenEnabled = false;
             }),
           ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const LText('Use Bearer token (optional)'),
+            subtitle: LText(target.scheme == 'https' ? 'For protected APIs. Token is not saved.' : 'Bearer tokens require HTTPS.'),
+            value: quickTokenEnabled,
+            onChanged: busy || target.scheme != 'https' ? null : (value) => setState(() {
+              quickTokenEnabled = value;
+              authorized = false;
+              error = null;
+              if (!value) quickToken.clear();
+            }),
+          ),
+          if (quickTokenEnabled) ...[
+            TextField(
+              controller: quickToken, enabled: !busy, obscureText: true,
+              autocorrect: false, enableSuggestions: false,
+              keyboardType: TextInputType.visiblePassword,
+              textDirection: TextDirection.ltr,
+              decoration: const InputDecoration(prefixIcon: Icon(Icons.key_outlined),
+                label: LText('Bearer token'), hintText: 'eyJ...'),
+              onChanged: (_) => setState(() { authorized = false; error = null; }),
+            ),
+            const Padding(padding: EdgeInsets.only(top: 6), child: LText('Paste the raw token or the Bearer header value. It is cleared when the scan starts.')),
+          ],
           CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
             title: const LText('I own this target or have permission to assess it.'),
             value: authorized,
             onChanged: busy ? null : (value) => setState(() => authorized = value ?? false),
           ),
           FilledButton.icon(
-            onPressed: authorized && !busy && !loadingPolicy && !loadingHistory && policyError == null && policy.permits(target) ? quickScan : null,
+            onPressed: authorized && !busy && !loadingPolicy && !loadingHistory && policyError == null && policy.permits(target) && (!quickTokenEnabled || quickToken.text.trim().isNotEmpty) ? quickScan : null,
             icon: const Icon(Icons.play_arrow), label: const LText('Start automatic scan'),
           ),
           ExpansionTile(
@@ -668,7 +736,7 @@ class _ScanScreenState extends State<ScanScreen> {
             children: [
               Text('${tr(context, 'Maximum pages')}: ${uiNumber(context, policy.quickDefaults.maxPages)}'),
               Text('${tr(context, 'Delay between requests (ms)')}: ${uiNumber(context, policy.quickDefaults.delayMs)}'),
-              const LText('Read-only, no login, same origin. No automatic redirects or exploit payloads.'),
+              const LText('Read-only, same origin, with optional token. No automatic redirects or exploit payloads.'),
             ],
           ),
           if (busy) Padding(padding: const EdgeInsets.symmetric(vertical: 8),
@@ -766,8 +834,12 @@ class _ScanScreenState extends State<ScanScreen> {
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 4, children: [
                 for (final severity in Severity.values.reversed)
-                  Chip(label: Text('${tr(context, severity.name)}: ${uiNumber(context, crawlResult!.pages.expand((page) => page.findings).where((finding) => finding.severity == severity).length)}')),
+                  Chip(
+                    backgroundColor: severityColor(context, severity.name).withValues(alpha: .12),
+                    label: Text('${tr(context, severity.name)}: ${uiNumber(context, crawlResult!.pages.expand((page) => page.findings).where((finding) => finding.severity == severity).length)}')),
               ]),
+              if (crawlResult!.pages.any((page) => page.statusCode == 401 || page.statusCode == 403))
+                const LText('Access was not validated. Check authentication and permissions.'),
               const LText('Observations are not proof of vulnerabilities. A clean result is not a security guarantee.'),
               const SizedBox(height: 8),
               FilledButton.tonalIcon(
@@ -776,10 +848,24 @@ class _ScanScreenState extends State<ScanScreen> {
               ),
             ]))),
         ],
+        if (!advanced && quickReport != null && crawlResult != null) ...[
+          LText('Security observations', style: Theme.of(context).textTheme.titleLarge),
+          for (final page in crawlResult!.pages)
+            for (final finding in page.findings)
+              FindingTile(id: finding.id, title: finding.title, severity: finding.severity.name, evidence: finding.evidence, remediation: finding.remediation, url: page.url.toString()),
+          LText('Pages and technology observations', style: Theme.of(context).textTheme.titleLarge),
+          for (final page in crawlResult!.pages)
+            Card(child: ExpansionTile(title: Text(page.url.toString()), subtitle: Text('HTTP ${page.statusCode}'),
+              children: [
+                for (final tech in page.technologies)
+                  TechnologyTile(name: tech.name, layer: tech.layer.name, confidence: tech.confidence.name, evidence: tech.evidence, version: tech.observedVersion),
+                if (page.technologies.isEmpty) const ListTile(title: LText('Unknown — insufficient evidence')),
+              ])),
+        ],
         if (advanced && crawlResult != null) ...[
           Text('Pages: ${crawlResult!.pages.length} · Failed: ${crawlResult!.failedCount} · ${crawlResult!.stopReason}'),
           for (final page in crawlResult!.pages) ExpansionTile(title: Text(page.url.toString()), subtitle: Text('HTTP ${page.statusCode} · ${page.findings.length} observations'), children: [
-            for (final finding in page.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: LText(finding.severity.name)),
+            for (final finding in page.findings) FindingTile(id: finding.id, title: finding.title, severity: finding.severity.name, evidence: finding.evidence, remediation: finding.remediation),
           ]),
         ],
         if (error != null) LText(error!),
@@ -804,13 +890,13 @@ class _ScanScreenState extends State<ScanScreen> {
           if (data.bodyTruncated) const LText('Response body was truncated; coverage is limited.'),
           const Divider(),
           Text('Security observations (${data.findings.length})'),
-          for (final finding in data.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: LText(finding.severity.name)),
+          for (final finding in data.findings) FindingTile(id: finding.id, title: finding.title, severity: finding.severity.name, evidence: finding.evidence, remediation: finding.remediation),
           for (final layer in TechnologyLayer.values) ...[
             const Divider(),
             Text(layer.name.toUpperCase(), style: Theme.of(context).textTheme.titleSmall),
             if (!data.technologies.any((f) => f.layer == layer)) const LText('Unknown — insufficient evidence'),
             for (final finding in data.technologies.where((f) => f.layer == layer))
-              ListTile(title: Text(finding.name), subtitle: Text(finding.evidence + (finding.observedVersion == null ? '' : '\n' + tr(context, 'Declared version') + ': ' + finding.observedVersion!)), trailing: Text(finding.confidence.name)),
+              TechnologyTile(name: finding.name, layer: finding.layer.name, confidence: finding.confidence.name, evidence: finding.evidence, version: finding.observedVersion),
           ],
         ],
       ]),

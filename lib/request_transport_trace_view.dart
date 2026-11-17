@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'core/request_transport_trace.dart';
 import 'core/tls_audit.dart';
 import 'localized.dart';
+import 'finding_cards.dart';
 
 class RequestTransportTraceView extends StatelessWidget {
   final RequestTransportTrace trace;
@@ -24,7 +25,7 @@ class RequestTransportTraceView extends StatelessWidget {
           ListTile(title: const LText('Certificate issuer'), subtitle: SelectableText(cert.issuer)),
           ListTile(title: const LText('Certificate validity'), subtitle: Text(cert.validFrom.toIso8601String() + '\n' + cert.validUntil.toIso8601String())),
           for (final finding in CertificateChecks.inspect(cert.validFrom, cert.validUntil, DateTime.now()))
-            ListTile(title: Text(finding.title), subtitle: Text(finding.remediation)),
+            FindingTile(id: finding.id, title: finding.title, severity: finding.severity.name, evidence: finding.evidence, remediation: finding.remediation),
         ] else if (trace.https) const LText('Peer certificate details unavailable in this view.'),
       ],
     );

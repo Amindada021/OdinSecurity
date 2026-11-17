@@ -10,6 +10,7 @@ import 'core/custom_rules.dart';
 import 'core/metadata_program_settings.dart';
 import 'core/project_storage.dart';
 import 'localized.dart';
+import 'finding_cards.dart';
 
 class ConfigurationReviewScreen extends StatefulWidget {
   final SecurityProject project;
@@ -69,7 +70,7 @@ class _ConfigurationReviewScreenState extends State<ConfigurationReviewScreen> {
         if (result!.cors != null) Text('CORS: ' + result!.cors!.outcome.name),
         Text(result!.stop),
         const LText('Configuration observations are review signals, not proof of exploitation.'),
-        for (final finding in result!.findings) ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: LText(finding.severity.name)),
+        for (final finding in result!.findings) FindingTile(id: finding.id, title: finding.title, severity: finding.severity.name, evidence: finding.evidence, remediation: finding.remediation),
       ],
     ]),
   );

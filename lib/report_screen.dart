@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'localized.dart';
+import 'finding_cards.dart';
+import 'core/finding_explanations.dart';
 import 'core/history.dart';
 import 'core/report.dart';
 import 'advisory_review_screen.dart';
@@ -45,6 +47,7 @@ class _ReportScreenState extends State<ReportScreen> {
   @override
   Widget build(BuildContext context) {
     final report = ReportSummary(widget.record);
+    final fa = Localizations.localeOf(context).languageCode == 'fa';
     final candidates = widget.record.declaredInventory();
     final baselines = widget.baselines.isNotEmpty ? widget.baselines : [if (widget.previous != null) widget.previous!];
     final previous = baselineIndex >= 0 && baselineIndex < baselines.length ? baselines[baselineIndex] : null;
@@ -54,8 +57,17 @@ class _ReportScreenState extends State<ReportScreen> {
       appBar: AppBar(title: const LText('Security report')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         Text(widget.record.finishedAt.toLocal().toString()),
-        Text(report.overview),
-        const Text(ReportSummary.limitation),
+        Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start, children: [
+            LText('Security report', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text('${tr(context, 'Pages checked')}: ${uiNumber(context, widget.record.pages.length)}'),
+            Text('${tr(context, 'Security observations')}: ${uiNumber(context, widget.record.observationCount)}'),
+            Text('${tr(context, 'Failed requests')}: ${uiNumber(context, widget.record.failedCount)}'),
+            if (widget.record.cancelled) const LText('Scan stopped'),
+            const SizedBox(height: 8),
+            LText(ReportSummary.limitation),
+          ]))),
         const SizedBox(height: 12),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final ext in ['json', 'html', 'pdf'])
@@ -68,9 +80,9 @@ class _ReportScreenState extends State<ReportScreen> {
         if (saving) const LinearProgressIndicator(),
         const Divider(),
         Wrap(spacing: 8, children: [
-          ChoiceChip(label: Text('All: ${widget.record.observationCount}'), selected: filter == 'all', onSelected: (_) => setState(() => filter = 'all')),
+          ChoiceChip(label: Text('${tr(context, 'All')}: ${uiNumber(context, widget.record.observationCount)}'), selected: filter == 'all', onSelected: (_) => setState(() => filter = 'all')),
           for (final entry in report.counts.entries)
-            ChoiceChip(label: Text('${entry.key}: ${entry.value}'), selected: filter == entry.key, onSelected: (_) => setState(() => filter = entry.key)),
+            ChoiceChip(label: Text('${tr(context, entry.key)}: ${uiNumber(context, entry.value)}'), selected: filter == entry.key, onSelected: (_) => setState(() => filter = entry.key)),
         ]),
         if (baselines.isNotEmpty) DropdownButtonFormField<int>(initialValue: baselineIndex,
           decoration: const InputDecoration(label: LText('Comparison baseline')),
@@ -85,8 +97,8 @@ class _ReportScreenState extends State<ReportScreen> {
           const LText('Status code changes are diagnostic only; differing sessions or coverage may explain them.'),
           for (final row in comparison.statusChanges) ListTile(title: Text(row.url), subtitle: Text('HTTP ${row.before} → ${row.after}')),
           Text('Newly observed: ${comparison.added.length} | Not observed again: ${comparison.notObserved.length}'),
-          for (final f in comparison.added) ListTile(title: Text('New: ${f.title}'), subtitle: Text(f.url)),
-          for (final f in comparison.notObserved) ListTile(title: Text('Not observed again: ${f.title}'), subtitle: Text(f.url)),
+          for (final f in comparison.added) ListTile(title: Text('${tr(context, 'New finding')}: ${explainFinding(f.id, f.title, f.remediation, persian: fa).title}'), subtitle: Text(f.url)),
+          for (final f in comparison.notObserved) ListTile(title: Text('${tr(context, 'Not observed again')}: ${explainFinding(f.id, f.title, f.remediation, persian: fa).title}'), subtitle: Text(f.url)),
         ],
         const Divider(),
         const LText('Pages and technology observations'),
@@ -96,16 +108,14 @@ class _ReportScreenState extends State<ReportScreen> {
               if (page['bodyTruncated'] == true) const ListTile(title: LText('Response truncated')),
               if (page['redirectNotFollowed'] == true) const ListTile(title: LText('Redirect not followed')),
               for (final tech in (page['technologies'] as List? ?? []))
-                ListTile(title: Text(tech['name'] as String), subtitle: Text("${tech['layer']} / ${tech['confidence']}\n${tech['evidence']}"),
-                  trailing: tech['observedVersion'] is String ? Text('${tr(context, 'Declared version')}: ${tech['observedVersion']}') : null),
+                TechnologyTile(name: tech['name'] as String, layer: tech['layer'] as String, confidence: tech['confidence'] as String,
+                  evidence: tech['evidence'] as String, version: tech['observedVersion'] as String?),
             ]),
         const Divider(),
         const LText('Security observations'),
         if (visible.isEmpty) const LText('No matching observations. This does not establish security.'),
         for (final f in visible)
-          ExpansionTile(title: Text(f.title), subtitle: Text('${f.severity} | ${f.url}'),
-            children: [ListTile(title: const LText('Evidence'), subtitle: SelectableText(f.evidence)),
-              ListTile(title: const LText('Remediation'), subtitle: SelectableText(f.remediation))]),
+          FindingTile(id: f.id, title: f.title, severity: f.severity, evidence: f.evidence, remediation: f.remediation, url: f.url),
       ]),
     );
   }

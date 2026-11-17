@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'localized.dart';
+import 'finding_cards.dart';
 import 'core/project.dart';
 import 'core/scan_policy.dart';
 import 'core/tls_audit.dart';
@@ -53,7 +54,7 @@ class _TlsAuditScreenState extends State<TlsAuditScreen> {
           if (value.validUntil != null) Text('Valid until: ${value.validUntil!.toUtc().toIso8601String()}'),
           if (value.validFrom != null && value.validUntil != null)
             for (final finding in CertificateChecks.inspect(value.validFrom!, value.validUntil!, DateTime.now()))
-              ListTile(title: Text(finding.title), subtitle: Text(finding.remediation), trailing: LText(finding.severity.name)),
+              FindingTile(id: finding.id, title: finding.title, severity: finding.severity.name, evidence: finding.evidence, remediation: finding.remediation),
         ],
       ]));
   }
