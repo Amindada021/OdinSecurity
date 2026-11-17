@@ -15,6 +15,7 @@ import 'saved_routes_screen.dart';
 import 'traffic_logger_screen.dart';
 import 'browser_traffic_screen.dart';
 import 'tls_audit_screen.dart';
+import 'load_test_screen.dart';
 import 'cors_audit_screen.dart';
 import 'regression_audit_screen.dart';
 import 'websocket_inventory_screen.dart';
@@ -1182,6 +1183,7 @@ class _ScanScreenState extends State<ScanScreen> {
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RegressionAuditScreen(project: widget.project, policy: policy))), icon: const Icon(Icons.fact_check_outlined), label: const LText('Security regression audit')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CorsAuditScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.security), label: const LText('CORS configuration audit')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' || !policy.permits(target) ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => TlsAuditScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.lock_outline), label: const LText('TLS certificate audit')),
+        OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => LoadTestScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.monitor_heart_outlined), label: const LText('Server resilience laboratory')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || target.scheme != 'https' || !policy.permits(target) ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SpaInventoryScreen(project: widget.project, target: target, policy: policy))), icon: const Icon(Icons.language), label: const LText('Explore rendered SPA')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null || loadingAuth ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SavedRoutesScreen(project: widget.project, policy: policy, auth: auth))), icon: const Icon(Icons.list_alt), label: const LText('Saved route inventory')),
         OutlinedButton.icon(onPressed: busy || loadingPolicy || policyError != null ? null : () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExternalFindingsScreen(project: widget.project, policy: policy))), icon: const Icon(Icons.fact_check_outlined), label: const LText('External assessment findings')),
