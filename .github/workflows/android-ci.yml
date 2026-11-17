@@ -3,10 +3,9 @@ name: Android CI
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/authenticated-discovery]
+    branches: [main]
     paths:
       - 'tool/android-build-request.txt'
-      - '.github/workflows/android-ci.yml'
 
 permissions:
   contents: read
