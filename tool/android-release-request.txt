@@ -1,3 +1,3 @@
 Explicit Android release request
 Version: 0.80.0+85
-Redesigned scan workflow, universal authentication and live terminal
+Redesigned scan workflow and updated authentication interface expectations

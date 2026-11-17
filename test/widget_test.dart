@@ -30,7 +30,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Sign-in page URL'), findsOneWidget);
     expect(find.text('Open sign-in and scan'), findsOneWidget);
-    await tester.tap(find.text('Use existing credential instead'));
+    await tester.tap(find.byKey(const ValueKey('method.false.false.false')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Use existing credential instead').last);
     await tester.pumpAndSettle();
     expect(find.text('Bearer token'), findsOneWidget);
     final field = tester.widget<TextField>(find.byType(TextField));
@@ -74,12 +76,12 @@ void main() {
     expect(tester.widget<FilledButton>(button).onPressed, isNull);
   });
 
-  testWidgets('Hesabran direct API login has the correct defaults without a pasted token', (tester) async {
+  testWidgets('direct API login supports configurable endpoints without a pasted token', (tester) async {
     tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final project = SecurityProject(name: 'Fixture', url: 'https://api.hesabran.com');
+    final project = SecurityProject(name: 'Fixture', url: 'https://api.example.test');
     AuthProfile? captured;
     await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) => Scaffold(
       body: TextButton(onPressed: () async {
@@ -90,14 +92,21 @@ void main() {
     await tester.tap(find.text('Open fixture'));
     await tester.pumpAndSettle();
     final fields = find.byType(TextField);
-    expect(tester.widget<TextField>(fields.at(0)).controller!.text, 'https://api.hesabran.com/api/v1/Account/Login');
+    expect(tester.widget<TextField>(fields.at(0)).controller!.text, 'https://api.example.test/login');
     expect(tester.widget<TextField>(fields.at(2)).obscureText, isTrue);
+    await tester.enterText(fields.at(0), 'https://api.example.test/auth/sign-in');
     await tester.enterText(fields.at(1), 'fixture-user');
     await tester.enterText(fields.at(2), 'fixture-password');
+    await tester.tap(find.text('API login settings'));
+    await tester.pumpAndSettle();
+    final tokenPath = find.widgetWithText(TextField, 'JSON token path');
+    await tester.ensureVisible(tokenPath);
+    await tester.enterText(tokenPath, 'payload.access_token');
+    await tester.ensureVisible(find.text('Sign in and scan'));
     await tester.tap(find.text('Sign in and scan'));
     await tester.pumpAndSettle();
-    expect(captured?.loginUrl, 'https://api.hesabran.com/api/v1/Account/Login');
-    expect(captured?.tokenPath, 'data.token');
+    expect(captured?.loginUrl, 'https://api.example.test/auth/sign-in');
+    expect(captured?.tokenPath, 'payload.access_token');
     expect(captured?.tokenDelivery, TokenDelivery.bearer);
     expect(captured?.mode, AuthMode.jsonLogin);
   });
@@ -113,19 +122,21 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('After sign-in'));
     await tester.pumpAndSettle();
-    final api = find.widgetWithText(SwitchListTile, 'Direct API sign-in');
-    expect(tester.widget<SwitchListTile>(api).onChanged, isNull);
+    final api = find.byKey(const ValueKey('method.false.false.false'));
+    expect(tester.widget<DropdownButtonFormField<String>>(api).onChanged, isNull);
     final cleartext = find.text('Allow insecure HTTP sign-in for this scan');
     await tester.ensureVisible(cleartext);
     await tester.tap(cleartext);
     await tester.pumpAndSettle();
-    expect(tester.widget<SwitchListTile>(api).onChanged, isNotNull);
-    await tester.tap(find.text('Direct API sign-in'));
+    expect(tester.widget<DropdownButtonFormField<String>>(api).onChanged, isNotNull);
+    await tester.tap(api);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Direct API sign-in').last);
     await tester.pumpAndSettle();
     expect(find.text('Sign in to API and scan'), findsOneWidget);
     await tester.tap(cleartext);
     await tester.pumpAndSettle();
-    expect(tester.widget<SwitchListTile>(api).onChanged, isNull);
+    expect(tester.widget<DropdownButtonFormField<String>>(api).onChanged, isNull);
   });
 
   testWidgets('project list shows branded empty state', (tester) async {
