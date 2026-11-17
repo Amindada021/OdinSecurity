@@ -24,7 +24,7 @@ class ApiLoginPreferences {
     String safeField(String key, String fallback) {
       final raw = json[key];
       return raw is String && raw.length <= 120 &&
-              !raw.contains(RegExp(r'[\\r\\n]')) ? raw : fallback;
+              !raw.contains(RegExp(r'[\r\n]')) ? raw : fallback;
     }
     final url = json['loginUrl'];
     final parsed = url is String && url.length <= 2048 ? Uri.tryParse(url) : null;
